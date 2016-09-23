@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
@@ -11,17 +12,16 @@ module Model
   ( module Model
   ) where
 --------------------------------------------------------------------------------
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Reader   (ask)
+import Control.Monad.Reader
 import Database.Persist.Quasi
-import Database.Persist.Sql   (runSqlPool)
+import Database.Persist.Sql         (SqlPersistM, SqlPersistT, runMigration, runSqlPool)
 import Database.Persist.TH
-import Data.Text              (Text)
-import Data.Time.Calendar     (Day)
-import Data.Time.LocalTime    (TimeOfDay)
+import Data.Text                    (Text)
+import Data.Time.Calendar           (Day)
+import Data.Time.LocalTime          (TimeOfDay)
 --------------------------------------------------------------------------------
-import Types  as Model
-import Config as Model
+import Config
+import Types               as Model
 ---------------------------------------------------------------------------------
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"][persistLowerCase|
@@ -39,4 +39,10 @@ Log json
     deriving Show
 |]
 
-runDb query = liftIO . runSqlPool query =<< ask getPool
+doMigrations :: SqlPersistT IO ()
+doMigrations = runMigration migrateAll
+
+runDb :: (MonadReader Config m, MonadIO m) => SqlPersistT IO b -> m b
+runDb query = do
+  pool <- asks getPool
+  liftIO $ runSqlPool query pool

@@ -1,15 +1,16 @@
 module Main
   where
 --------------------------------------------------------------------------------
-import Control.Monad.Logger     (runStderrLoggingT)
-import Database.Persist.Sql     (runMigration, runSqlPool)
-import Database.Persist.MySQL   (ConnectInfo (..), createMySQLPool, defaultConnectInfo)
-import Network.Wai.Handler.Warp (run)
+import Database.Persist.Sql                 (runMigration, runSqlPool)
+import Network.Wai.Handler.Warp             (run)
+import Network.Wai.Middleware.RequestLogger (logStdoutDev)
 import Servant
 import System.Envy
 --------------------------------------------------------------------------------
-import Lib
-import Model                    (migrateAll)
+import Api                                  (app)
+import Api.Sensor                           (generateJavaScript)
+import Config
+import Model
 import Settings
 --------------------------------------------------------------------------------
 
@@ -21,18 +22,11 @@ main = do
     Left err -> putStrLn err
     Right settings -> do
       print settings
-      
-      let connectInfo = defaultConnectInfo { connectHost     = dbHost     settings
-                                           , connectPort     = fromIntegral
-                                                             . dbPort   $ settings
-                                           , connectUser     = dbUser     settings
-                                           , connectPassword = dbPassword settings
-                                           , connectDatabase = dbDatabase settings
-                                           }
 
-      pool <- runStderrLoggingT $ do
-        p <- createMySQLPool connectInfo 1
-        runSqlPool (runMigration migrateAll) p
-        return p
+      pool <- mkPool settings
 
-      run 8080 (serve api (server pool))
+      let config = Config { getPool = pool }
+
+      runSqlPool doMigrations pool
+      generateJavaScript
+      run 8080 $ logStdoutDev $ app config
