@@ -5,12 +5,13 @@ module Api
   ( app
   ) where
 --------------------------------------------------------------------------------
-import Control.Monad.Except       (ExceptT)
-import Control.Monad.Reader       (runReaderT)
+import Control.Monad.Except        (ExceptT)
+import Control.Monad.Reader        (runReaderT)
 import Data.Aeson
 import Data.Aeson.TH
-import Data.Text                  (Text)
-import Network.Wai                (Application)
+import Data.Text                   (Text)
+import Network.Wai                 (Application)
+import Network.Wai.Middleware.Cors (simpleCors)
 import Servant
 --------------------------------------------------------------------------------
 import Api.Sensor
@@ -22,7 +23,7 @@ type Api = SensorApi :<|> Raw
 --------------------------------------------------------------------------------
 
 sensorApp :: Config -> Application
-sensorApp config = serve (Proxy :: Proxy SensorApi) (appToServer config)
+sensorApp config = simpleCors (serve (Proxy :: Proxy SensorApi) (appToServer config))
 
 appToServer :: Config -> Server SensorApi
 appToServer config = enter (convertApp config) sensorServer

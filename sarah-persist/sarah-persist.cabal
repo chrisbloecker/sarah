@@ -35,6 +35,7 @@ library
                      , text
                      , time
                      , wai
+                     , wai-cors
   default-language:    Haskell2010
 
 executable sarah-persist-exe
