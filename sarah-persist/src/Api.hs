@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators     #-}
 --------------------------------------------------------------------------------
 module Api
@@ -11,8 +10,7 @@ import Control.Monad.Reader        (runReaderT)
 import Data.Aeson
 import Data.Aeson.TH
 import Data.Text                   (Text)
-import Network.Wai                 (Application, Middleware)
-import Network.Wai.Middleware.Cors (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
+import Network.Wai                 (Application)
 import Servant
 --------------------------------------------------------------------------------
 import Api.Sensor
@@ -24,7 +22,7 @@ type Api = SensorApi :<|> Raw
 --------------------------------------------------------------------------------
 
 sensorApp :: Config -> Application
-sensorApp config = myCors (serve (Proxy :: Proxy SensorApi) (appToServer config))
+sensorApp config = serve (Proxy :: Proxy SensorApi) (appToServer config)
 
 appToServer :: Config -> Server SensorApi
 appToServer config = enter (convertApp config) sensorServer
@@ -37,8 +35,3 @@ files = serveDirectory "assets"
 
 app :: Config -> Application
 app config = serve (Proxy :: Proxy Api) (appToServer config :<|> files)
-
-myCors :: Middleware
-myCors = cors (const $ Just policy)
-  where
-    policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }

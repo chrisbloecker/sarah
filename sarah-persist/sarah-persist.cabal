@@ -35,7 +35,6 @@ library
                      , text
                      , time
                      , wai
-                     , wai-cors
   default-language:    Haskell2010
 
 executable sarah-persist-exe
@@ -49,7 +48,9 @@ executable sarah-persist-exe
                      , sarah-persist
                      , servant-server
                      , warp
+                     , wai
                      , wai-extra
+                     , wai-cors
   default-language:    Haskell2010
 
 test-suite sarah-persist-test
