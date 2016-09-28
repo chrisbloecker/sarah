@@ -9,7 +9,7 @@ import Json.Decode as Json
 import Task
 
 
-main = App.program { init          = init "dogs"
+main = App.program { init          = init
                    , view          = view
                    , update        = update
                    , subscriptions = subscriptions
@@ -18,50 +18,48 @@ main = App.program { init          = init "dogs"
 
 -- Model
 
-type alias Model = { topic  : String
-                   , gifUrl : String
-                   }
+type alias Model = { readings : String }
 
-init : String -> (Model, Cmd Msg)
-init topic = ( Model topic "waiting.gif"
-             , getRandomGif topic
-             )
+init : (Model, Cmd Msg)
+init = ( Model "initial"
+       , Cmd.none
+       )
 
 
 -- Update
 
-type Msg = MorePlease
-         | FetchSucceed String
+type Msg = Reload
+         | FetchSuccess String
          | FetchFail    Http.Error
+
 
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    MorePlease          -> (model,                    getRandomGif model.topic)
-    FetchSucceed newUrl -> (Model model.topic newUrl, Cmd.none)
-    FetchFail _         -> (model, Cmd.none)
+    Reload               -> (Model "Reloading",    getData)
+    FetchSuccess newData -> (Model newData,        Cmd.none)
+    FetchFail    err     -> (Model (toString err), Cmd.none)
+
 
 -- View
 
 view : Model -> Html Msg
 view model =
   div []
-      [ h2 [] [ text model.topic ]
-      , img [ src model.gifUrl ] []
-      , button [ onClick MorePlease ] [ text "More Please!" ]
+      [ text model.readings
+      , br [] []
+      , button [ onClick Reload ] [ text "Reload" ]
       ]
+
 
 -- Subscriptions
 
 subscriptions : Model -> Sub Msg
-subscriptions model = Sub.none
+subscriptions _ = Sub.none
+
 
 -- Http
 
-getRandomGif : String -> Cmd Msg
-getRandomGif topic =
-  let url = "https://api.giphy.com/v1/gifs/random?api_key=dc6zaTOxFJmzC&tag=" ++ topic
-  in Task.perform FetchFail FetchSucceed (Http.get decodeGifUrl url)
-
-decodeGifUrl : Json.Decoder String
-decodeGifUrl = Json.at ["data", "image_url"] Json.string
+getData : Cmd Msg
+getData = let url = "http://sarah-persistent:8080/sensor-readings/date/2016-09-27/room/Livingroom/sensor/Temperature/"
+          in Task.perform FetchFail FetchSuccess (Http.getString url)
