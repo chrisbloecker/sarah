@@ -1,13 +1,13 @@
 module Main exposing (main)
-
-import Html                   exposing (..)
+--------------------------------------------------------------------------------
+import Html                    exposing (..)
 import Html.App        as App
-import Html.Attributes        exposing (..)
-import Html.Events            exposing (onClick)
+import Html.Attributes         exposing (..)
+import Html.Events             exposing (onClick)
 import Http
-import Json.Decode as Json
+import Model                   exposing (..)
 import Task
-
+--------------------------------------------------------------------------------
 
 main = App.program { init          = init
                    , view          = view
@@ -18,35 +18,27 @@ main = App.program { init          = init
 
 -- Model
 
-type alias Model = { readings : String }
-
 init : (Model, Cmd Msg)
-init = ( Model "initial"
+init = ( Model []
        , Cmd.none
        )
 
 
 -- Update
 
-type Msg = Reload
-         | FetchSuccess String
-         | FetchFail    Http.Error
-
-
 update : Msg -> Model -> (Model, Cmd Msg)
 update msg model =
   case msg of
-    Reload               -> (Model "Reloading",    getData)
-    FetchSuccess newData -> (Model newData,        Cmd.none)
-    FetchFail    err     -> (Model (toString err), Cmd.none)
-
+    Reload               -> (Model [],      getData)
+    FetchSuccess newData -> (Model newData, Cmd.none)
+    FetchFail    err     -> (Model [],      Cmd.none)
 
 -- View
 
 view : Model -> Html Msg
 view model =
   div []
-      [ text model.readings
+      [ text (toString model.readings)
       , br [] []
       , button [ onClick Reload ] [ text "Reload" ]
       ]
@@ -57,9 +49,8 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions _ = Sub.none
 
-
 -- Http
 
 getData : Cmd Msg
 getData = let url = "http://sarah-persistent:8080/sensor-readings/date/2016-09-27/room/Livingroom/sensor/Temperature/"
-          in Task.perform FetchFail FetchSuccess (Http.getString url)
+          in Task.perform FetchFail FetchSuccess (Http.get sensorReadings url)
