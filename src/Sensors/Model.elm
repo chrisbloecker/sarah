@@ -3,16 +3,15 @@ module Sensors.Model
            , init
            )
 --------------------------------------------------------------------------------
-import Dict            exposing (Dict, empty)
 import Sensors.Message exposing (Message)
 import Types           exposing (..)
 --------------------------------------------------------------------------------
 
-type alias Model = { data : Dict (Room, Sensor) (List SensorReading) }
+type alias Model = { data : List SensorReadings }
 
 --------------------------------------------------------------------------------
 
 init : (Model, Cmd Message)
-init = ( { data = empty }
+init = ( { data = [] }
        , Cmd.none
        )
