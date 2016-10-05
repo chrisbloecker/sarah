@@ -1,0 +1,9 @@
+[submodule "sarah-frontend"]
+	path = sarah-frontend
+	url = https://github.com/chrisbloecker/sarah-frontend
+[submodule "sarah-middleware"]
+	path = sarah-middleware
+	url = https://github.com/chrisbloecker/sarah-middleware
+[submodule "sarah-persist"]
+	path = sarah-persist
+	url = https://github.com/chrisbloecker/sarah-persist
