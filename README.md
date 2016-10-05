@@ -1,9 +1,6 @@
 # Smart Augmented Reality Automated Home
----
 
 SARAH is my approach at a smart home system. But why another smart home system, are there not enough out there already? Yes, there are click-together things out there and probably everything you need to make a home smart can be plugged together. Plus, Amazon, Google, Microsoft (and probably others) are releasing their assistants you can talk to and, e.g. ask to turn on the lights or read the news to you. But this will always require compatible hardware, and I'd like to make the hardware smart that I already have. Besides, the main point in this is that I want to build my smart home myself. At the moment, this project is still very much a work in progress.
-
----
 
 ## Components
 SARAH consists of different components, each of which is responsible for a specific task. In general, the architecture is supposed to follow the principle of microservices and a strict hierarchy. However, I'm opposed to creating another microservice just for the sake of creating a microservice and I think this is a good way to avoid over-engineering.
