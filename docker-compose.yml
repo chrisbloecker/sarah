@@ -1,10 +1,10 @@
 api:
-  image: sarah-broker
+  image: sarah-middleware
   environment:
     - VIRTUAL_HOST=
     - LETSENCRYPT_HOST=
     - LETSENCRYPT_EMAIL=
-  command: /usr/local/bin/sarah-broker-exe
+  command: /usr/local/bin/sarah-middleware-exe
   ports:
     - "8080"
 nginxproxy:
