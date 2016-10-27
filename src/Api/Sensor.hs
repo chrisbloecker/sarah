@@ -4,12 +4,11 @@
 module Api.Sensor
   where
 --------------------------------------------------------------------------------
-import           Config
 import           Data.Time.Calendar       (Day)
 import           Database.Persist
 import           Model
 import           Servant
-import           Servant.JS               (vanillaJS, writeJSForAPI)
+import           Types
 --------------------------------------------------------------------------------
 
 type SensorApi = "sensor-readings" :> "date"   :> Capture "date"   Day
@@ -37,6 +36,3 @@ putSensorReading :: SensorReading -> AppM ()
 putSensorReading sensorReading = do
   _ <- runDb (insert sensorReading)
   return ()
-
-generateJavaScript :: IO ()
-generateJavaScript = writeJSForAPI (Proxy :: Proxy SensorApi) vanillaJS "./assets/api.js"

@@ -5,16 +5,16 @@ module Api
   ( app
   ) where
 --------------------------------------------------------------------------------
-import Control.Monad.Except        (ExceptT)
-import Control.Monad.Reader        (runReaderT)
+import Control.Monad.Reader (runReaderT)
+import Control.Monad.Except (ExceptT)
 import Data.Aeson
 import Data.Aeson.TH
-import Data.Text                   (Text)
-import Network.Wai                 (Application)
+import Data.Text            (Text)
+import Network.Wai          (Application)
 import Servant
+import Types
 --------------------------------------------------------------------------------
 import Api.Sensor
-import Config
 --------------------------------------------------------------------------------
 
 type Api = SensorApi :<|> Raw

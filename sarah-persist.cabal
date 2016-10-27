@@ -17,7 +17,6 @@ library
   hs-source-dirs:      src
   exposed-modules:     Api
                      , Api.Sensor
-                     , Config
                      , Model
                      , Settings
                      , Types
@@ -28,7 +27,6 @@ library
                      , monad-logger
                      , mtl
                      , persistent
-                     , persistent-mysql
                      , persistent-template
                      , servant-js
                      , servant-server
@@ -45,6 +43,7 @@ executable sarah-persist-exe
                      , envy
                      , monad-logger
                      , persistent
+                     , persistent-mysql
                      , sarah-persist
                      , servant-server
                      , warp

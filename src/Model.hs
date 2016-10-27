@@ -20,7 +20,6 @@ import Data.Text                    (Text)
 import Data.Time.Calendar           (Day)
 import Data.Time.LocalTime          (TimeOfDay)
 --------------------------------------------------------------------------------
-import Config
 import Types               as Model
 ---------------------------------------------------------------------------------
 

@@ -3,7 +3,9 @@
 module Main
   where
 --------------------------------------------------------------------------------
-import Database.Persist.Sql                 (runMigration, runSqlPool)
+import Control.Monad.Logger                 (runStderrLoggingT)
+import Database.Persist.MySQL               (ConnectInfo (..), createMySQLPool, defaultConnectInfo)
+import Database.Persist.Sql                 (ConnectionPool, runMigration, runSqlPool)
 import Network.Wai                          (Application, Middleware)
 import Network.Wai.Handler.Warp             (run)
 import Network.Wai.Middleware.RequestLogger (logStdoutDev)
@@ -12,8 +14,6 @@ import Servant
 import System.Envy
 --------------------------------------------------------------------------------
 import Api                                  (app)
-import Api.Sensor                           (generateJavaScript)
-import Config
 import Model
 import Settings
 --------------------------------------------------------------------------------
@@ -22,6 +22,19 @@ corsPolicy :: Middleware
 corsPolicy = cors (const $ Just policy)
   where
     policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }
+
+
+mkPool :: Settings -> IO ConnectionPool
+mkPool settings =
+  let connectInfo = defaultConnectInfo { connectHost     = dbHost     settings
+                                       , connectPort     = fromIntegral
+                                                         . dbPort   $ settings
+                                       , connectUser     = dbUser     settings
+                                       , connectPassword = dbPassword settings
+                                       , connectDatabase = dbDatabase settings
+                                       }
+  in runStderrLoggingT (createMySQLPool connectInfo 1)
+
 
 main :: IO ()
 main = do
@@ -37,5 +50,4 @@ main = do
       let config = Config { getPool = pool }
 
       runSqlPool doMigrations pool
-      generateJavaScript
       run 8080 $ logStdoutDev $ corsPolicy $ app config
