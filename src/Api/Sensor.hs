@@ -15,7 +15,7 @@ import           Types
 type SensorApi = "sensor-readings" :> "date"   :> Capture "date"   Day
                                    :> "room"   :> Capture "room"   Room
                                    :> "sensor" :> Capture "sensor" Sensor
-                                   :> Get     '[JSON] [Entity SensorReading]
+                                   :> Get     '[JSON] [SensorReading]
             :<|> "sensor-readings" :> ReqBody '[JSON] SensorReading
                                    :> Put     '[JSON] ()
 
@@ -25,19 +25,15 @@ sensorServer :: ServerT SensorApi AppM
 sensorServer = getSensorReadings
           :<|> putSensorReading
 
-getSensorReadings :: Day -> Room -> Sensor -> AppM [Entity SensorReading]
+getSensorReadings :: Day -> Room -> Sensor -> AppM [SensorReading]
 getSensorReadings day room sensor =
-  runDb $ selectList [ SensorReadingDate   ==. day
-                     , SensorReadingRoom   ==. room
-                     , SensorReadingSensor ==. sensor
-                     ]
-                     []
+  fmap (map entityVal) $ runDb $ selectList [ SensorReadingDate   ==. day
+                                            , SensorReadingRoom   ==. room
+                                            , SensorReadingSensor ==. sensor
+                                            ]
+                                            []
 
 putSensorReading :: SensorReading -> AppM ()
 putSensorReading sensorReading = do
   _ <- runDb (insert sensorReading)
   return ()
-
---------------------------------------------------------------------------------
-
-getSensorReadingsClient :<|> putSensorReadingClient = client (Proxy :: Proxy SensorApi)
