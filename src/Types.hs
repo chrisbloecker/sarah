@@ -15,7 +15,7 @@ import Servant             (FromHttpApiData (..), ToHttpApiData (..))
 import Text.Read           (readEither)
 --------------------------------------------------------------------------------
 
-data Room   = Bedroom | LivingRoom | Kitchen | Office  deriving (Show, Read, Eq, Generic)
+data Room   = Bedroom | Livingroom | Kitchen | Office  deriving (Show, Read, Eq, Generic)
 data Sensor = Temperature | Humidity | Pressure        deriving (Show, Read, Eq, Generic)
 
 --------------------------------------------------------------------------------
