@@ -1,7 +1,5 @@
 {-# LANGUAGE DeriveFunctor              #-}
-{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TemplateHaskell            #-}
 --------------------------------------------------------------------------------
 module Types
   where
@@ -13,7 +11,9 @@ import           Data.Bifunctor                             (bimap)
 import           Data.Text                                  (pack, unpack)
 import           GHC.Generics                               (Generic)
 import           Import.DeriveJSON
+import           Network.HTTP.Client                        (Manager)
 import           Servant                                    (FromHttpApiData (..), ToHttpApiData (..), ServantErr)
+import           Servant.Common.BaseUrl                     (BaseUrl)
 import           Text.Read                                  (readEither)
 --------------------------------------------------------------------------------
 
@@ -27,20 +27,6 @@ runApp config = flip runReaderT config . unApp
 
 data Config = Config { masterPid :: ProcessId
                      , localNode :: LocalNode
+                     , backend   :: BaseUrl
+                     , manager   :: Manager
                      }
-
---------------------------------------------------------------------------------
-
-data Room   = Bedroom | Livingroom | Kitchen | Office  deriving (Show, Read, Eq, Generic)
-data Sensor = Temperature | Humidity | Pressure        deriving (Show, Read, Eq, Generic)
-
---------------------------------------------------------------------------------
-
-instance FromHttpApiData Room    where parseUrlPiece = bimap pack id . readEither . unpack
-instance FromHttpApiData Sensor  where parseUrlPiece = bimap pack id . readEither . unpack
-
-instance ToHttpApiData Room    where toUrlPiece = pack . show
-instance ToHttpApiData Sensor  where toUrlPiece = pack . show
-
-deriveJSON jsonOptions ''Room
-deriveJSON jsonOptions ''Sensor

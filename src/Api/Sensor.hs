@@ -2,12 +2,15 @@
 {-# LANGUAGE TypeOperators   #-}
 {-# LANGUAGE RecordWildCards #-}
 --------------------------------------------------------------------------------
-module Api.Sensors
+module Api.Sensor
   where
 --------------------------------------------------------------------------------
 import           Control.Monad.Reader     (ask, lift)
+import           Control.Monad.Except     (runExceptT, liftIO)
 import           Data.Time.Calendar       (Day)
 import           Model
+import           Persist.Client
+import           Persist.Types
 import           Servant
 import           Types
 --------------------------------------------------------------------------------
@@ -25,5 +28,7 @@ sensorServer = getSensorReadings
 getSensorReadings :: Day -> Room -> Sensor -> AppM [SensorReading]
 getSensorReadings day room sensor = do
   Config {..} <- ask
-  readings <- getSensorReadingsClient day room sensor
-  undefined
+  mreadings <- liftIO . runExceptT $ getSensorReadingsClient day room sensor manager backend
+  case mreadings of
+    Left err -> return []
+    Right readings -> return readings

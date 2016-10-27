@@ -19,7 +19,7 @@ import          Network.Wai.Handler.Warp
 import          Servant
 import          Types
 --------------------------------------------------------------------------------
-import          Api.Sensors
+import          Api.Sensor
 --------------------------------------------------------------------------------
 
 type Api = SensorApi
@@ -37,7 +37,7 @@ runAppProcess p = do
     takeMVar mvar
 
 apiServer :: ServerT Api AppM
-apiServer = sensorApi
+apiServer = sensorServer
 
 appToServer :: Config -> Server Api
 appToServer config = enter (convertApp config) apiServer

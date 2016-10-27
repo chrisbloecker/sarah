@@ -27,9 +27,11 @@ library
                      , aeson
                      , binary
                      , distributed-process
+                     , http-client
                      , mtl
                      , sarah-persist
                      , servant-server
+                     , servant-client
                      , text
                      , time
                      , wai
@@ -43,7 +45,9 @@ executable sarah-middleware-exe
   build-depends:       base
                      , distributed-process
                      , distributed-process-simplelocalnet
+                     , http-client
                      , sarah-middleware
+                     , servant-client
                      , wai
                      , wai-cors
                      , wai-extra
