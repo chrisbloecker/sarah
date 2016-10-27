@@ -16,8 +16,11 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Api
+                     , Api.Sensor
+                     , Import.DeriveJSON
                      , Master
                      , Messages
+                     , Model
                      , Slave
                      , Types
   build-depends:       base >= 4.7 && < 5
@@ -25,7 +28,10 @@ library
                      , binary
                      , distributed-process
                      , mtl
+                     , sarah-persist
                      , servant-server
+                     , text
+                     , time
                      , wai
                      , warp
   default-language:    Haskell2010

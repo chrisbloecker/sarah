@@ -9,8 +9,8 @@ import Data.Typeable               (Typeable)
 import GHC.Generics                (Generic)
 --------------------------------------------------------------------------------
 
-data EchoMsg = EchoMsg { echoMsgSender :: ProcessId } deriving (Generic, Typeable)
-data GetReadingsMsg = GetReadingsMsg { dummy :: Int } deriving (Generic, Typeable)
+data EchoMsg        = EchoMsg        { echoMsgSender :: ProcessId } deriving (Generic, Typeable)
+data GetReadingsMsg = GetReadingsMsg { dummy         :: Int       } deriving (Generic, Typeable)
 
 instance Binary EchoMsg
 instance Binary GetReadingsMsg
