@@ -8,6 +8,7 @@ import           Data.Time.Calendar       (Day)
 import           Database.Persist
 import           Model
 import           Servant
+import           Servant.Client
 import           Types
 --------------------------------------------------------------------------------
 
@@ -36,3 +37,7 @@ putSensorReading :: SensorReading -> AppM ()
 putSensorReading sensorReading = do
   _ <- runDb (insert sensorReading)
   return ()
+
+--------------------------------------------------------------------------------
+
+getSensorReadingsClient :<|> putSensorReadingClient = client (Proxy :: Proxy SensorApi)

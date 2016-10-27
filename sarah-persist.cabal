@@ -28,8 +28,8 @@ library
                      , mtl
                      , persistent
                      , persistent-template
-                     , servant-js
                      , servant-server
+                     , servant-client
                      , text
                      , time
                      , wai
