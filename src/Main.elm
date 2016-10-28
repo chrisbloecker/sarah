@@ -1,4 +1,4 @@
-module Main
+port module Main
   exposing (main)
 --------------------------------------------------------------------------------
 import Html.App as App

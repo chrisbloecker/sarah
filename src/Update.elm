@@ -3,6 +3,7 @@ module Update
 --------------------------------------------------------------------------------
 import Message                   exposing (..)
 import Model                     exposing (..)
+import Ports                     exposing (..)
 import Types                     exposing (..)
 --------------------------------------------------------------------------------
 import Home.Update    as Home
@@ -16,3 +17,4 @@ update msg model =
                         in ({ model | home = home' }, Cmd.map HomeMessage cmd)
     SensorsMessage m -> let (sensors', cmd) = Sensors.update m model.sensors
                         in ({ model | sensors = sensors' }, Cmd.map SensorsMessage cmd)
+    SendToJS         -> (model, output ())

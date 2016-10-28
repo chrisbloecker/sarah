@@ -7,3 +7,4 @@ import Sensors.Message as Sensors
 
 type Message = HomeMessage    Home.Message
              | SensorsMessage Sensors.Message
+             | SendToJS
