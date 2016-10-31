@@ -6,13 +6,13 @@ import Sensors.Message  exposing (Message (..))
 import Sensors.Model    exposing (Model)
 import Util             exposing (..)
 import Prelude          exposing (..)
-import Types exposing (Room (..), Dimension (..))
+import Types            exposing (Room (..), Sensor (..))
 --------------------------------------------------------------------------------
 
 update : Message -> Model -> (Model, Cmd Message)
 update message model =
   case message of
-    SetDate         date -> undefined
-    LoadData             -> (model, getData model.date { room = Livingroom, dimension = Temperature })
-    LoadDataFail         -> undefined
-    LoadDataSuccess data -> undefined
+    SetDate         date -> ({ model | date = date }, getData date Livingroom Temperature)
+    LoadData             -> (model, getData model.date Livingroom Temperature)
+    LoadDataFail         -> (model, Cmd.none)
+    LoadDataSuccess data -> ({ model | data = data }, Cmd.none)

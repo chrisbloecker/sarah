@@ -9,12 +9,14 @@ import Model                   exposing (Model)
 import Prelude                 exposing (..)
 import Template                exposing (template)
 --------------------------------------------------------------------------------
+import Log.View     as Log     exposing (view)
 import Sensors.View as Sensors exposing (view)
 --------------------------------------------------------------------------------
 
 view : Model -> Html Message
 view model = template [ case model.config.display of
                           PageHome    -> div [] [ text "Home" ]
+                          PageLog     -> Log.view model.log
                           PageSensors -> Sensors.view model.sensors
 --                      , button [ onClick SendToJS ]
 --                               [ text "ping js" ]

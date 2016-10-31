@@ -25,6 +25,13 @@ template content =
                                  ]
                                  [ text "Sensors" ]
                              ]
+                        , li [ class "nav-item" ]
+                             [ a [ class "nav-link"
+                                 , onClick (Display PageLog)
+                                 , href "#"
+                                 ]
+                                 [ text "Log" ]
+                             ]
                         ]
                    ]
   in div [ class "container" ]

@@ -13,22 +13,16 @@ type Room = Bedroom
           | Office
           | Bathroom
 
-type Dimension = Temperature
-               | Humidity
-               | Pressure
+type Sensor = Temperature
+            | Humidity
+            | Pressure
 
-type alias Sensor = { room      : Room
-                    , dimension : Dimension
-                    }
-
-type alias Reading = { date  : Date
-                     , time  : Time
-                     , value : Float
-                     }
-
-type alias SensorReadings = { sensor   : Sensor
-                            , readings : List Reading
-                            }
+type alias SensorReading = { date   : Date
+                           , time   : Time
+                           , room   : Room
+                           , sensor : Sensor
+                           , value  : Float
+                           }
 
 --------------------------------------------------------------------------------
 
@@ -43,26 +37,22 @@ room = let decodeToRoom s = case s of
        in customDecoder string decodeToRoom
 
 
-dimension : Decoder Dimension
-dimension = let decodeToDimension s = case s of
-                                        "Temperature" -> Ok Temperature
-                                        "Humidity"    -> Ok Humidity
-                                        "Pressure"    -> Ok Pressure
-                                        _             -> Err ("Unknown dimension: " ++ s)
-            in customDecoder string decodeToDimension
+sensor : Decoder Sensor
+sensor = let decodeToSensor s = case s of
+                                  "Temperature" -> Ok Temperature
+                                  "Humidity"    -> Ok Humidity
+                                  "Pressure"    -> Ok Pressure
+                                  _             -> Err ("Unknown sensor: " ++ s)
+            in customDecoder string decodeToSensor
 
 
 date : Decoder Date
 date = customDecoder string Date.fromString
 
-
-sensor : Decoder Sensor
-sensor = object2 Sensor room dimension
-
-
-reading : Decoder Reading
-reading = object3 Reading date time float
-
-
-sensorReadings : Decoder SensorReadings
-sensorReadings = object2 SensorReadings sensor (list reading)
+sensorReading : Decoder SensorReading
+sensorReading = object5 SensorReading
+                        ("date"   := date)
+                        ("time"   := time)
+                        ("room"   := room)
+                        ("sensor" := sensor)
+                        ("value"  := float)
