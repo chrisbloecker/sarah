@@ -1,18 +1,18 @@
 module Sensors.Update
   exposing (update)
 --------------------------------------------------------------------------------
-import Sensors.Message exposing (Message)
-import Sensors.Model   exposing (Model)
-import Util            exposing (..)
-import Prelude         exposing (..)
+import Sensors.Commands exposing (getData)
+import Sensors.Message  exposing (Message (..))
+import Sensors.Model    exposing (Model)
+import Util             exposing (..)
+import Prelude          exposing (..)
+import Types exposing (Room (..), Dimension (..))
 --------------------------------------------------------------------------------
 
 update : Message -> Model -> (Model, Cmd Message)
-update = undefined
-
-{-
-Reload               -> (model,                                getData model.date Livingroom Temperature)
-SetDate      date    -> ({model | date = date},                getData date       Livingroom Temperature)
-FetchSuccess newData -> ({model | data = Right newData},       Cmd.none)
-FetchFail    err     -> ({model | data = Left (toString err)}, Cmd.none)
--}
+update message model =
+  case message of
+    SetDate         date -> undefined
+    LoadData             -> (model, getData model.date { room = Livingroom, dimension = Temperature })
+    LoadDataFail         -> undefined
+    LoadDataSuccess data -> undefined

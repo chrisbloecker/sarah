@@ -3,15 +3,20 @@ module Sensors.Model
            , init
            )
 --------------------------------------------------------------------------------
-import Sensors.Message exposing (Message)
-import Types           exposing (..)
+import Date            as Data exposing (Date)
+import Sensors.Message         exposing (Message)
+import Types                   exposing (..)
 --------------------------------------------------------------------------------
 
-type alias Model = { data : List SensorReadings }
+type alias Model = { date : Maybe Date
+                   , data : List SensorReadings
+                   }
 
 --------------------------------------------------------------------------------
 
 init : (Model, Cmd Message)
-init = ( { data = [] }
+init = ( { date = Nothing
+         , data = []
+         }
        , Cmd.none
        )

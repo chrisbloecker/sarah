@@ -13,8 +13,14 @@ import Sensors.Update as Sensors
 update : Message -> Model -> (Model, Cmd Message)
 update msg model =
   case msg of
-    HomeMessage    m -> let (home', cmd) = Home.update m model.home
-                        in ({ model | home = home' }, Cmd.map HomeMessage cmd)
-    SensorsMessage m -> let (sensors', cmd) = Sensors.update m model.sensors
-                        in ({ model | sensors = sensors' }, Cmd.map SensorsMessage cmd)
-    SendToJS         -> (model, output ())
+    HomeMessage m ->
+      let (home', cmd) = Home.update m model.home
+      in ({ model | home = home' }, Cmd.map HomeMessage cmd)
+    SensorsMessage m ->
+      let (sensors', cmd) = Sensors.update m model.sensors
+      in ({ model | sensors = sensors' }, Cmd.map SensorsMessage cmd)
+    Display page ->
+      let config' = model.config
+      in ({ model | config = { config' | display = page } }, Cmd.none)
+    SendToJS ->
+      (model, output ())
