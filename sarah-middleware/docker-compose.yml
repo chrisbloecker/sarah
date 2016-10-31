@@ -1,0 +1,26 @@
+api:
+  image: sarah-middleware
+  environment:
+    - VIRTUAL_HOST=
+    - LETSENCRYPT_HOST=
+    - LETSENCRYPT_EMAIL=
+  command: /usr/local/bin/sarah-middleware-exe
+  ports:
+    - "8080"
+nginxproxy:
+  image: jwilder/nginx-proxy
+  volumes:
+    - /var/run/docker.sock:/tmp/docker.sock:ro
+    - ./certs:/etc/nginx/certs:ro
+    - /etc/nginx/vhost.d
+    - /usr/share/nginx/html
+  ports:
+    - "80:80"
+    - "443:443"
+letsencrypt:
+  image: jrcs/letsencrypt-nginx-proxy-companion
+  volumes:
+    - ./certs:/etc/nginx/certs:rw
+    - /var/run/docker.sock:/var/run/docker.sock:ro
+  volumes_from:
+    - nginxproxy
