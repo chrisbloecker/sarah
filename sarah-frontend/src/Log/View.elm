@@ -9,8 +9,7 @@ import Log.Model       exposing (Model)
 
 view : Model -> Html App.Message
 view model = div [ class "text-center" ]
-                 [ text "Log"
-                 , table [ class "table table-hover table-striped" ]
+                 [ table [ class "table table-hover table-striped" ]
                          [ thead []
                                  [ tr []
                                       [ th []

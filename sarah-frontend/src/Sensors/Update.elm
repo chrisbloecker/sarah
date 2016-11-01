@@ -14,5 +14,7 @@ update message model =
   case message of
     SetDate         date -> ({ model | date = date }, getData date Livingroom Temperature)
     LoadData             -> (model, getData model.date Livingroom Temperature)
-    LoadDataFail         -> (model, Cmd.none)
+    LoadDataFail    err  ->
+      let _ = logError err
+      in (model, Cmd.none)
     LoadDataSuccess data -> ({ model | data = data }, Cmd.none)

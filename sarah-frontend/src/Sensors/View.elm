@@ -9,11 +9,6 @@ import Sensors.Model          exposing (Model)
 --------------------------------------------------------------------------------
 
 view : Model -> Html App.Message
-view model = div [] [ text "Sensors"
-                    , div [ id "plot" ]
+view model = div [] [ div [ id "plot" ]
                           []
-                    , div []
-                          [ text (toString model.data)
-                          , text (toString model.date)
-                          ]
                     ]

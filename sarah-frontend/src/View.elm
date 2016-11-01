@@ -14,10 +14,10 @@ import Sensors.View as Sensors exposing (view)
 --------------------------------------------------------------------------------
 
 view : Model -> Html Message
-view model = template [ case model.config.display of
-                          PageHome    -> div [] [ text "Home" ]
-                          PageLog     -> Log.view model.log
-                          PageSensors -> Sensors.view model.sensors
+view model = template model.config.display [ case model.config.display of
+                                        PageHome    -> div [] []
+                                        PageLog     -> Log.view model.log
+                                        PageSensors -> Sensors.view model.sensors
 --                      , button [ onClick SendToJS ]
 --                               [ text "ping js" ]
-                      ]
+                                    ]

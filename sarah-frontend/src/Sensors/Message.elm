@@ -5,7 +5,7 @@ import Date  as Date exposing (Date)
 import Types         exposing (SensorReading)
 --------------------------------------------------------------------------------
 
-type Message = SetDate (Maybe Date)
+type Message = SetDate         (Maybe Date)
              | LoadData
-             | LoadDataFail
+             | LoadDataFail    String
              | LoadDataSuccess (List SensorReading)

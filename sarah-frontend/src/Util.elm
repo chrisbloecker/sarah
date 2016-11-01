@@ -7,7 +7,7 @@ import Date exposing (Date, Month (..), year, day)
 toIsoDate : Date -> String
 toIsoDate date = let yyyy = toString (year date)
                      mm   = month (Date.month date)
-                     dd   = toString (day date)
+                     dd   = (if day date < 10 then "0" else "") ++ (toString (day date))
                  in yyyy ++ "-" ++ mm ++ "-" ++ dd
 
 month : Month -> String

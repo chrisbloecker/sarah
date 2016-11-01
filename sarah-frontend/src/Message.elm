@@ -18,8 +18,5 @@ type Page = PageHome
 
 --------------------------------------------------------------------------------
 
-logMessage : Log.Message -> Message
-logMessage = LogMessage
-
 sensorMessage : Sensors.Message -> Message
 sensorMessage = SensorsMessage

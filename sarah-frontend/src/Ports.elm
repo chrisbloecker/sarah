@@ -2,4 +2,4 @@ port module Ports
   exposing (..)
 --------------------------------------------------------------------------------
 
-port output : () -> Cmd msg
+port output : List Float -> Cmd msg
