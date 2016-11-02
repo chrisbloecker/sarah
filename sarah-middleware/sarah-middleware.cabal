@@ -21,12 +21,14 @@ library
                      , Master
                      , Messages
                      , Model
+                     , Settings
                      , Slave
                      , Types
   build-depends:       base >= 4.7 && < 5
                      , aeson
                      , binary
                      , distributed-process
+                     , envy
                      , http-client
                      , mtl
                      , sarah-persist
@@ -45,6 +47,7 @@ executable sarah-middleware-exe
   build-depends:       base
                      , distributed-process
                      , distributed-process-simplelocalnet
+                     , envy
                      , http-client
                      , sarah-middleware
                      , servant-client

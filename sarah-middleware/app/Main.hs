@@ -1,10 +1,11 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 --------------------------------------------------------------------------------
 module Main
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Control.Distributed.Process.Node                   (initRemoteTable, forkProcess)
+import Control.Distributed.Process.Node                   (initRemoteTable, forkProcess, runProcess)
 import Control.Distributed.Process.Backend.SimpleLocalnet
 import Network.HTTP.Client                                (newManager, defaultManagerSettings)
 import Network.Wai                                        (Application, Middleware)
@@ -12,10 +13,12 @@ import Network.Wai.Handler.Warp                           (run)
 import Network.Wai.Middleware.RequestLogger               (logStdoutDev)
 import Network.Wai.Middleware.Cors                        (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
 import Servant.Client                                     (BaseUrl (..), Scheme (Http))
+import System.Envy                                        (decodeEnv)
 --------------------------------------------------------------------------------
 import Api
 import Master
 import Messages
+import Settings
 import Types
 --------------------------------------------------------------------------------
 
@@ -28,23 +31,31 @@ corsPolicy = cors (const $ Just policy)
 main :: IO ()
 main = do
   -- add a settings parser
-  let host = "127.0.0.1"
-      port = "50005"
+  msettings <- decodeEnv :: IO (Either String Settings)
 
-  backend <- initializeBackend host port initRemoteTable
-  node    <- newLocalNode backend
+  case msettings of
+    Left err -> putStrLn err
+    Right settings@Settings{..} -> do
+      backend <- initializeBackend nodeHost nodePort initRemoteTable
+      node    <- newLocalNode backend
 
-  putStrLn "[INFO] Starting master node..."
+      case nodeRole of
+        "slave" -> do
+          putStrLn "[INFO] Starting slave node..."
+          runProcess node undefined
 
-  -- start the master process
-  masterPid <- forkProcess node master
+        "master" -> do
+          putStrLn "[INFO] Starting master node..."
 
-  manager <- newManager defaultManagerSettings
+          -- start the master process
+          masterPid <- forkProcess node master
 
-  let config = Config { masterPid = masterPid
-                      , localNode = node
-                      , backend   = BaseUrl Http "192.168.0.7" 8080 ""
-                      , manager   = manager
-                      }
+          manager <- newManager defaultManagerSettings
 
-  run 8080 $ logStdoutDev $ corsPolicy $ app config
+          let config = Config { masterPid = masterPid
+                              , localNode = node
+                              , backend   = BaseUrl Http backendHost backendPort ""
+                              , manager   = manager
+                              }
+
+          run webPort $ logStdoutDev $ corsPolicy $ app config

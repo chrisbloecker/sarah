@@ -32,13 +32,6 @@ template activePage content =
                                  ]
                                  [ text "Sensors" ]
                              ]
-                        , li [ class . active activePage PageLog <| "nav-item" ]
-                             [ a [ class "nav-link"
-                                 , onClick (Display PageLog)
-                                 , href "#"
-                                 ]
-                                 [ text "Log" ]
-                             ]
                         ]
                    ]
   in div [ class "container" ]
