@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <script src="elm.js"></script>
+    <script src="https://cdn.plot.ly/plotly-1.19.1.min.js"></script>
     <link rel="stylesheet"
           href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.5/css/bootstrap.min.css"
           integrity="sha384-AysaV+vQoT3kOAXZkl02PThvDr8HYKPZhNT5h/CXfBThSRXQ6jW5DO2ekP5ViFdi"
@@ -24,9 +25,20 @@
     var node = document.getElementById('frontend');
     var app = Elm.Main.embed(node);
 
-    app.ports.output.subscribe(function ()
+    app.ports.renderSensorReadings.subscribe(function (config)
     {
-      alert('Outgoing message from Elm!');
+      var values = config.values
+
+      var theElement = $("#plot")
+      theElement.html("hey!")
+      /*var trace1 = {
+        x: [1, 2, 3, 4],
+        y: [10, 15, 13, 17],
+        mode: 'markers',
+        type: 'scatter'
+      };
+
+      Plotly.newPlot(theElement, [trace1]);*/
     });
   </script>
 </html>

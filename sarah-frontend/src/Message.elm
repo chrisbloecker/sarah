@@ -10,7 +10,6 @@ type Message = HomeMessage    Home.Message
              | LogMessage     Log.Message
              | SensorsMessage Sensors.Message
              | Display        Page
-             | SendToJS
 
 type Page = PageHome
           | PageLog

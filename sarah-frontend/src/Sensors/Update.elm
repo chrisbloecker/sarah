@@ -5,6 +5,7 @@ import Sensors.Commands exposing (getData)
 import Sensors.Message  exposing (Message (..))
 import Sensors.Model    exposing (Model)
 import Util             exposing (..)
+import Ports            exposing (renderSensorReadings)
 import Prelude          exposing (..)
 import Types            exposing (Room (..), Sensor (..))
 --------------------------------------------------------------------------------
@@ -18,3 +19,4 @@ update message model =
       let _ = logError err
       in (model, Cmd.none)
     LoadDataSuccess data -> ({ model | data = data }, Cmd.none)
+    PlotData -> (model, renderSensorReadings { values = List.map .value model.data })

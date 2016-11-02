@@ -1,5 +1,10 @@
 port module Ports
   exposing (..)
 --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
 
-port output : List Float -> Cmd msg
+type alias SensorReadingsRenderConfig = { values : List Float }
+
+--------------------------------------------------------------------------------
+
+port renderSensorReadings : SensorReadingsRenderConfig -> Cmd msg
