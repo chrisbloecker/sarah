@@ -43,7 +43,7 @@ main = do
 
   case msettings of
     Left err -> putStrLn err
-    Right settings@Settings {..} -> do
+    Right settings@Settings{..} -> do
       print settings
 
       pool <- mkPool settings

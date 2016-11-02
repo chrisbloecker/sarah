@@ -1,10 +1,11 @@
 {-# LANGUAGE DeriveGeneric #-}
-
+--------------------------------------------------------------------------------
 module Settings
   where
-
+--------------------------------------------------------------------------------
 import GHC.Generics (Generic)
 import System.Envy
+--------------------------------------------------------------------------------
 
 data Settings = Settings { appPort    :: Int
                          , dbHost     :: String
