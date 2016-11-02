@@ -16,6 +16,13 @@ middleware:
   ports:
     - "8081:80"
   restart: always
+  environment:
+    WEB_PORT: 80
+    NODE_HOST: localhost
+    NODE_PORT: 50000
+    NODE_ROLE: master
+    BACKEND_HOST: localhost
+    BACKEND_PORT: 8080
 
 frontend:
   image: sarah-frontend
