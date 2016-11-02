@@ -6,7 +6,8 @@ module Settings
 import GHC.Generics (Generic)
 import System.Envy
 
-data Settings = Settings { dbHost     :: String
+data Settings = Settings { appPort    :: Int
+                         , dbHost     :: String
                          , dbPort     :: Int
                          , dbUser     :: String
                          , dbPassword :: String
@@ -15,7 +16,8 @@ data Settings = Settings { dbHost     :: String
   deriving (Generic, Show)
 
 instance DefConfig Settings where
-  defConfig = Settings { dbHost     = "localhost"
+  defConfig = Settings { appPort    = 8080
+                       , dbHost     = "localhost"
                        , dbPort     = 3306
                        , dbUser     = "anonymous"
                        , dbPassword = "secret"

@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 --------------------------------------------------------------------------------
 module Main
   where
@@ -42,7 +43,7 @@ main = do
 
   case msettings of
     Left err -> putStrLn err
-    Right settings -> do
+    Right settings@Settings {..} -> do
       print settings
 
       pool <- mkPool settings
@@ -50,4 +51,4 @@ main = do
       let config = Config { getPool = pool }
 
       runSqlPool doMigrations pool
-      run 8080 $ logStdoutDev $ corsPolicy $ app config
+      run appPort $ logStdoutDev $ corsPolicy $ app config
