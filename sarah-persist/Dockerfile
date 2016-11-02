@@ -1,4 +1,4 @@
-FROM debian:jessie
+FROM resin/rpi-raspbian:jessie-20161026
 
 RUN apt-get update && \
     apt-get install -y libgmp10 libmysqlclient-dev && \
