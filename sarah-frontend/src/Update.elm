@@ -7,7 +7,6 @@ import Ports                     exposing (..)
 import Types                     exposing (..)
 --------------------------------------------------------------------------------
 import Home.Update    as Home
-import Log.Update     as Log
 import Sensors.Update as Sensors
 --------------------------------------------------------------------------------
 
@@ -17,14 +16,9 @@ update msg model =
     HomeMessage m ->
       let (home', cmd) = Home.update m model.home
       in ({ model | home = home' }, Cmd.map HomeMessage cmd)
-    LogMessage m ->
-      let (log', cmd) = Log.update m model.log
-      in ({ model | log = log' }, Cmd.map LogMessage cmd)
     SensorsMessage m ->
       let (sensors', cmd) = Sensors.update m model.sensors
       in ({ model | sensors = sensors' }, Cmd.map SensorsMessage cmd)
     Display page ->
       let config' = model.config
       in ({ model | config = { config' | display = page } }, Cmd.none)
-    SendToJS ->
-      (model, output ())
