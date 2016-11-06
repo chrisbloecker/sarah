@@ -5,20 +5,22 @@ module Main
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Control.Distributed.Process.Node                   (initRemoteTable, forkProcess, runProcess)
+import Control.Distributed.Process.Node     (initRemoteTable, forkProcess, runProcess)
 import Control.Distributed.Process.Backend.SimpleLocalnet
-import Network.HTTP.Client                                (newManager, defaultManagerSettings)
-import Network.Wai                                        (Application, Middleware)
-import Network.Wai.Handler.Warp                           (run)
-import Network.Wai.Middleware.RequestLogger               (logStdoutDev)
-import Network.Wai.Middleware.Cors                        (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
-import Servant.Client                                     (BaseUrl (..), Scheme (Http))
-import System.Envy                                        (decodeEnv)
+import Network.HTTP.Client                  (newManager, defaultManagerSettings)
+import Network.Wai                          (Application, Middleware)
+import Network.Wai.Handler.Warp             (run)
+import Network.Wai.Middleware.RequestLogger (logStdoutDev)
+import Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
+import Servant.Client                       (BaseUrl (..), Scheme (Http))
+import System.Envy                          (decodeEnv)
 --------------------------------------------------------------------------------
 import Api
+--import ComplicatedGlobalnet
 import Master
 import Messages
 import Settings
+import Slave
 import Types
 --------------------------------------------------------------------------------
 
@@ -42,7 +44,7 @@ main = do
       case nodeRole of
         "slave" -> do
           putStrLn "[INFO] Starting slave node..."
-          runProcess node undefined
+          runProcess node slave
 
         "master" -> do
           putStrLn "[INFO] Starting master node..."
