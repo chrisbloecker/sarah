@@ -28,7 +28,6 @@ library
                      , aeson
                      , binary
                      , distributed-process
-                     , distributed-process-simplelocalnet
                      , envy
                      , http-client
                      , mtl

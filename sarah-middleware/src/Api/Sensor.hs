@@ -3,7 +3,9 @@
 {-# LANGUAGE RecordWildCards #-}
 --------------------------------------------------------------------------------
 module Api.Sensor
-  where
+  ( SensorApi
+  , sensorServer
+  ) where
 --------------------------------------------------------------------------------
 import           Control.Monad.Reader     (ask, lift)
 import           Control.Monad.Except     (runExceptT, liftIO)
@@ -27,7 +29,7 @@ sensorServer = getSensorReadings
 
 getSensorReadings :: Day -> Room -> Sensor -> AppM [SensorReading]
 getSensorReadings day room sensor = do
-  Config {..} <- ask
+  Config{..} <- ask
   mreadings <- liftIO . runExceptT $ getSensorReadingsClient day room sensor manager backend
   case mreadings of
     Left err -> return []
