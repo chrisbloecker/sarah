@@ -46,19 +46,11 @@ main = do
           node     <- newLocalNode transport initRemoteTable
 
           case nodeRole of
-            "slave" -> do
-              putStrLn "[INFO] Starting slave node..."
-              runProcess node (slave masterHost masterPort)
+            "slave" -> runProcess node (slave masterHost masterPort)
 
             "master" -> do
-              putStrLn "[INFO] Starting master node..."
-
-              -- start the master process
               masterPid <- forkProcess node master
-
-              -- start a discovery node
-
-              manager <- newManager defaultManagerSettings
+              manager   <- newManager defaultManagerSettings
 
               let config = Config { masterPid = masterPid
                                   , localNode = node

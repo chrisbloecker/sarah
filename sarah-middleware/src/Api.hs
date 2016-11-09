@@ -13,7 +13,6 @@ import          Control.Distributed.Process.Node
 import          Control.Distributed.Process.Serializable (Serializable)
 import          Control.Monad.Except                     (ExceptT)
 import          Control.Monad.Reader                     (MonadIO, MonadReader, ReaderT, runReaderT, runReader, ask, lift)
-import          Messages
 import          Network.Wai
 import          Network.Wai.Handler.Warp
 import          Servant

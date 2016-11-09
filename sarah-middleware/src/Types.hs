@@ -33,5 +33,5 @@ data Config = Config { masterPid :: ProcessId
                      , manager   :: Manager
                      }
 
-newtype Master = Master ProcessId deriving (Eq, Generic, Typeable)
+newtype Master = Master ProcessId deriving (Eq, Generic, Typeable, Show)
 newtype Slave  = Slave  ProcessId deriving (Eq, Generic, Typeable)

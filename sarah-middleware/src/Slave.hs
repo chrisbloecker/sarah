@@ -3,20 +3,22 @@
 module Slave
   where
 --------------------------------------------------------------------------------
-import Control.Distributed.Process (Process, getSelfPid)
+import Control.Distributed.Process
 import Network.Socket              (HostName, ServiceName)
-import Messages
 import Util
+--------------------------------------------------------------------------------
+import Master.Messages             (nodeUp)
+import Slave.Messages              (Terminate (Terminate))
 --------------------------------------------------------------------------------
 
 slave :: HostName -> ServiceName -> Process ()
 slave masterHost masterPort = do
-  self <- getSelfPid
-  mmaster <- findMaster masterHost masterPort (seconds 1)
+  thisNode <- getSelfNode
+  mmaster  <- findMaster masterHost masterPort (seconds 1)
   case mmaster of
-    Nothing -> putStrLn "[ERROR] No master found... Terminating..."
+    Nothing -> say "No master found... Terminating..."
     Just master -> do
-      nodeUp master self
+      nodeUp master thisNode
       linkMaster master
       Terminate <- expect
       return ()

@@ -18,22 +18,24 @@ library
   exposed-modules:     Api
                      , Api.Sensor
                      , Import.DeriveJSON
+                     , Import.MkBinary
                      , Master
-                     , Messages
+                     , Master.Messages
                      , Model
                      , Settings
                      , Slave
+                     , Slave.Messages
                      , Types
                      , Util
   build-depends:       base >= 4.7 && < 5
                      , aeson
                      , binary
                      , distributed-process
+                     , distributed-process-extras
                      , envy
                      , http-client
                      , mtl
                      , network
-                     , network-transport
                      , network-transport-tcp
                      , sarah-persist
                      , servant-server
@@ -52,6 +54,8 @@ executable sarah-middleware-exe
                      , distributed-process
                      , envy
                      , http-client
+                     , network-transport
+                     , network-transport-tcp
                      , sarah-middleware
                      , servant-client
                      , wai

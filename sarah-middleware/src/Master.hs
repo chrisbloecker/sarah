@@ -2,22 +2,27 @@
 --------------------------------------------------------------------------------
 module Master
   ( master
+  , masterName
   ) where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Messages
+import Master.Messages
+import Util
 --------------------------------------------------------------------------------
 
-data State = State
+data State = State { nodes :: [NodeId] }
 
 --------------------------------------------------------------------------------
 
 master :: Process ()
-master = loop State
+master = do
+  self <- getSelfPid
+  register masterName self
+  say "Master up"
+  loop $ State []
 
 loop :: State -> Process ()
-loop state = receiveWait [ match $ \EchoMsg {..} -> do
-                             say $ "[INFO] Message from " ++ show echoMsgSender
-                             send echoMsgSender . EchoMsg =<< getSelfPid
-                             loop state
-                         ]
+loop state@State{..} = receiveWait [ match $ \(NodeUp nid) -> do
+                                       say $ "[INFO] Node up " ++ show nid
+                                       loop state { nodes = nid : nodes }
+                                   ]

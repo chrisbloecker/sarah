@@ -1,8 +1,10 @@
 module Util
   where
 --------------------------------------------------------------------------------
-import Control.Distributed.Process                (Process, WhereIsReply (WhereIsReply), whereisRemoteAsync, receiveTimeout, match)
+import Control.Monad                              (join)
+import Control.Distributed.Process
 import Control.Distributed.Process.Internal.Types (NodeId (NodeId))
+import Control.Distributed.Process.Extras.Internal.Primitives (whereisRemote)
 import Network.Socket                             (HostName, ServiceName)
 import Network.Transport.TCP                      (encodeEndPointAddress)
 import Types
@@ -26,11 +28,18 @@ hours h = minutes (60 * h)
 
 --------------------------------------------------------------------------------
 
+masterName :: String
+masterName = "master"
+
 findMaster :: HostName -> ServiceName -> Timeout -> Process (Maybe Master)
 findMaster host port timeout = do
-  whereisRemoteAsync (NodeId $ encodeEndPointAddress host port 0) "master"
-  mpid <- receiveTimeout (unTimeout timeout) [ match $ \(WhereIsReply _ pid) ->
-                                                 return pid
-                                             ]
-  let res = Master <$> _f mpid
-  return res
+  let remoteNode = NodeId $ encodeEndPointAddress host port 1
+  whereisRemoteAsync remoteNode masterName
+  mpid <- join <$> receiveTimeout (unTimeout timeout) [ match $ \(WhereIsReply _ mpid) ->
+                                                          return mpid
+                                                      ]
+  say $ "Master found at " ++ show mpid
+  return $ Master <$> mpid
+
+linkMaster :: Master -> Process ()
+linkMaster (Master master) = link master
