@@ -10,13 +10,10 @@ import Messages
 
 data State = State
 
-initState :: State
-initState = State
-
 --------------------------------------------------------------------------------
 
 master :: Process ()
-master = loop initState
+master = loop State
 
 loop :: State -> Process ()
 loop state = receiveWait [ match $ \EchoMsg {..} -> do

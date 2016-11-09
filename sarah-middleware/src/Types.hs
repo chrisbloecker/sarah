@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 --------------------------------------------------------------------------------
 module Types
@@ -9,6 +10,7 @@ import           Control.Monad.Reader                       (MonadIO, MonadReade
 import           Control.Monad.Except                       (MonadError, ExceptT)
 import           Data.Bifunctor                             (bimap)
 import           Data.Text                                  (pack, unpack)
+import           Data.Typeable                              (Typeable)
 import           GHC.Generics                               (Generic)
 import           Import.DeriveJSON
 import           Network.HTTP.Client                        (Manager)
@@ -30,3 +32,6 @@ data Config = Config { masterPid :: ProcessId
                      , backend   :: BaseUrl
                      , manager   :: Manager
                      }
+
+newtype Master = Master ProcessId deriving (Eq, Generic, Typeable)
+newtype Slave  = Slave  ProcessId deriving (Eq, Generic, Typeable)

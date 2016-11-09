@@ -5,8 +5,10 @@ module Main
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Control.Distributed.Process.Node     (initRemoteTable, forkProcess, runProcess)
+import Control.Distributed.Process.Node     (initRemoteTable, forkProcess, runProcess, newLocalNode)
+import Control.Exception                    (throw)
 import Network.HTTP.Client                  (newManager, defaultManagerSettings)
+import Network.Transport                    (EndPointAddress (..), newEndPoint)
 import Network.Transport.TCP                (createTransport, defaultTCPParameters)
 import Network.Wai                          (Application, Middleware)
 import Network.Wai.Handler.Warp             (run)
@@ -36,16 +38,17 @@ main = do
   case msettings of
     Left err -> putStrLn err
     Right settings@Settings{..} -> do
-      mtransport <- createTransport nodeHost nodePort initRemoteTable
+      mtransport <- createTransport nodeHost nodePort defaultTCPParameters
       case mtransport of
-        Left err -> putStrLn err
+        Left err -> throw err
         Right transport -> do
-          endpoint <- newEndpoint transport
+          endpoint <- newEndPoint transport
+          node     <- newLocalNode transport initRemoteTable
 
           case nodeRole of
             "slave" -> do
               putStrLn "[INFO] Starting slave node..."
-              runProcess node slave
+              runProcess node (slave masterHost masterPort)
 
             "master" -> do
               putStrLn "[INFO] Starting master node..."

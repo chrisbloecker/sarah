@@ -24,6 +24,7 @@ library
                      , Settings
                      , Slave
                      , Types
+                     , Util
   build-depends:       base >= 4.7 && < 5
                      , aeson
                      , binary

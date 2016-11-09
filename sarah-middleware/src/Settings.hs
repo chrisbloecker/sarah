@@ -11,6 +11,8 @@ data Settings = Settings { webPort     :: Int
                          , nodeHost    :: String
                          , nodePort    :: String
                          , nodeRole    :: String
+                         , masterHost  :: String
+                         , masterPort  :: String
                          , backendHost :: String
                          , backendPort :: Int
                          }
@@ -21,6 +23,8 @@ instance DefConfig Settings where
                        , nodeHost    = "localhost"
                        , nodePort    = "50000"
                        , nodeRole    = "slave"
+                       , masterHost  = "localhost"
+                       , masterPort  = "50000"
                        , backendHost = "localhost"
                        , backendPort = 8081
                        }
