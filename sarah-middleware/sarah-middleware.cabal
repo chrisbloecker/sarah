@@ -17,6 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Api
                      , Api.Sensor
+                     , Device.AC.Toshiba
                      , Import.DeriveJSON
                      , Import.MkBinary
                      , Master
@@ -27,6 +28,9 @@ library
                      , Slave.Messages
                      , Types
                      , Util
+  c-sources:           src/Device/AC/Toshiba.c
+  cc-options:          -Wall -O2
+  extra-libraries:     -lm -lpigpio -pthread -lrt
   build-depends:       base >= 4.7 && < 5
                      , aeson
                      , binary
@@ -34,6 +38,7 @@ library
                      , distributed-process-extras
                      , envy
                      , http-client
+                     , inline-c
                      , mtl
                      , network
                      , network-transport-tcp
