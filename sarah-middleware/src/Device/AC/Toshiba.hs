@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes     #-}
+{-# LANGUAGE TemplateHaskell #-}
 --------------------------------------------------------------------------------
 module Device.AC.Toshiba
   where
@@ -20,6 +21,8 @@ data Config = Config { temperature :: Temperature
                      }
 
 --------------------------------------------------------------------------------
+
+C.include "irslinger.h"
 
 mycos :: CDouble -> IO CDouble
 mycos x = [C.exp| double{ cos($(double x)) } |]
