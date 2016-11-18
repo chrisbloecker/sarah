@@ -15,19 +15,20 @@ import Types hiding (Config)
 import Raspberry.GPIO
 --------------------------------------------------------------------------------
 
-type DeviceApi = "devices" :> Get '[JSON] String
+type DeviceApi = "pin" :> Capture "pin" Int
+                       :> Get '[JSON] String
 
 --------------------------------------------------------------------------------
 
 deviceServer :: ServerT DeviceApi AppM
 deviceServer = testServer
 
-testServer :: AppM String
-testServer = do
+testServer :: Int -> AppM String
+testServer pin = do
   let config = Config { temperature = T20
                       , fan         = FanAuto
                       , mode        = ModeCool
                       , mpower      = Nothing
                       }
-  liftIO $ send (Pin 32) (convert config)
+  liftIO $ send (Pin . fromIntegral $ pin) (convert config)
   return . unpack $ convert config
