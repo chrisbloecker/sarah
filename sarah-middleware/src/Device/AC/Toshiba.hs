@@ -93,6 +93,8 @@ send (Pin pin) bs = do
              int      zeroGap              =   530;
              int      sendTrailingPulse    =     0;
 
+             fprintf(stdout, "Sending bits: %s\n", $bs-ptr:bs);
+
              return irSling( outPin
                            , frequency
                            , dutyCycle
