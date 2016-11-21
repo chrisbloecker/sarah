@@ -88,7 +88,13 @@ send (Pin pin) bs = do
              double dutyCycle = 0.5;         // The duty cycle of the IR signal. 0.5 means for every cycle,
                                              // the LED will turn on for half the cycle time, and off the other half
 
-             int* codes = (int*) malloc(4 * sizeof(int) * $bs-len:bs + 5);
+             int* codes = (int*) calloc(4 * $bs-len:bs + 5, sizeof(int));
+
+             if (!codes)
+             {
+               printf("Memory allocation for sending IR signals failed!");
+               return -1;
+             }
 
              char c;
              int i
@@ -132,18 +138,15 @@ send (Pin pin) bs = do
                    printf("Invalid character in bitstring: %c", c);
                }
 
-             for (i = 0; i < 4 * $bs-len:bs + 5; ++i)
-               printf("%i ", codes[i]);
-             printf("\n");
-
              int result = irSlingRaw( $(int pin)
                                     , frequency
                                     , dutyCycle
                                     , codes
-                                    , 4 * $bs-len:bs + 5
+                                    , bsIdx // 4 * $bs-len:bs + 5
                                     );
 
-             free(codes);
+             if (codes)
+               free(codes);
 
              return result;
            }
