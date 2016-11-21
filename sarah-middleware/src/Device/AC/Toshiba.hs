@@ -88,7 +88,7 @@ send (Pin pin) bs = do
              double dutyCycle = 0.5;         // The duty cycle of the IR signal. 0.5 means for every cycle,
                                              // the LED will turn on for half the cycle time, and off the other half
 
-             int* codes = (int*) calloc(4 * $bs-len:bs + 5, sizeof(int));
+             int* codes = (int*) calloc(4 * $bs-len:bs + 7, sizeof(int));
 
              if (!codes)
              {
@@ -119,6 +119,7 @@ send (Pin pin) bs = do
                     printf("Invalid character in bitstring: %c", $bs-ptr:bs[i]);
                }
 
+             codes[bsIdx++] =  550;
              codes[bsIdx++] = 5470;
              codes[bsIdx++] = 4380;
              codes[bsIdx++] = 4360;
@@ -138,11 +139,13 @@ send (Pin pin) bs = do
                    printf("Invalid character in bitstring: %c", c);
                }
 
+             codes[bsIdx++] = 550;
+
              int result = irSlingRaw( $(int pin)
                                     , frequency
                                     , dutyCycle
                                     , codes
-                                    , bsIdx // 4 * $bs-len:bs + 5
+                                    , bsIdx
                                     );
 
              if (codes)
