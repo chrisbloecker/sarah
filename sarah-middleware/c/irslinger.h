@@ -103,7 +103,7 @@ static inline int irSling(uint32_t outPin,
 		}
 		else
 		{
-			printf("Warning: Non-binary digit in command\n");
+			printf("Warning: Non-binary digit in command: %c\n", code[i]);
 		}
 	}
 

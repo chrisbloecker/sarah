@@ -8,6 +8,7 @@ module Device.AC.Toshiba
 --------------------------------------------------------------------------------
 import           Data.Bits
 import           Data.ByteString       (ByteString)
+import           Data.ByteString.Char8 (unpack)
 import           Data.Monoid           ((<>))
 import           Raspberry.GPIO
 --------------------------------------------------------------------------------
@@ -80,6 +81,7 @@ convert Config{..} =
 
 send :: Pin -> ByteString -> IO ()
 send (Pin pin) bs = do
+  putStrLn . unpack $ "Sending bits: " `BS.append` bs
   res <- [C.block| int
            {
              uint32_t outPin               = $(int pin);
@@ -94,6 +96,8 @@ send (Pin pin) bs = do
              int      sendTrailingPulse    =     0;
 
              fprintf(stdout, "Sending bits: %s\n", $bs-ptr:bs);
+
+             return 0;
 
              return irSling( outPin
                            , frequency
