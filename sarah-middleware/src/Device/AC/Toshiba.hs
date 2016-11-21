@@ -6,6 +6,7 @@
 module Device.AC.Toshiba
   where
 --------------------------------------------------------------------------------
+import           Control.Concurrent    (forkIO)
 import           Data.Bits
 import           Data.ByteString       (ByteString)
 import           Data.ByteString.Char8 (unpack)
@@ -81,36 +82,70 @@ convert Config{..} =
 
 send :: Pin -> ByteString -> IO ()
 send (Pin pin) bs = do
-  putStrLn . unpack $ "Sending bits: " `BS.append` bs
   res <- [C.block| int
            {
-             uint32_t outPin               = $(int pin);
-             int      frequency            = 38000;
-             double   dutyCycle            =     0.5;
-             int      leadingPulseDuration =  4380;
-             int      leadingGapDuration   =  4360;
-             int      onePulse             =   550;
-             int      zeroPulse            =   550;
-             int      oneGap               =  1600;
-             int      zeroGap              =   530;
-             int      sendTrailingPulse    =     0;
+             int frequency = 38000;          // The frequency of the IR signal in Hz
+             double dutyCycle = 0.5;         // The duty cycle of the IR signal. 0.5 means for every cycle,
+                                             // the LED will turn on for half the cycle time, and off the other half
 
-             fprintf(stdout, "Sending bits: %s\n", $bs-ptr:bs);
+             int* codes = (int*) malloc(4 * sizeof(int) * $bs-len:bs + 5);
 
-             return 0;
+             char c;
+             int i
+               , bsIdx = 0
+               ;
 
-             return irSling( outPin
-                           , frequency
-                           , dutyCycle
-                           , leadingPulseDuration
-                           , leadingGapDuration
-                           , onePulse
-                           , zeroPulse
-                           , oneGap
-                           , zeroGap
-                           , sendTrailingPulse
-                           , $bs-ptr:bs
-                           );
+             codes[bsIdx++] = 4380;
+             codes[bsIdx++] = 4360;
+
+             for (i = 0; i < $bs-len:bs; ++i)
+               switch ($bs-ptr:bs[i])
+               {
+                  case '0':
+                    codes[bsIdx++] = 550;
+                    codes[bsIdx++] = 530;
+                    break;
+                  case '1':
+                    codes[bsIdx++] = 550;
+                    codes[bsIdx++] = 1600;
+                    break;
+                  default:
+                    printf("Invalid character in bitstring: %c", $bs-ptr:bs[i]);
+               }
+
+             codes[bsIdx++] = 5470;
+             codes[bsIdx++] = 4380;
+             codes[bsIdx++] = 4360;
+
+             for (i = 0; i < $bs-len:bs; ++i)
+               switch ($bs-ptr:bs[i])
+               {
+                 case '0':
+                   codes[bsIdx++] = 550;
+                   codes[bsIdx++] = 530;
+                   break;
+                 case '1':
+                   codes[bsIdx++] = 550;
+                   codes[bsIdx++] = 1600;
+                   break;
+                 default:
+                   printf("Invalid character in bitstring: %c", c);
+               }
+
+             for (i = 0; i < 4 * $bs-len:bs + 5; ++i)
+               printf("%i ", codes[i]);
+             printf("\n");
+
+             int result = irSlingRaw( $(int pin)
+                                    , frequency
+                                    , dutyCycle
+                                    , codes
+                                    , 4 * $bs-len:bs + 5
+                                    );
+
+             free(codes);
+
+             return result;
            }
          |]
-  print res
+  return ()

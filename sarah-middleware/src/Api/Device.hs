@@ -25,9 +25,9 @@ deviceServer = testServer
 
 testServer :: Int -> AppM String
 testServer pin = do
-  let config = Config { temperature = T20
+  let config = Config { temperature = T22
                       , fan         = FanAuto
-                      , mode        = ModeCool
+                      , mode        = ModeOff
                       , mpower      = Nothing
                       }
   liftIO $ send (Pin . fromIntegral $ pin) (convert config)
