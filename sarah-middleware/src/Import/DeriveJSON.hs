@@ -17,9 +17,21 @@ fieldLabel "sensorReadingRoom"   = "room"
 fieldLabel "sensorReadingSensor" = "sensor"
 fieldLabel "sensorReadingValues" = "values"
 
+fieldLabel "temperature" = "temperature"
+fieldLabel "fan"         = "fan"
+fieldLabel "mode"        = "mode"
+fieldLabel "mpower"      = "power"
+
+--------------------------------------------------------------------------------
+
+constructorTag :: String -> String
+constructorTag = id
+
+--------------------------------------------------------------------------------
+
 jsonOptions :: Options
 jsonOptions = Options { fieldLabelModifier      = fieldLabel
-                      , constructorTagModifier  = id
+                      , constructorTagModifier  = constructorTag
                       , allNullaryToStringTag   = False
                       , omitNothingFields       = True
                       , sumEncoding             = ObjectWithSingleField

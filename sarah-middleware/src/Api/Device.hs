@@ -6,29 +6,21 @@ module Api.Device
   , deviceServer
   ) where
 --------------------------------------------------------------------------------
-import Control.Monad.IO.Class (liftIO)
-import Data.ByteString hiding (unpack)
-import Data.ByteString.Char8
-import Device.AC.Toshiba
-import Servant
-import Types hiding (Config)
-import Raspberry.GPIO
+import           Control.Monad.IO.Class            (liftIO)
+import           Servant
+import           Types                  hiding     (Config)
+import           Raspberry.GPIO
 --------------------------------------------------------------------------------
+import qualified Device.AC.Toshiba      as Toshiba
 
-type DeviceApi = "pin" :> Capture "pin" Int
-                       :> Get '[JSON] String
+type DeviceApi = "device" :> "ac"
+                          :> ReqBody '[JSON] Toshiba.Config
+                          :> Post    '[JSON] Toshiba.Config
 
 --------------------------------------------------------------------------------
 
 deviceServer :: ServerT DeviceApi AppM
-deviceServer = testServer
+deviceServer = acServer
 
-testServer :: Int -> AppM String
-testServer pin = do
-  let config = Config { temperature = T22
-                      , fan         = FanAuto
-                      , mode        = ModeOff
-                      , mpower      = Nothing
-                      }
-  liftIO $ send (Pin . fromIntegral $ pin) (convert config)
-  return . unpack $ convert config
+acServer :: Toshiba.Config -> AppM Toshiba.Config
+acServer config = liftIO $ Toshiba.send (Pin 23) config >> return config

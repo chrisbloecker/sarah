@@ -11,6 +11,7 @@ import           Data.Bits
 import           Data.ByteString       (ByteString)
 import           Data.ByteString.Char8 (unpack)
 import           Data.Monoid           ((<>))
+import           Import.DeriveJSON
 import           Raspberry.GPIO
 --------------------------------------------------------------------------------
 import qualified Data.ByteString   as BS
@@ -27,6 +28,12 @@ data Config = Config { temperature :: Temperature
                      , mode        :: Mode
                      , mpower      :: Maybe Power
                      }
+
+deriveJSON jsonOptions ''Temperature
+deriveJSON jsonOptions ''Fan
+deriveJSON jsonOptions ''Mode
+deriveJSON jsonOptions ''Power
+deriveJSON jsonOptions ''Config
 
 --------------------------------------------------------------------------------
 
@@ -80,8 +87,10 @@ convert Config{..} =
                                                     PowerEco  -> 0x3
                                             in [0x4, 0xF, 0xB, 0x0, 0x9, t, 0x0, f, m, 0x0, 0x0, 0x0, p, foldr xor zeroBits [t, f], foldr xor zeroBits [0x9, m, p]]
 
-send :: Pin -> ByteString -> IO ()
-send (Pin pin) bs = do
+
+send :: Pin -> Config -> IO ()
+send (Pin pin) config = do
+  let bs = convert config
   res <- [C.block| int
            {
              int frequency = 38000;          // The frequency of the IR signal in Hz
