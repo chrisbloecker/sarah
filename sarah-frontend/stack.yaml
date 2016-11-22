@@ -37,9 +37,14 @@ resolver: lts-6.25
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
+- '../sarah-persist'
+- '../sarah-middleware'
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
-extra-deps: []
+extra-deps: [ sarah-persist-0.1.0.0
+            , sarah-middleware-0.1.0.0
+            , threepenny-gui-0.7.0.0
+            ]
 
 # Override default flag values for local packages and extra-deps
 flags: {}
@@ -52,7 +57,7 @@ extra-package-dbs: []
 #
 # Require a specific version of stack, using version ranges
 # require-stack-version: -any # Default
-# require-stack-version: ">=1.1"
+# require-stack-version: ">=1.2"
 #
 # Override the architecture used by stack, especially useful on Windows
 # arch: i386
