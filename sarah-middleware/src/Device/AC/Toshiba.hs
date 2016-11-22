@@ -7,7 +7,7 @@ module Device.AC.Toshiba
   where
 --------------------------------------------------------------------------------
 import           Control.Concurrent    (forkIO)
-import           Data.Bits
+import           Data.Bits             (Bits, testBit, xor, zeroBits)
 import           Data.ByteString       (ByteString)
 import           Data.ByteString.Char8 (unpack)
 import           Data.Monoid           ((<>))
@@ -29,12 +29,48 @@ data Config = Config { temperature :: Temperature
                      , mpower      :: Maybe Power
                      }
 
+instance ToBits Temperature where
+  toBits T17 = 0x0
+  toBits T18 = 0x1
+  toBits T19 = 0x2
+  toBits T20 = 0x3
+  toBits T21 = 0x4
+  toBits T22 = 0x5
+  toBits T23 = 0x6
+  toBits T24 = 0x7
+  toBits T25 = 0x8
+  toBits T26 = 0x9
+  toBits T27 = 0xA
+  toBits T28 = 0xB
+  toBits T29 = 0xC
+  toBits T30 = 0xD
+
+instance ToBits Fan where
+  toBits FanAuto     = 0x0
+  toBits FanQuiet    = 0x2
+  toBits FanVeryLow  = 0x4
+  toBits FanLow      = 0x6
+  toBits FanNormal   = 0x8
+  toBits FanHigh     = 0xA
+  toBits FanVeryHigh = 0xC
+
+instance ToBits Mode where
+  toBits ModeAuto = 0x0
+  toBits ModeCool = 0x1
+  toBits ModeDry  = 0x2
+  toBits ModeFan  = 0x4
+  toBits ModeOff  = 0x7
+
+instance ToBits Power where
+  toBits PowerHigh = 0x1
+  toBits PowerEco  = 0x3
+
+--------------------------------------------------------------------------------
 deriveJSON jsonOptions ''Temperature
 deriveJSON jsonOptions ''Fan
 deriveJSON jsonOptions ''Mode
 deriveJSON jsonOptions ''Power
 deriveJSON jsonOptions ''Config
-
 --------------------------------------------------------------------------------
 
 C.context (C.baseCtx <> C.bsCtx)
@@ -50,41 +86,13 @@ bitsToNibble b = BS.concat [ if testBit b 3 then "1" else "0"
 
 convert :: Config -> ByteString
 convert Config{..} =
-  let t = case temperature of
-            T17 -> 0x0 :: Int
-            T18 -> 0x1
-            T19 -> 0x2
-            T20 -> 0x3
-            T21 -> 0x4
-            T22 -> 0x5
-            T23 -> 0x6
-            T24 -> 0x7
-            T25 -> 0x8
-            T26 -> 0x9
-            T27 -> 0xA
-            T28 -> 0xB
-            T29 -> 0xC
-            T30 -> 0xD
-      f = case fan of
-            FanAuto     -> 0x0
-            FanQuiet    -> 0x2
-            FanVeryLow  -> 0x4
-            FanLow      -> 0x6
-            FanNormal   -> 0x8
-            FanHigh     -> 0xA
-            FanVeryHigh -> 0xC
-      m = case mode of
-            ModeAuto -> 0x0
-            ModeCool -> 0x1
-            ModeDry  -> 0x2
-            ModeFan  -> 0x4
-            ModeOff  -> 0x7
+  let t = toBits temperature :: Int
+      f = toBits fan
+      m = toBits mode
   in BS.concat . map bitsToNibble $ [0xF, 0x2, 0x0, 0xD, 0x0]
                          ++ case mpower of
                               Nothing    -> [0x3, 0xF, 0xC, 0x0, 0x1, t, 0x0, f, m, 0x0, 0x0, foldr xor zeroBits [t, f], foldr xor zeroBits [0x1, m]]
-                              Just power -> let p = case power of
-                                                    PowerHigh -> 0x1
-                                                    PowerEco  -> 0x3
+                              Just power -> let p = toBits power
                                             in [0x4, 0xF, 0xB, 0x0, 0x9, t, 0x0, f, m, 0x0, 0x0, 0x0, p, foldr xor zeroBits [t, f], foldr xor zeroBits [0x9, m, p]]
 
 

@@ -1,7 +1,19 @@
 module Raspberry.GPIO
-  where
+  ( ToBits (..)
+  , Pin (..)
+  , Pulses (..)
+  ) where
 --------------------------------------------------------------------------------
+import Data.Bits       (Bits)
+import Data.ByteString (ByteString)
+import Data.Vector     (Vector)
 import Foreign.C.Types
 --------------------------------------------------------------------------------
 
-newtype Pin = Pin { unPin :: CInt } deriving (Eq)
+class ToBits a where
+  toBits :: (Num b, Bits b) => a -> b
+
+--------------------------------------------------------------------------------
+
+newtype Pin    = Pin    { unPin    :: CInt       } deriving (Eq)
+newtype Pulses = Pulses { unPulses :: Vector Int }
