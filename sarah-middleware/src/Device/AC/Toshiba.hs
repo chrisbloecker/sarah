@@ -9,7 +9,6 @@ module Device.AC.Toshiba
 import           Control.Concurrent    (forkIO)
 import           Data.Bits             (Bits, testBit, xor, zeroBits)
 import           Data.ByteString       (ByteString)
-import           Data.ByteString.Char8 (unpack)
 import           Data.Monoid           ((<>))
 import           Import.DeriveJSON
 import           Raspberry.GPIO
@@ -84,16 +83,19 @@ bitsToNibble b = BS.concat [ if testBit b 3 then "1" else "0"
                            , if testBit b 0 then "1" else "0"
                            ]
 
+
 convert :: Config -> ByteString
 convert Config{..} =
   let t = toBits temperature :: Int
-      f = toBits fan
-      m = toBits mode
-  in BS.concat . map bitsToNibble $ [0xF, 0x2, 0x0, 0xD, 0x0]
-                         ++ case mpower of
-                              Nothing    -> [0x3, 0xF, 0xC, 0x0, 0x1, t, 0x0, f, m, 0x0, 0x0, foldr xor zeroBits [t, f], foldr xor zeroBits [0x1, m]]
-                              Just power -> let p = toBits power
-                                            in [0x4, 0xF, 0xB, 0x0, 0x9, t, 0x0, f, m, 0x0, 0x0, 0x0, p, foldr xor zeroBits [t, f], foldr xor zeroBits [0x9, m, p]]
+      f = toBits fan         :: Int
+      m = toBits mode        :: Int
+      bits = case mpower of
+               Nothing    -> let checksum = map (foldr xor zeroBits) [[t, f], [0x1, m   ]]
+                             in [0xF, 0x2, 0x0, 0xD, 0x0, 0x3, 0xF, 0xC, 0x0, 0x1, t, 0x0, f, m, 0x0, 0x0        ] ++ checksum
+               Just power -> let p        = toBits power :: Int
+                                 checksum = map (foldr xor zeroBits) [[t, f], [0x9, m, p]]
+                             in [0xF, 0x2, 0x0, 0xD, 0x0, 0x4, 0xF, 0xB, 0x0, 0x9, t, 0x0, f, m, 0x0, 0x0, 0x0, p] ++ checksum
+  in BS.concat . map bitsToNibble $ bits
 
 
 send :: Pin -> Config -> IO ()
