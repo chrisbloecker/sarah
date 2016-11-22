@@ -6,7 +6,7 @@ SARAH is my approach at a smart home system. But why another smart home system, 
 SARAH consists of different components, each of which is responsible for specific tasks, providing different services.
 
 ### Frontend
-The frontend is written in [elm](http://elm-lang.org/) and can be used to control the smart home system through a web interface. The frontend interacts with the middleware through a REST interface that is provided by the middleware.
+The frontend is written in [Haskell](http://www.haskell.org/) using [threepenny-gui](https://hackage.haskell.org/package/threepenny-gui) and can be used to control the smart home system through a web interface. The frontend interacts with the middleware through a REST interface that is provided by the middleware.
 
 ### Middleware
 The middleware is written in [Haskell](https://www.haskell.org/) using [Servant](http://haskell-servant.readthedocs.io/) for providing a REST interface and [Cloud Haskell](http://haskell-distributed.github.io/) for distribution. The middleware interacts with the persist backend through a REST interface that is provided by the backend.
