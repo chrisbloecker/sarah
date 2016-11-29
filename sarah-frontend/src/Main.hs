@@ -1,4 +1,5 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards   #-}
 --------------------------------------------------------------------------------
 module Main where
 --------------------------------------------------------------------------------
@@ -36,6 +37,7 @@ setup MiddlewareConfig{..} window = do
 main :: IO ()
 main = do
   let config = defaultConfig { jsPort   = Just 8023
+                             , jsAddr   = Just "0.0.0.0"
                              , jsStatic = Just "webroot"
                              }
       middlewareHost = "localhost"
