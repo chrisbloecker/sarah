@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE TypeOperators     #-}
 --------------------------------------------------------------------------------
-module Api
+module Sarah.Persist.Api
   ( app
   ) where
 --------------------------------------------------------------------------------
@@ -11,13 +11,13 @@ import Data.Aeson
 import Data.Aeson.TH
 import Data.Text            (Text)
 import Network.Wai          (Application)
+import Sarah.Persist.Types
 import Servant
-import Types
 --------------------------------------------------------------------------------
-import Api.Sensor
+import Sarah.Persist.Api.Sensor
 --------------------------------------------------------------------------------
 
-type Api = SensorApi :<|> Raw
+type PersistApi = SensorApi
 
 --------------------------------------------------------------------------------
 
@@ -27,11 +27,11 @@ sensorApp config = serve (Proxy :: Proxy SensorApi) (appToServer config)
 appToServer :: Config -> Server SensorApi
 appToServer config = enter (convertApp config) sensorServer
 
-convertApp :: Config -> AppM :~> ExceptT ServantErr IO
-convertApp config = Nat (flip runReaderT config . runApp)
+convertApp :: Config -> PersistApp :~> ExceptT ServantErr IO
+convertApp config = Nat (flip runReaderT config . runPersistApp)
 
 files :: Application
 files = serveDirectory "assets"
 
 app :: Config -> Application
-app config = serve (Proxy :: Proxy Api) (appToServer config :<|> files)
+app config = serve (Proxy :: Proxy PersistApi) (appToServer config)

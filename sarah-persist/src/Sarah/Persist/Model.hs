@@ -8,19 +8,19 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 --------------------------------------------------------------------------------
-module Model
-  ( module Model
+module Sarah.Persist.Model
+  ( module Sarah.Persist.Model
   ) where
 --------------------------------------------------------------------------------
 import Control.Monad.Reader
 import Database.Persist.Quasi
-import Database.Persist.Sql         (SqlPersistM, SqlPersistT, runMigration, runSqlPool)
+import Database.Persist.Sql   (SqlPersistM, SqlPersistT, runMigration, runSqlPool)
 import Database.Persist.TH
-import Data.Text                    (Text)
-import Data.Time.Calendar           (Day)
-import Data.Time.LocalTime          (TimeOfDay)
+import Data.Text              (Text)
+import Data.Time.Calendar     (Day)
+import Data.Time.LocalTime    (TimeOfDay)
 --------------------------------------------------------------------------------
-import Types               as Model
+import Sarah.Persist.Types as Sarah.Persist.Model
 ---------------------------------------------------------------------------------
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"][persistLowerCase|

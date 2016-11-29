@@ -1,4 +1,4 @@
-module Util
+module Sarah.Middleware.Util
   where
 --------------------------------------------------------------------------------
 import Control.Monad                              (join)
@@ -7,7 +7,7 @@ import Control.Distributed.Process.Internal.Types (NodeId (NodeId))
 import Control.Distributed.Process.Extras.Internal.Primitives (whereisRemote)
 import Network.Socket                             (HostName, ServiceName)
 import Network.Transport.TCP                      (encodeEndPointAddress)
-import Types
+import Sarah.Middleware.Types
 --------------------------------------------------------------------------------
 
 newtype Timeout = Timeout { unTimeout :: Int } deriving (Eq, Show)

@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric  #-}
 --------------------------------------------------------------------------------
-module Slave.Messages
+module Sarah.Middleware.Slave.Messages
   where
 --------------------------------------------------------------------------------
 import Import.MkBinary

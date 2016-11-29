@@ -1,14 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 --------------------------------------------------------------------------------
-module Slave
+module Sarah.Middleware.Slave
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Network.Socket              (HostName, ServiceName)
-import Util
---------------------------------------------------------------------------------
-import Master.Messages             (nodeUp)
-import Slave.Messages              (Terminate (Terminate))
+import Network.Socket                   (HostName, ServiceName)
+import Sarah.Middleware.Master.Messages (nodeUp)
+import Sarah.Middleware.Slave.Messages  (Terminate (Terminate))
+import Sarah.Middleware.Util
 --------------------------------------------------------------------------------
 
 slave :: HostName -> ServiceName -> Process ()

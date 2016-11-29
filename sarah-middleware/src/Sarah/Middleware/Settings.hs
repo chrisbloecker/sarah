@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 --------------------------------------------------------------------------------
-module Settings
+module Sarah.Middleware.Settings
   where
 --------------------------------------------------------------------------------
 import GHC.Generics (Generic)

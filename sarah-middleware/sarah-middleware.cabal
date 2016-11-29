@@ -15,23 +15,24 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Api
-                     , Api.Device
-                     , Api.Sensor
-                     , Device.AC.Toshiba
-                     , Import.DeriveJSON
+  exposed-modules:     Import.DeriveJSON
                      , Import.MkBinary
-                     , Master
-                     , Master.Messages
-                     , Model
                      , Raspberry.GPIO
                      , Raspberry.Hardware
-                     , Settings
-                     , Slave
-                     , Slave.Messages
-                     , Types
-                     , Util
-  c-sources:           src/Device/AC/Toshiba.c
+                     , Sarah.Middleware.Api
+                     , Sarah.Middleware.Api.Device
+                     , Sarah.Middleware.Api.Sensor
+                     , Sarah.Middleware.Client
+                     , Sarah.Middleware.Device.AC.Toshiba
+                     , Sarah.Middleware.Master
+                     , Sarah.Middleware.Master.Messages
+                     , Sarah.Middleware.Model
+                     , Sarah.Middleware.Settings
+                     , Sarah.Middleware.Slave
+                     , Sarah.Middleware.Slave.Messages
+                     , Sarah.Middleware.Types
+                     , Sarah.Middleware.Util
+  c-sources:           src/Sarah/Middleware/Device/AC/Toshiba.c
   cc-options:          -Wall -O2
   extra-libraries:     m
                      , pigpio

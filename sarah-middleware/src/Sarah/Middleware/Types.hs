@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 --------------------------------------------------------------------------------
-module Types
+module Sarah.Middleware.Types
   where
 --------------------------------------------------------------------------------
 import           Control.Distributed.Process.Internal.Types (LocalNode, ProcessId)
@@ -19,11 +19,11 @@ import           Servant.Common.BaseUrl                     (BaseUrl)
 import           Text.Read                                  (readEither)
 --------------------------------------------------------------------------------
 
-newtype AppM a = App { unApp :: ReaderT Config (ExceptT ServantErr IO) a }
+newtype MiddlewareApp a = MiddlewareApp { unMiddlewareApp :: ReaderT Config (ExceptT ServantErr IO) a }
   deriving (Functor, Applicative, Monad, MonadReader Config, MonadError ServantErr, MonadIO)
 
-runApp :: Config -> (AppM a -> ExceptT ServantErr IO a)
-runApp config = flip runReaderT config . unApp
+runApp :: Config -> (MiddlewareApp a -> ExceptT ServantErr IO a)
+runApp config = flip runReaderT config . unMiddlewareApp
 
 --------------------------------------------------------------------------------
 

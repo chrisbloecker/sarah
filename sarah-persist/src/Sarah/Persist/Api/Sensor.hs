@@ -1,15 +1,15 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE TypeOperators     #-}
 --------------------------------------------------------------------------------
-module Api.Sensor
+module Sarah.Persist.Api.Sensor
   where
 --------------------------------------------------------------------------------
 import           Data.Time.Calendar       (Day)
 import           Database.Persist
-import           Model
+import           Sarah.Persist.Model
+import           Sarah.Persist.Types
 import           Servant
 import           Servant.Client
-import           Types
 --------------------------------------------------------------------------------
 
 type SensorApi = "sensor-readings" :> "date"   :> Capture "date"   Day
@@ -21,11 +21,11 @@ type SensorApi = "sensor-readings" :> "date"   :> Capture "date"   Day
 
 --------------------------------------------------------------------------------
 
-sensorServer :: ServerT SensorApi AppM
+sensorServer :: ServerT SensorApi PersistApp
 sensorServer = getSensorReadings
           :<|> putSensorReading
 
-getSensorReadings :: Day -> Room -> Sensor -> AppM [SensorReading]
+getSensorReadings :: Day -> Room -> Sensor -> PersistApp [SensorReading]
 getSensorReadings day room sensor =
   fmap (map entityVal) $ runDb $ selectList [ SensorReadingDate   ==. day
                                             , SensorReadingRoom   ==. room
@@ -33,7 +33,7 @@ getSensorReadings day room sensor =
                                             ]
                                             []
 
-putSensorReading :: SensorReading -> AppM ()
+putSensorReading :: SensorReading -> PersistApp ()
 putSensorReading sensorReading = do
   _ <- runDb (insert sensorReading)
   return ()

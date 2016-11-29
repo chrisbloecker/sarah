@@ -3,7 +3,7 @@
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
 --------------------------------------------------------------------------------
-module Device.AC.Toshiba
+module Sarah.Middleware.Device.AC.Toshiba
   where
 --------------------------------------------------------------------------------
 import           Control.Concurrent    (forkIO)

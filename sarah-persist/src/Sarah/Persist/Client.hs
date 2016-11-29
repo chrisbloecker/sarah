@@ -1,7 +1,7 @@
-module Persist.Client
+module Sarah.Persist.Client
   where
 --------------------------------------------------------------------------------
-import          Api.Sensor
+import          Sarah.Persist.Api.Sensor
 import          Servant
 import          Servant.Client
 --------------------------------------------------------------------------------

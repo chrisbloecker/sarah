@@ -2,7 +2,7 @@
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE TypeOperators              #-}
 --------------------------------------------------------------------------------
-module Api
+module Sarah.Middleware.Api
   ( app
   ) where
 --------------------------------------------------------------------------------
@@ -15,19 +15,19 @@ import          Control.Monad.Except                     (ExceptT)
 import          Control.Monad.Reader                     (MonadIO, MonadReader, ReaderT, runReaderT, runReader, ask, lift)
 import          Network.Wai
 import          Network.Wai.Handler.Warp
+import          Sarah.Middleware.Types
 import          Servant
-import          Types
 --------------------------------------------------------------------------------
-import          Api.Device
-import          Api.Sensor
---------------------------------------------------------------------------------
-
-type Api = SensorApi
-      :<|> DeviceApi
-
+import          Sarah.Middleware.Api.Device
+import          Sarah.Middleware.Api.Sensor
 --------------------------------------------------------------------------------
 
-runAppProcess :: Process a -> AppM a
+type MiddlewareApi = DeviceApi
+                :<|> SensorApi
+
+--------------------------------------------------------------------------------
+
+runAppProcess :: Process a -> MiddlewareApp a
 runAppProcess p = do
   Config{..} <- ask
   liftIO $ do
@@ -37,15 +37,15 @@ runAppProcess p = do
       liftIO $ putMVar mvar res
     takeMVar mvar
 
-apiServer :: ServerT Api AppM
-apiServer = sensorServer
-       :<|> deviceServer
+apiServer :: ServerT MiddlewareApi MiddlewareApp
+apiServer = deviceServer
+       :<|> sensorServer
 
-appToServer :: Config -> Server Api
+appToServer :: Config -> Server MiddlewareApi
 appToServer config = enter (convertApp config) apiServer
 
-convertApp :: Config -> AppM :~> ExceptT ServantErr IO
+convertApp :: Config -> MiddlewareApp :~> ExceptT ServantErr IO
 convertApp config = Nat (runApp config)
 
 app :: Config -> Application
-app config = serve (Proxy :: Proxy Api) (appToServer config)
+app config = serve (Proxy :: Proxy MiddlewareApi) (appToServer config)

@@ -17,11 +17,11 @@ import Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simp
 import Servant.Client                       (BaseUrl (..), Scheme (Http))
 import System.Envy                          (decodeEnv)
 --------------------------------------------------------------------------------
-import Api
-import Master
-import Settings
-import Slave
-import Types
+import Sarah.Middleware.Api
+import Sarah.Middleware.Master
+import Sarah.Middleware.Settings
+import Sarah.Middleware.Slave
+import Sarah.Middleware.Types
 --------------------------------------------------------------------------------
 
 corsPolicy :: Middleware

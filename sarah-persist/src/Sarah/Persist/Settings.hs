@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric #-}
 --------------------------------------------------------------------------------
-module Settings
+module Sarah.Persist.Settings
   where
 --------------------------------------------------------------------------------
 import GHC.Generics (Generic)

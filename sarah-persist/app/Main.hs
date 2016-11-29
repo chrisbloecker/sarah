@@ -14,9 +14,9 @@ import Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simp
 import Servant
 import System.Envy
 --------------------------------------------------------------------------------
-import Api                                  (app)
-import Model
-import Settings
+import Sarah.Persist.Api                    (app)
+import Sarah.Persist.Model
+import Sarah.Persist.Settings
 --------------------------------------------------------------------------------
 
 corsPolicy :: Middleware

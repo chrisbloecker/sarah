@@ -1,17 +1,18 @@
 {-# LANGUAGE DataKinds       #-}
 {-# LANGUAGE TypeOperators   #-}
 --------------------------------------------------------------------------------
-module Api.Device
+module Sarah.Middleware.Api.Device
   ( DeviceApi
   , deviceServer
   ) where
 --------------------------------------------------------------------------------
-import           Control.Monad.IO.Class            (liftIO)
-import           Servant
-import           Types                  hiding     (Config)
+import           Control.Monad.IO.Class                        (liftIO)
 import           Raspberry.GPIO
+import           Servant
+import           Sarah.Middleware.Types             hiding     (Config)
 --------------------------------------------------------------------------------
-import qualified Device.AC.Toshiba      as Toshiba
+import qualified Sarah.Middleware.Device.AC.Toshiba as Toshiba
+--------------------------------------------------------------------------------
 
 type DeviceApi = "device" :> "ac"
                           :> ReqBody '[JSON] Toshiba.Config
@@ -19,8 +20,8 @@ type DeviceApi = "device" :> "ac"
 
 --------------------------------------------------------------------------------
 
-deviceServer :: ServerT DeviceApi AppM
+deviceServer :: ServerT DeviceApi MiddlewareApp
 deviceServer = acServer
 
-acServer :: Toshiba.Config -> AppM Toshiba.Config
+acServer :: Toshiba.Config -> MiddlewareApp Toshiba.Config
 acServer config = liftIO $ Toshiba.send (Pin 23) config >> return config

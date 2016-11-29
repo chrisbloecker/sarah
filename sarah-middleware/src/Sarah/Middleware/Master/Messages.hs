@@ -1,12 +1,12 @@
 {-# LANGUAGE DeriveGeneric #-}
 --------------------------------------------------------------------------------
-module  Master.Messages
+module Sarah.Middleware.Master.Messages
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process                (Process, send)
 import Control.Distributed.Process.Internal.Types (NodeId)
 import Import.MkBinary
-import Types                                      (Master (Master))
+import Sarah.Middleware.Types                     (Master (Master))
 --------------------------------------------------------------------------------
 
 data NodeUp = NodeUp NodeId deriving (Generic, Typeable)

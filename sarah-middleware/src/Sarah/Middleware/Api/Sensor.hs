@@ -2,7 +2,7 @@
 {-# LANGUAGE TypeOperators   #-}
 {-# LANGUAGE RecordWildCards #-}
 --------------------------------------------------------------------------------
-module Api.Sensor
+module Sarah.Middleware.Api.Sensor
   ( SensorApi
   , sensorServer
   ) where
@@ -10,11 +10,11 @@ module Api.Sensor
 import           Control.Monad.Reader     (ask, lift)
 import           Control.Monad.Except     (runExceptT, liftIO)
 import           Data.Time.Calendar       (Day)
-import           Model
-import           Persist.Client
-import           Persist.Types
+import           Sarah.Middleware.Model
+import           Sarah.Middleware.Types
+import           Sarah.Persist.Client
+import           Sarah.Persist.Model      (Room, Sensor, SensorReading)
 import           Servant
-import           Types
 --------------------------------------------------------------------------------
 
 type SensorApi = "sensor-readings" :> "date"   :> Capture "date"   Day
@@ -24,10 +24,10 @@ type SensorApi = "sensor-readings" :> "date"   :> Capture "date"   Day
 
 --------------------------------------------------------------------------------
 
-sensorServer :: ServerT SensorApi AppM
+sensorServer :: ServerT SensorApi MiddlewareApp
 sensorServer = getSensorReadings
 
-getSensorReadings :: Day -> Room -> Sensor -> AppM [SensorReading]
+getSensorReadings :: Day -> Room -> Sensor -> MiddlewareApp [SensorReading]
 getSensorReadings day room sensor = do
   Config{..} <- ask
   mreadings <- liftIO . runExceptT $ getSensorReadingsClient day room sensor manager backend

@@ -1,13 +1,13 @@
 {-# LANGUAGE RecordWildCards #-}
 --------------------------------------------------------------------------------
-module Master
+module Sarah.Middleware.Master
   ( master
   , masterName
   ) where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Master.Messages
-import Util
+import Sarah.Middleware.Master.Messages
+import Sarah.Middleware.Util
 --------------------------------------------------------------------------------
 
 data State = State { nodes :: [NodeId] }

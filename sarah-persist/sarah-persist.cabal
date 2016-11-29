@@ -15,13 +15,12 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Api
-                     , Api.Sensor
-                     , Model
-                     , Persist.Client
-                     , Persist.Types
-                     , Settings
-                     , Types
+  exposed-modules:     Sarah.Persist.Api
+                     , Sarah.Persist.Api.Sensor
+                     , Sarah.Persist.Client
+                     , Sarah.Persist.Model
+                     , Sarah.Persist.Settings
+                     , Sarah.Persist.Types
   build-depends:       base >= 4.7 && < 5
                      , aeson
                      , either

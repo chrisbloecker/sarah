@@ -1,7 +1,5 @@
-module Persist.Types
-  ( module Persist.Types
-  ) where
+module Sarah.Middleware.Model
+  where
 --------------------------------------------------------------------------------
-import Types as Persist.Types (Room (..), Sensor (..))
-import Model as Persist.Types (SensorReading (..))
+import           Import.DeriveJSON
 --------------------------------------------------------------------------------

@@ -4,7 +4,7 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TemplateHaskell            #-}
 --------------------------------------------------------------------------------
-module Types
+module Sarah.Persist.Types
   where
 --------------------------------------------------------------------------------
 import Control.Monad.Except (MonadError, ExceptT)
@@ -19,7 +19,7 @@ import Servant              (FromHttpApiData (..), ToHttpApiData (..), ServantEr
 import Text.Read            (readEither)
 --------------------------------------------------------------------------------
 
-newtype AppM a = App { runApp :: ReaderT Config (ExceptT ServantErr IO) a }
+newtype PersistApp a = PersistApp { runPersistApp :: ReaderT Config (ExceptT ServantErr IO) a }
   deriving (Functor, Applicative, Monad, MonadReader Config, MonadError ServantErr, MonadIO)
 
 data Config = Config { getPool :: ConnectionPool }
