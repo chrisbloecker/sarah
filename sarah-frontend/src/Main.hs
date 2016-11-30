@@ -1,47 +1,62 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 --------------------------------------------------------------------------------
-module Main where
+module Main
+  where
 --------------------------------------------------------------------------------
-import           Control.Monad.Except                     (runExceptT, liftIO)
+import           Data.Maybe                  (fromMaybe)
+import           Data.ByteString             (ByteString)
+import           Data.ByteString.Char8       (pack)
 import           Graphics.UI.Threepenny.Core
-import           Network.HTTP.Client                      (Manager, newManager, defaultManagerSettings)
-import           Sarah.Middleware.Client
-import           Sarah.Middleware.Device.AC.Toshiba as AC
-import           Servant.Common.BaseUrl                   (BaseUrl (..))
-import           Servant.Client                           (Scheme (Http))
---------------------------------------------------------------------------------
-import qualified Graphics.UI.Threepenny      as UI
---------------------------------------------------------------------------------
-
-data MiddlewareConfig = MiddlewareConfig { manager    :: Manager
-                                         , middleware :: BaseUrl
-                                         }
-
+import           Network.HTTP.Client         (newManager, defaultManagerSettings)
+import           Options.Applicative
+import           Sarah.GUI
+import           Sarah.GUI.Model
+import           Servant.Client              (Scheme (Http))
+import           Servant.Common.BaseUrl      (BaseUrl (BaseUrl))
 --------------------------------------------------------------------------------
 
-setup :: MiddlewareConfig -> Window -> UI ()
-setup MiddlewareConfig{..} window = do
-  return window #
-    set UI.title "Sarah"
-  buttonOn  <- UI.button # set UI.text "On"
-  buttonOff <- UI.button # set UI.text "Off"
-  getBody window #+ [element buttonOn, element buttonOff]
-  on UI.click buttonOn $ const $ do
-    element buttonOn # set UI.text "ON!"
-    liftIO . runExceptT $ runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool Nothing) manager middleware
-  on UI.click buttonOff $ const $ do
-    element buttonOff # set UI.text "OFF!"
-    liftIO . runExceptT $ runAcServer (AC.Config AC.T20 AC.FanAuto AC.ModeOff Nothing) manager middleware
+data Options = Options { appHost :: Maybe String
+                       , appPort :: Maybe Int
+                       , midHost :: Maybe String
+                       , midPort :: Maybe Int
+                       }
 
-main :: IO ()
-main = do
-  let config = defaultConfig { jsPort   = Just 8023
-                             , jsAddr   = Just "0.0.0.0"
-                             , jsStatic = Just "webroot"
+options :: Parser Options
+options = Options
+      <$> optional appHost
+      <*> optional appPort
+      <*> optional midHost
+      <*> optional midPort
+  where
+    mkOption l m h = mconcat [long l, metavar m, help h]
+
+    appHost = strOption   $ mkOption "appHost" "HOST"    "The app's hostname"
+    appPort = option auto $ mkOption "appPort" "PORT"    "The app's port"
+    midHost = strOption   $ mkOption "midHost" "MIDHOST" "Hostname of the middleware"
+    midPort = option auto $ mkOption "midPort" "MIDPORT" "Port of the middleware"
+
+--------------------------------------------------------------------------------
+
+run :: Options -> IO ()
+run Options{..} = do
+  let config = defaultConfig { jsAddr       = Just $ fromMaybe "0.0.0.0" (pack <$> appHost)
+                             , jsPort       = Just $ fromMaybe 8023      appPort
+                             , jsStatic     = Just "static"
+                             , jsCustomHTML = Just "sarah.html"
                              }
-      middlewareHost = "localhost"
-      middlewarePort = 8090
+      middlewareHost = fromMaybe "localhost" midHost
+      middlewarePort = fromMaybe 8090        midPort
       middleware = BaseUrl Http middlewareHost middlewarePort ""
   manager <- newManager defaultManagerSettings
   startGUI config (setup MiddlewareConfig{..})
+
+
+main :: IO ()
+main = execParser opts >>= run
+  where
+    opts = info (helper <*> options)
+           ( fullDesc
+          <> progDesc "Sarah GUI"
+          <> header ""
+           )

@@ -15,10 +15,15 @@ cabal-version:       >=1.10
 executable sarah-frontend
   hs-source-dirs:      src
   main-is:             Main.hs
+  other-modules:       Sarah.GUI
+                     , Sarah.GUI.Model
+                     , Sarah.GUI.Templates
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
+                     , bytestring
                      , http-client
                      , mtl
+                     , optparse-applicative
                      , sarah-middleware
                      , servant-client
                      , threepenny-gui
