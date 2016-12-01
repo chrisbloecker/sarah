@@ -1,22 +1,23 @@
-{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE TemplateHaskell   #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Settings
   where
 --------------------------------------------------------------------------------
-import           GHC.Generics (Generic)
 import           Import.DeriveJSON
+import           Sarah.Middleware.Model (Host, Port)
 --------------------------------------------------------------------------------
 
-data Settings = Settings { webPort     :: Int
-                         , nodeHost    :: String
-                         , nodePort    :: String
+data Settings = Settings { webPort     :: Port
+                         , nodeHost    :: Host
+                         , nodePort    :: Port
                          , nodeRole    :: String
-                         , masterHost  :: String
-                         , masterPort  :: String
-                         , backendHost :: String
-                         , backendPort :: Int
+                         , backendHost :: Host
+                         , backendPort :: Port
                          }
-  deriving (Generic)
+
+data SlaveSettings = SlaveSettings { masterHost :: Host
+                                   , masterPort :: Port
+                                   }
 
 deriveJSON jsonOptions ''Settings
+deriveJSON jsonOptions ''SlaveSettings

@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TemplateHaskell            #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Model
   where
@@ -35,6 +36,9 @@ data Config = Config { masterPid :: ProcessId
                      }
 
 --------------------------------------------------------------------------------
+
+type Host = String
+type Port = Int
 
 newtype Master = Master ProcessId deriving (Eq, Generic, Typeable, Show)
 newtype Slave  = Slave  ProcessId deriving (Eq, Generic, Typeable)

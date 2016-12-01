@@ -45,24 +45,31 @@ corsPolicy = cors (const $ Just policy)
 
 go :: Options -> IO ()
 go Options{..} = do
-  -- add a settings parser
-  msettings <- Y.decode <$> BS.readFile (fromMaybe "settings.yml" settingsFile)
+  mSettings <- Y.decode <$> BS.readFile (fromMaybe "settings.yml" settingsFile)
 
-  case msettings of
-    Nothing -> putStrLn "Invalid settings file."
+  case mSettings of
+    Nothing ->
+      putStrLn "settings.yml is invalid."
     Just settings@Settings{..} -> do
-      mtransport <- createTransport nodeHost nodePort defaultTCPParameters
-      case mtransport of
-        Left err -> throw err
+      mTransport <- createTransport nodeHost (show nodePort) defaultTCPParameters
+      case mTransport of
+        Left err ->
+          throw err
         Right transport -> do
           endpoint <- newEndPoint transport
           node     <- newLocalNode transport initRemoteTable
 
           case nodeRole of
-            "slave" -> runProcess node (slave masterHost masterPort)
+            "slave" -> do
+              mSlaveSettings <- Y.decode <$> BS.readFile "slave.yml"
+              case mSlaveSettings of
+                Nothing ->
+                  putStrLn "slave.yml is invalid."
+                Just slaveSettings ->
+                  runProcess node (runSlave slaveSettings)
 
             "master" -> do
-              masterPid <- forkProcess node master
+              masterPid <- forkProcess node runMaster
               manager   <- newManager defaultManagerSettings
 
               let config = Config { masterPid = masterPid
@@ -72,6 +79,9 @@ go Options{..} = do
                                   }
 
               run webPort $ logStdoutDev $ corsPolicy $ app config
+
+            role ->
+              putStrLn $ "Unknown role: " ++ role
 
 main :: IO ()
 main = execParser opts >>= go

@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Master
-  ( master
+  ( runMaster
   , masterName
   ) where
 --------------------------------------------------------------------------------
@@ -14,8 +14,8 @@ data State = State { nodes :: [NodeId] }
 
 --------------------------------------------------------------------------------
 
-master :: Process ()
-master = do
+runMaster :: Process ()
+runMaster = do
   self <- getSelfPid
   register masterName self
   say "Master up"
