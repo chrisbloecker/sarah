@@ -22,6 +22,8 @@ fieldLabel "fan"         = "fan"
 fieldLabel "mode"        = "mode"
 fieldLabel "mpower"      = "power"
 
+fieldLabel s             = s
+
 --------------------------------------------------------------------------------
 
 constructorTag :: String -> String

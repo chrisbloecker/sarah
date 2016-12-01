@@ -73,8 +73,9 @@ deriveJSON jsonOptions ''Config
 --------------------------------------------------------------------------------
 
 C.context (C.baseCtx <> C.bsCtx)
-C.include "irslinger.h"
+C.include "<stdlib.h>"
 C.include "<stdio.h>"
+C.include "irslinger.h"
 
 bitsToNibble :: (Bits a) => a -> ByteString
 bitsToNibble b = BS.concat [ if testBit b 3 then "1" else "0"
@@ -115,7 +116,7 @@ send (Pin pin) config = do
                return -1;
              }
 
-             char c;
+             char c = '_';
              int i
                , bsIdx = 0
                ;

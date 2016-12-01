@@ -1,0 +1,8 @@
+webPort: 8090
+nodeHost: localhost
+nodePort: "50000"
+nodeRole: master
+masterHost: localhost
+masterPort: "50000"
+backendHost: localhost
+backendPort: 8080

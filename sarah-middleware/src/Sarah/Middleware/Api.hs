@@ -15,7 +15,7 @@ import          Control.Monad.Except                     (ExceptT)
 import          Control.Monad.Reader                     (MonadIO, MonadReader, ReaderT, runReaderT, runReader, ask, lift)
 import          Network.Wai
 import          Network.Wai.Handler.Warp
-import          Sarah.Middleware.Types
+import          Sarah.Middleware.Model
 import          Servant
 --------------------------------------------------------------------------------
 import          Sarah.Middleware.Api.Device

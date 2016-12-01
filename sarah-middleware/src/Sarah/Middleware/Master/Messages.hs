@@ -6,7 +6,7 @@ module Sarah.Middleware.Master.Messages
 import Control.Distributed.Process                (Process, send)
 import Control.Distributed.Process.Internal.Types (NodeId)
 import Import.MkBinary
-import Sarah.Middleware.Types                     (Master (Master))
+import Sarah.Middleware.Model                     (Master (Master))
 --------------------------------------------------------------------------------
 
 data NodeUp = NodeUp NodeId deriving (Generic, Typeable)

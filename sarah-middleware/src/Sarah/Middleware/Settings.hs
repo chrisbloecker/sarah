@@ -1,10 +1,11 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE TemplateHaskell   #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Settings
   where
 --------------------------------------------------------------------------------
-import GHC.Generics (Generic)
-import System.Envy
+import           GHC.Generics (Generic)
+import           Import.DeriveJSON
 --------------------------------------------------------------------------------
 
 data Settings = Settings { webPort     :: Int
@@ -16,17 +17,6 @@ data Settings = Settings { webPort     :: Int
                          , backendHost :: String
                          , backendPort :: Int
                          }
-  deriving (Generic, Show)
+  deriving (Generic)
 
-instance DefConfig Settings where
-  defConfig = Settings { webPort     = 8080
-                       , nodeHost    = "localhost"
-                       , nodePort    = "50000"
-                       , nodeRole    = "slave"
-                       , masterHost  = "localhost"
-                       , masterPort  = "50000"
-                       , backendHost = "localhost"
-                       , backendPort = 8081
-                       }
-
-instance FromEnv Settings
+deriveJSON jsonOptions ''Settings

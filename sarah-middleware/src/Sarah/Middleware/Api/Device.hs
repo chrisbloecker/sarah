@@ -9,7 +9,7 @@ module Sarah.Middleware.Api.Device
 import           Control.Monad.IO.Class                        (liftIO)
 import           Raspberry.GPIO
 import           Servant
-import           Sarah.Middleware.Types             hiding     (Config)
+import           Sarah.Middleware.Model
 --------------------------------------------------------------------------------
 import qualified Sarah.Middleware.Device.AC.Toshiba as Toshiba
 --------------------------------------------------------------------------------

@@ -7,7 +7,7 @@ import Control.Distributed.Process.Internal.Types (NodeId (NodeId))
 import Control.Distributed.Process.Extras.Internal.Primitives (whereisRemote)
 import Network.Socket                             (HostName, ServiceName)
 import Network.Transport.TCP                      (encodeEndPointAddress)
-import Sarah.Middleware.Types
+import Sarah.Middleware.Model
 --------------------------------------------------------------------------------
 
 newtype Timeout = Timeout { unTimeout :: Int } deriving (Eq, Show)
