@@ -1,2 +1,7 @@
 masterHost: localhost
 masterPort: 50000
+devices:
+- name: AC
+  type: Toshiba
+  interface:
+    gpio: 23
