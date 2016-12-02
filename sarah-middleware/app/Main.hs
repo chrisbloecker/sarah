@@ -45,12 +45,12 @@ corsPolicy = cors (const $ Just policy)
 
 go :: Options -> IO ()
 go Options{..} = do
-  mSettings <- Y.decode <$> BS.readFile (fromMaybe "settings.yml" settingsFile)
+  mSettings <- Y.decodeEither <$> BS.readFile (fromMaybe "settings.yml" settingsFile)
 
   case mSettings of
-    Nothing ->
-      putStrLn "settings.yml is invalid."
-    Just settings@Settings{..} -> do
+    Left err ->
+      putStrLn $ "Parsing error: settings.yml is invalid. " ++ err
+    Right settings@Settings{..} -> do
       mTransport <- createTransport nodeHost (show nodePort) defaultTCPParameters
       case mTransport of
         Left err ->
@@ -61,11 +61,11 @@ go Options{..} = do
 
           case nodeRole of
             "slave" -> do
-              mSlaveSettings <- Y.decode <$> BS.readFile "slave.yml"
+              mSlaveSettings <- Y.decodeEither <$> BS.readFile "slave.yml"
               case mSlaveSettings of
-                Nothing ->
-                  putStrLn "slave.yml is invalid."
-                Just slaveSettings ->
+                Left err ->
+                  putStrLn $ "Parse error: slave.yml is invalid. " ++ err
+                Right slaveSettings ->
                   runProcess node (runSlave slaveSettings)
 
             "master" -> do
