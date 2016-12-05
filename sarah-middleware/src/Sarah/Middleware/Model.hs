@@ -13,6 +13,7 @@ import           Data.Typeable                              (Typeable)
 import           GHC.Generics                               (Generic)
 import           Import.DeriveJSON
 import           Network.HTTP.Client                        (Manager)
+import           Raspberry.GPIO                             (Pin)
 import           Servant                                    (FromHttpApiData (..), ToHttpApiData (..), ServantErr)
 import           Servant.Common.BaseUrl                     (BaseUrl)
 import           Text.Read                                  (readEither)
@@ -42,3 +43,17 @@ type Port = Int
 
 newtype Master = Master ProcessId deriving (Eq, Generic, Typeable, Show)
 newtype Slave  = Slave  ProcessId deriving (Eq, Generic, Typeable)
+
+data Device = Device { deviceName      :: Text
+                     , deviceType      :: DeviceType
+                     , deviceInterface :: Interface
+                     }
+
+data DeviceType = Toshiba_RAS_M13NKCV
+                | Toshiba_RAS_M16NKCV
+                | Toshiba_16NKV_E
+
+data Interface = GPIO Pin
+
+deriveJSON jsonOptions ''Device
+deriveJSON jsonOptions ''Interface

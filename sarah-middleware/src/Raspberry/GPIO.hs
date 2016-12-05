@@ -1,11 +1,14 @@
+{-# LANGUAGE TemplateHaskell #-}
+--------------------------------------------------------------------------------
 module Raspberry.GPIO
   ( ToBits (..)
   , Pin (..)
   ) where
 --------------------------------------------------------------------------------
-import Data.Bits       (Bits)
-import Data.ByteString (ByteString)
-import Foreign.C.Types
+import Data.Bits         (Bits)
+import Data.ByteString   (ByteString)
+import Foreign.C.Types   (CInt)
+import Import.DeriveJSON
 --------------------------------------------------------------------------------
 
 class ToBits a where
@@ -14,3 +17,6 @@ class ToBits a where
 --------------------------------------------------------------------------------
 
 newtype Pin = Pin { unPin :: CInt } deriving (Eq)
+
+deriveJSON jsonOptions ''CInt
+deriveJSON jsonOptions ''Pin

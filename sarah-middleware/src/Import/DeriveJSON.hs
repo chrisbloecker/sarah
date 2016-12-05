@@ -22,6 +22,8 @@ fieldLabel "fan"         = "fan"
 fieldLabel "mode"        = "mode"
 fieldLabel "mpower"      = "power"
 
+fieldLabel "unPin"       = "gpio"
+
 fieldLabel s             = s
 
 --------------------------------------------------------------------------------

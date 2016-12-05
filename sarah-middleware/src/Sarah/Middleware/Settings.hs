@@ -4,7 +4,7 @@ module Sarah.Middleware.Settings
   where
 --------------------------------------------------------------------------------
 import           Import.DeriveJSON
-import           Sarah.Middleware.Model (Host, Port)
+import           Sarah.Middleware.Model (Host, Port, Device)
 --------------------------------------------------------------------------------
 
 data Settings = Settings { webPort     :: Port
@@ -17,6 +17,7 @@ data Settings = Settings { webPort     :: Port
 
 data SlaveSettings = SlaveSettings { masterHost :: Host
                                    , masterPort :: Port
+                                   , devices    :: [Device]
                                    }
 
 deriveJSON jsonOptions ''Settings
