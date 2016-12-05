@@ -44,12 +44,14 @@ type Port = Int
 newtype Master = Master ProcessId deriving (Eq, Generic, Typeable, Show)
 newtype Slave  = Slave  ProcessId deriving (Eq, Generic, Typeable)
 
-data Device = Device { deviceName :: String
-                     , deviceType :: DeviceType
-                     , interface  :: Interface
+data Device = Device { deviceName      :: Text
+                     , deviceType      :: DeviceType
+                     , deviceInterface :: Interface
                      }
 
-data DeviceType = Toshiba
+data DeviceType = Toshiba_RAS_M13NKCV
+                | Toshiba_RAS_M16NKCV
+                | Toshiba_16NKV_E
 
 data Interface = GPIO Pin
 

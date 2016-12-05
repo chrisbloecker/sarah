@@ -4,7 +4,6 @@ module Sarah.Middleware.Settings
   where
 --------------------------------------------------------------------------------
 import           Import.DeriveJSON
-import           Raspberry.GPIO         (Pin)
 import           Sarah.Middleware.Model (Host, Port, Device)
 --------------------------------------------------------------------------------
 
