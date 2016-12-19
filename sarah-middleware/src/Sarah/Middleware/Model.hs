@@ -2,6 +2,7 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Model
   where
@@ -45,16 +46,23 @@ newtype Master = Master ProcessId deriving (Eq, Generic, Typeable, Show)
 newtype Slave  = Slave  ProcessId deriving (Eq, Generic, Typeable)
 
 data Device = Device { deviceName      :: Text
-                     , deviceType      :: DeviceType
+                     , deviceModel     :: DeviceModel
                      , deviceInterface :: Interface
                      }
 
-data DeviceType = Toshiba_RAS_M13NKCV
-                | Toshiba_RAS_M16NKCV
-                | Toshiba_16NKV_E
+data DeviceModel = AC ACModel
+--                 | TV TVModel
 
-data Interface = GPIO Pin
+data ACModel = Toshiba_RAS_M13NKCV
+             | Toshiba_RAS_M16NKCV
+             | Toshiba_16NKV_E
 
+--data TVModel
+
+data Interface  = GPIO Pin
+
+deriveJSON jsonOptions ''DeviceModel
+deriveJSON jsonOptions ''ACModel
+--deriveJSON jsonOptions ''TVModel
 deriveJSON jsonOptions ''Device
-deriveJSON jsonOptions ''DeviceType
 deriveJSON jsonOptions ''Interface
