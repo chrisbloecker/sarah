@@ -7,6 +7,7 @@ module Sarah.Middleware.Slave
 import Control.Distributed.Process
 import Network.Socket                   (HostName, ServiceName)
 import Sarah.Middleware.Master.Messages (nodeUp)
+import Sarah.Middleware.Model           (host, port)
 import Sarah.Middleware.Settings
 import Sarah.Middleware.Slave.Messages  (Terminate (Terminate))
 import Sarah.Middleware.Util
@@ -15,7 +16,7 @@ import Sarah.Middleware.Util
 runSlave :: SlaveSettings -> Process ()
 runSlave SlaveSettings{..} = do
   thisNode <- getSelfNode
-  mmaster  <- findMaster masterHost (show masterPort) (seconds 1)
+  mmaster  <- findMaster (host master) (show . port $ master) (seconds 1)
   case mmaster of
     Nothing -> say "No master found... Terminating..."
     Just master -> do

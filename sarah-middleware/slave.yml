@@ -1,7 +1,13 @@
-masterHost: localhost
-masterPort: 50000
+slaveNode:
+  host: localhost
+  port: 50001
+master:
+  host: localhost
+  port: 50000
 devices:
 - name: AC
-  type: Toshiba
+  model:
+    AC:
+      Toshiba_RAS_M16NKCV: []
   interface:
     gpio: 23

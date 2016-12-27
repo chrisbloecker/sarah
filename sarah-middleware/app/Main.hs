@@ -28,12 +28,20 @@ import qualified Data.ByteString as BS
 import qualified Data.Yaml       as Y
 --------------------------------------------------------------------------------
 
-data Options = Options { settingsFile :: Maybe String }
+data NodeRole = RoleMaster | RoleSlave
+
+data Options = Options { settingsFile :: Maybe String
+                       , nodeRole     :: NodeRole
+                       }
 
 options :: Parser Options
 options = Options <$> optional settingsFile
+                  <*> nodeRole
   where
     settingsFile = strOption . mconcat $ [long "settings", metavar "SETTINGS", help "Path to the settings file"]
+    nodeRole     = subparser ( command "master" (info (pure RoleMaster) $ progDesc "Run as master")
+                            <> command "slave"  (info (pure RoleSlave)  $ progDesc "Run as slave")
+                             )
 
 --------------------------------------------------------------------------------
 
@@ -42,46 +50,49 @@ corsPolicy = cors (const $ Just policy)
   where
     policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }
 
-
 go :: Options -> IO ()
-go Options{..} = do
-  mSettings <- Y.decodeEither <$> BS.readFile (fromMaybe "settings.yml" settingsFile)
+go Options{..} = case nodeRole of
+  RoleMaster -> do
+    let masterSettingsFile = fromMaybe "master.yml" settingsFile
+    mSettings <- Y.decodeEither <$> BS.readFile masterSettingsFile
 
-  case mSettings of
-    Left err ->
-      putStrLn $ "Parsing error: settings.yml is invalid. " ++ err
-    Right settings@Settings{..} -> do
-      mTransport <- createTransport nodeHost (show nodePort) defaultTCPParameters
-      case mTransport of
-        Left err ->
-          throw err
-        Right transport -> do
-          endpoint <- newEndPoint transport
-          node     <- newLocalNode transport initRemoteTable
+    case mSettings of
+      Left err ->
+        putStrLn $ "Parsing error: " ++ masterSettingsFile ++ " is invalid. " ++ err
+      Right settings@MasterSettings{..} -> do
+        mTransport <- createTransport (host masterNode) (show . port $ masterNode) defaultTCPParameters
+        case mTransport of
+          Left err ->
+            throw err
+          Right transport -> do
+            node      <- newLocalNode transport initRemoteTable
+            masterPid <- forkProcess node runMaster
+            manager   <- newManager defaultManagerSettings
 
-          case nodeRole of
-            "slave" -> do
-              mSlaveSettings <- Y.decodeEither <$> BS.readFile "slave.yml"
-              case mSlaveSettings of
-                Left err ->
-                  putStrLn $ "Parse error: slave.yml is invalid. " ++ err
-                Right slaveSettings ->
-                  runProcess node (runSlave slaveSettings)
+            let config = Config { masterPid = masterPid
+                                , localNode = node
+                                , backend   = BaseUrl Http (host backend) (port backend) ""
+                                , manager   = manager
+                                }
 
-            "master" -> do
-              masterPid <- forkProcess node runMaster
-              manager   <- newManager defaultManagerSettings
+            run webPort $ logStdoutDev $ corsPolicy $ app config
 
-              let config = Config { masterPid = masterPid
-                                  , localNode = node
-                                  , backend   = BaseUrl Http backendHost backendPort ""
-                                  , manager   = manager
-                                  }
 
-              run webPort $ logStdoutDev $ corsPolicy $ app config
+  RoleSlave -> do
+    let slaveSettingsFile = fromMaybe "slave.yml" settingsFile
+    mSlaveSettings <- Y.decodeEither <$> BS.readFile slaveSettingsFile
+    case mSlaveSettings of
+      Left err ->
+        putStrLn $ "Parse error: " ++ slaveSettingsFile ++ " is invalid. " ++ err
+      Right slaveSettings@SlaveSettings{..} -> do
+        mTransport <- createTransport (host slaveNode) (show . port $ slaveNode) defaultTCPParameters
+        case mTransport of
+          Left err ->
+            throw err
+          Right transport -> do
+            node <- newLocalNode transport initRemoteTable
+            runProcess node (runSlave slaveSettings)
 
-            role ->
-              putStrLn $ "Unknown role: " ++ role
 
 main :: IO ()
 main = execParser opts >>= go

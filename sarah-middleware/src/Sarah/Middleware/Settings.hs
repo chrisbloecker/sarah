@@ -1,24 +1,23 @@
 {-# LANGUAGE TemplateHaskell   #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Settings
-  where
+  ( MasterSettings (..)
+  , SlaveSettings (..)
+  ) where
 --------------------------------------------------------------------------------
-import           Import.DeriveJSON
-import           Sarah.Middleware.Model (Host, Port, Device)
+import Import.DeriveJSON
+import Sarah.Middleware.Model (WebAddress, Port, Device)
 --------------------------------------------------------------------------------
 
-data Settings = Settings { webPort     :: Port
-                         , nodeHost    :: Host
-                         , nodePort    :: Port
-                         , nodeRole    :: String
-                         , backendHost :: Host
-                         , backendPort :: Port
-                         }
+data MasterSettings = MasterSettings { masterNode :: WebAddress
+                                     , backend    :: WebAddress
+                                     , webPort    :: Port
+                                     }
 
-data SlaveSettings = SlaveSettings { masterHost :: Host
-                                   , masterPort :: Port
-                                   , devices    :: [Device]
-                                   }
+data SlaveSettings = SlaveSettings  { slaveNode :: WebAddress
+                                    , master    :: WebAddress
+                                    , devices   :: [Device]
+                                    }
 
-deriveJSON jsonOptions ''Settings
+deriveJSON jsonOptions ''MasterSettings
 deriveJSON jsonOptions ''SlaveSettings

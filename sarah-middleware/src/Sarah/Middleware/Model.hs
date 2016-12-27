@@ -42,6 +42,8 @@ data Config = Config { masterPid :: ProcessId
 type Host = String
 type Port = Int
 
+data WebAddress = WebAddress { host :: Host, port :: Port }
+
 newtype Master = Master ProcessId deriving (Eq, Generic, Typeable, Show)
 newtype Slave  = Slave  ProcessId deriving (Eq, Generic, Typeable)
 
@@ -49,20 +51,26 @@ data Device = Device { deviceName      :: Text
                      , deviceModel     :: DeviceModel
                      , deviceInterface :: Interface
                      }
+  deriving (Show)
 
 data DeviceModel = AC ACModel
---                 | TV TVModel
+                 | TV TVModel
+  deriving (Show, Eq)
 
 data ACModel = Toshiba_RAS_M13NKCV
              | Toshiba_RAS_M16NKCV
              | Toshiba_16NKV_E
+  deriving (Show, Eq)
 
---data TVModel
+data TVModel = LG
+  deriving (Show, Eq)
 
-data Interface  = GPIO Pin
+data Interface = GPIO Pin
+  deriving (Show, Eq)
 
-deriveJSON jsonOptions ''DeviceModel
+deriveJSON jsonOptions ''WebAddress
 deriveJSON jsonOptions ''ACModel
---deriveJSON jsonOptions ''TVModel
+deriveJSON jsonOptions ''TVModel
+deriveJSON jsonOptions ''DeviceModel
 deriveJSON jsonOptions ''Device
 deriveJSON jsonOptions ''Interface

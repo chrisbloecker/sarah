@@ -1,6 +1,0 @@
-webPort: 8090
-nodeHost: localhost
-nodePort: 50000
-nodeRole: master
-backendHost: localhost
-backendPort: 8080

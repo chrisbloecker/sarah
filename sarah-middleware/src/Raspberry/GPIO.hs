@@ -16,7 +16,7 @@ class ToBits a where
 
 --------------------------------------------------------------------------------
 
-newtype Pin = Pin { unPin :: CInt } deriving (Eq)
+newtype Pin = Pin { unPin :: CInt } deriving (Show, Eq)
 
 deriveJSON jsonOptions ''CInt
 deriveJSON jsonOptions ''Pin
