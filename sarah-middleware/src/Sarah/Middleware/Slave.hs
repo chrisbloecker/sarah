@@ -18,7 +18,8 @@ runSlave SlaveSettings{..} = do
   thisNode <- getSelfNode
   mmaster  <- findMaster (host master) (show . port $ master) (seconds 1)
   case mmaster of
-    Nothing -> say "No master found... Terminating..."
+    Nothing ->
+      say "No master found... Terminating..."
     Just master -> do
       nodeUp master thisNode
       linkMaster master

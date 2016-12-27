@@ -47,7 +47,7 @@ run Options{..} = do
                              }
       middlewareHost = fromMaybe "localhost" midHost
       middlewarePort = fromMaybe 8090        midPort
-      middleware = BaseUrl Http middlewareHost middlewarePort ""
+      middleware     = BaseUrl Http middlewareHost middlewarePort ""
   manager <- newManager defaultManagerSettings
   startGUI config (setup MiddlewareConfig{..})
 

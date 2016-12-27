@@ -33,7 +33,7 @@ masterName = "master"
 
 findMaster :: HostName -> ServiceName -> Timeout -> Process (Maybe Master)
 findMaster host port timeout = do
-  let remoteNode = NodeId $ encodeEndPointAddress host port 1
+  let remoteNode = NodeId $ encodeEndPointAddress host port 0
   whereisRemoteAsync remoteNode masterName
   mpid <- join <$> receiveTimeout (unTimeout timeout) [ match $ \(WhereIsReply _ mpid) ->
                                                           return mpid

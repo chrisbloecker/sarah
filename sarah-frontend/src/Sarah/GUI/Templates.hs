@@ -4,22 +4,51 @@ module Sarah.GUI.Templates
   where
 --------------------------------------------------------------------------------
 import           Prelude                     hiding (div, span, id)
-import           Text.Blaze.Html5
-import           Text.Blaze.Html5.Attributes hiding (span)
---------------------------------------------------------------------------------
---import qualified Text.Blaze.Html5 as H
+import           Graphics.UI.Threepenny
 --------------------------------------------------------------------------------
 
-mkNavbar :: Html
-mkNavbar = nav ! class_ "navbar navbar-default" $
-             div ! class_ "container-fluid" $ do
-               div ! class_ "navbar-header" $
-                 button ! type_ "button"
-                        ! class_ "navbar-toggle collapsed"
-                        ! dataAttribute "target" "the-navbar"
-                        ! customAttribute "aria-expanded" "false" $ do
-                   span ! class_ "icon-bar" $ ""
-                   span ! class_ "icon-bar" $ ""
-                   span ! class_ "icon-bar" $ ""
-               div ! class_ "collapse navbar-collapse"
-                   ! id "the-navbar"
+strAttr :: String -> WriteAttr Element String
+strAttr name = mkWriteAttr (set' (attr name))
+
+nav = mkElement "nav"
+role = strAttr "role"
+datatoggle = strAttr "data-toggle"
+datatarget = strAttr "data-target"
+
+mkNavbar :: UI Element
+mkNavbar =
+  nav # set class_ "navbar navbar-default"
+      #+ [ div # set class_ "container-fluid"
+               #+ [ div # set class_ "navbar-header"
+                        #+ [ button # set type_ "button"
+                                    # set class_ "navbar-toggle collapsed"
+                                    # set datatoggle "collapse"
+                                    # set datatarget "the-navbar"
+                                    #+ [ span # set class_ "icon-bar"
+                                       , span # set class_ "icon-bar"
+                                       , span # set class_ "icon-bar"
+                                       ]
+                           ]
+                  , div # set class_ "collapse navbar-collapse"
+                        # set id_ "the-navbar"
+                        #+ [ ul # set class_ "nav navbar-nav"
+                                #+ [ li #+ [ a # set href "#"
+                                               # set text "Home"
+                                           ]
+                                   , li # set class_ "dropdown"
+                                        #+ [ a # set class_ "dropdown-toggle"
+                                               # set datatoggle "dropdown"
+                                               # set role "button"
+                                               # set text "Rooms"
+                                               # set href "#"
+                                               #+ [ span # set class_ "caret"
+                                                  ]
+                                           , ul # set class_ "dropdown-menu"
+                                                #+ [ li # set text "Livingroom"
+                                                   , li # set text "Bedroom"
+                                                   ]
+                                           ]
+                                   ]
+                           ]
+                  ]
+         ]
