@@ -22,9 +22,9 @@ fieldLabel "fan"         = "fan"
 fieldLabel "mode"        = "mode"
 fieldLabel "mpower"      = "power"
 
-fieldLabel "deviceName"      = "name"
-fieldLabel "deviceModel"     = "model"
-fieldLabel "deviceInterface" = "interface"
+fieldLabel "_deviceName"      = "name"
+fieldLabel "_deviceModel"     = "model"
+fieldLabel "_deviceInterface" = "interface"
 fieldLabel "unPin"           = "gpio"
 
 fieldLabel s             = s

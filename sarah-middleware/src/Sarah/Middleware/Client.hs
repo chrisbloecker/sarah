@@ -9,4 +9,4 @@ import qualified Sarah.Middleware.Api.Status as Status
 --------------------------------------------------------------------------------
 
 runAcServer = client (Proxy :: Proxy Device.DeviceApi)
-getStats    = client (Proxy :: Proxy Status.StatusApi)
+getStatus   = client (Proxy :: Proxy Status.StatusApi)

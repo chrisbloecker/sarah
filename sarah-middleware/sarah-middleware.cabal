@@ -19,12 +19,14 @@ library
                      , Import.MkBinary
                      , Raspberry.GPIO
                      , Raspberry.Hardware
+                     , Raspberry.I2C
                      , Sarah.Middleware.Api
                      , Sarah.Middleware.Api.Device
                      , Sarah.Middleware.Api.Sensor
                      , Sarah.Middleware.Api.Status
                      , Sarah.Middleware.Client
                      , Sarah.Middleware.Device.AC.Toshiba
+                     , Sarah.Middleware.Device.Sensor.DHT22
                      , Sarah.Middleware.Master
                      , Sarah.Middleware.Master.Messages
                      , Sarah.Middleware.Model
@@ -32,6 +34,7 @@ library
                      , Sarah.Middleware.Slave.Messages
                      , Sarah.Middleware.Util
   c-sources:           src/Sarah/Middleware/Device/AC/Toshiba.c
+                     , src/Sarah/Middleware/Device/Sensor/DHT22.c
   cc-options:          -Wall -O2
   extra-libraries:     m
                      , pigpio

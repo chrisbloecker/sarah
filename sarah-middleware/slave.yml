@@ -11,4 +11,10 @@ devices:
       Toshiba_RAS_M16NKCV: []
   interface:
     gpio: 23
+- name: DHT22
+  model:
+    Sensor:
+      DHT22: []
+  interface:
+    gpio: 4
 nodeName: Node One

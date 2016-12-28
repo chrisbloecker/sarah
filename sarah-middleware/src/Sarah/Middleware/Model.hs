@@ -53,19 +53,24 @@ deriveJSON jsonOptions ''WebAddress
 
 --------------------------------------------------------------------------------
 
-data Device = Device { deviceName      :: Text
-                     , deviceModel     :: DeviceModel
-                     , deviceInterface :: Interface
+data Device = Device { _deviceName      :: Text
+                     , _deviceModel     :: DeviceModel
+                     , _deviceInterface :: Interface
                      }
   deriving (Generic, Typeable, Show)
 
-data DeviceModel = AC ACModel
-                 | TV TVModel
+data DeviceModel = AC     ACModel
+                 | Sensor SensorModel
+                 | TV     TVModel
   deriving (Generic, Typeable, Show, Eq)
 
 data ACModel = Toshiba_RAS_M13NKCV
              | Toshiba_RAS_M16NKCV
              | Toshiba_16NKV_E
+  deriving (Generic, Typeable, Show, Eq)
+
+data SensorModel = BPM180
+                 | DHT22
   deriving (Generic, Typeable, Show, Eq)
 
 data TVModel = LG
@@ -77,12 +82,16 @@ data Interface = GPIO Pin
 instance Binary Device
 instance Binary DeviceModel
 instance Binary ACModel
+instance Binary SensorModel
 instance Binary TVModel
 instance Binary Interface
 
+makeLenses ''Device
+
 deriveJSON jsonOptions ''Interface
-deriveJSON jsonOptions ''ACModel
 deriveJSON jsonOptions ''TVModel
+deriveJSON jsonOptions ''SensorModel
+deriveJSON jsonOptions ''ACModel
 deriveJSON jsonOptions ''DeviceModel
 deriveJSON jsonOptions ''Device
 
@@ -90,12 +99,12 @@ deriveJSON jsonOptions ''Device
 
 data Status = Status { _connectedNodes :: [NodeInfo]
                      }
-  deriving (Generic, Typeable)
+  deriving (Generic, Typeable, Show)
 
 data NodeInfo = NodeInfo { _nodeName    :: NodeName
                          , _nodeDevices :: [Device]
                          }
-  deriving (Generic, Typeable)
+  deriving (Generic, Typeable, Show)
 
 type NodeName = Text
 

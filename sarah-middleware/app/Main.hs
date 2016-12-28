@@ -26,6 +26,8 @@ import           Sarah.Middleware.Slave
 --------------------------------------------------------------------------------
 import qualified Data.ByteString as BS
 import qualified Data.Yaml       as Y
+import qualified Sarah.Middleware.Device.Sensor.DHT22 as DHT22
+import           Raspberry.GPIO
 --------------------------------------------------------------------------------
 
 data NodeRole = RoleMaster | RoleSlave
@@ -53,6 +55,7 @@ corsPolicy = cors (const $ Just policy)
 go :: Options -> IO ()
 go Options{..} = case nodeRole of
   RoleMaster -> do
+    print =<< DHT22.get (Pin 4)
     let masterSettingsFile = fromMaybe "master.yml" settingsFile
     mSettings <- Y.decodeEither <$> BS.readFile masterSettingsFile
 
