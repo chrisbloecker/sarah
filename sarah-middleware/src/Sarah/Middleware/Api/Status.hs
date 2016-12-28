@@ -25,5 +25,5 @@ statusServer = getStatus
 getStatus :: MiddlewareApp Status
 getStatus = do
   Config{..} <- ask
-  return =<< liftIO . localProcess $ do Master.getStatus master =<< getSelfPid
-                                        expect :: Process Status
+  return =<< liftIO . runLocally $ do Master.getStatus master =<< getSelfPid
+                                      expect :: Process Status

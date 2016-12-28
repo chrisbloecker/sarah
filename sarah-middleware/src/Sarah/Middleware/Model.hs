@@ -36,11 +36,11 @@ runEIO = liftIO . runExceptT
 newtype Master = Master ProcessId deriving (Eq, Generic, Typeable, Show)
 newtype Slave  = Slave  ProcessId deriving (Eq, Generic, Typeable, Show)
 
-data Config = Config { master       :: Master
-                     , localNode    :: LocalNode
-                     , localProcess :: forall a. Process a -> IO a
-                     , manager      :: Manager
-                     , backend      :: BaseUrl
+data Config = Config { master     :: Master
+                     , localNode  :: LocalNode
+                     , runLocally :: forall a. Process a -> IO a
+                     , manager    :: Manager
+                     , backend    :: BaseUrl
                      }
 
 --------------------------------------------------------------------------------

@@ -69,14 +69,14 @@ go Options{..} = case nodeRole of
             masterPid <- forkProcess node runMaster
             manager   <- newManager defaultManagerSettings
 
-            let config = Config { master       = Master masterPid
-                                , localNode    = node
-                                , localProcess = \p -> liftIO $ do m <- newEmptyMVar
-                                                                   runProcess node $ do r <- p
-                                                                                        liftIO $ putMVar m r
-                                                                   takeMVar m
-                                , backend      = BaseUrl Http (host backend) (port backend) ""
-                                , manager      = manager
+            let config = Config { master     = Master masterPid
+                                , localNode  = node
+                                , runLocally = \p -> liftIO $ do m <- newEmptyMVar
+                                                                 runProcess node $ do r <- p
+                                                                                      liftIO $ putMVar m r
+                                                                 takeMVar m
+                                , backend    = BaseUrl Http (host backend) (port backend) ""
+                                , manager    = manager
                                 }
 
             run webPort $ logStdoutDev $ corsPolicy $ app config
@@ -102,7 +102,4 @@ main :: IO ()
 main = execParser opts >>= go
   where
     opts = info (helper <*> options)
-           ( fullDesc
-          <> progDesc "Sarah Middleware"
-          <> header ""
-           )
+                (mconcat [fullDesc, progDesc "Sarah Middleware", header ""])
