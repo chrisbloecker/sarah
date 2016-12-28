@@ -4,6 +4,7 @@
 module Main
   where
 --------------------------------------------------------------------------------
+import           Control.Concurrent.MVar
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Node     (initRemoteTable, forkProcess, runProcess, newLocalNode)
 import           Control.Exception                    (throw)
@@ -21,7 +22,6 @@ import           Servant.Client                       (BaseUrl (..), Scheme (Htt
 import           Sarah.Middleware.Api
 import           Sarah.Middleware.Master
 import           Sarah.Middleware.Model
-import           Sarah.Middleware.Settings
 import           Sarah.Middleware.Slave
 --------------------------------------------------------------------------------
 import qualified Data.ByteString as BS
@@ -69,10 +69,14 @@ go Options{..} = case nodeRole of
             masterPid <- forkProcess node runMaster
             manager   <- newManager defaultManagerSettings
 
-            let config = Config { masterPid = masterPid
-                                , localNode = node
-                                , backend   = BaseUrl Http (host backend) (port backend) ""
-                                , manager   = manager
+            let config = Config { master       = Master masterPid
+                                , localNode    = node
+                                , localProcess = \p -> liftIO $ do m <- newEmptyMVar
+                                                                   runProcess node $ do r <- p
+                                                                                        liftIO $ putMVar m r
+                                                                   takeMVar m
+                                , backend      = BaseUrl Http (host backend) (port backend) ""
+                                , manager      = manager
                                 }
 
             run webPort $ logStdoutDev $ corsPolicy $ app config

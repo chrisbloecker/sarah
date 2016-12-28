@@ -11,3 +11,4 @@ devices:
       Toshiba_RAS_M16NKCV: []
   interface:
     gpio: 23
+nodeName: Node One

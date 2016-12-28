@@ -20,10 +20,12 @@ import          Servant
 --------------------------------------------------------------------------------
 import          Sarah.Middleware.Api.Device
 import          Sarah.Middleware.Api.Sensor
+import          Sarah.Middleware.Api.Status
 --------------------------------------------------------------------------------
 
 type MiddlewareApi = DeviceApi
                 :<|> SensorApi
+                :<|> StatusApi
 
 --------------------------------------------------------------------------------
 
@@ -40,6 +42,7 @@ runAppProcess p = do
 apiServer :: ServerT MiddlewareApi MiddlewareApp
 apiServer = deviceServer
        :<|> sensorServer
+       :<|> statusServer
 
 appToServer :: Config -> Server MiddlewareApi
 appToServer config = enter (convertApp config) apiServer
