@@ -1,19 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------------------
-module Sarah.GUI.Templates
+module Sarah.GUI.Widgets
   where
 --------------------------------------------------------------------------------
-import           Prelude                     hiding (div, span, id)
-import           Graphics.UI.Threepenny
+import Prelude                      hiding (div, span, id)
+import Graphics.UI.Threepenny
+import Graphics.UI.Threepenny.Extra
 --------------------------------------------------------------------------------
-
-strAttr :: String -> WriteAttr Element String
-strAttr name = mkWriteAttr (set' (attr name))
-
-nav = mkElement "nav"
-role = strAttr "role"
-datatoggle = strAttr "data-toggle"
-datatarget = strAttr "data-target"
 
 mkNavbar :: UI Element
 mkNavbar =
@@ -23,7 +16,8 @@ mkNavbar =
                         #+ [ button # set type_ "button"
                                     # set class_ "navbar-toggle collapsed"
                                     # set datatoggle "collapse"
-                                    # set datatarget "the-navbar"
+                                    # set datatarget "#the-navbar"
+                                    # set ariaexpanded "false"
                                     #+ [ span # set class_ "icon-bar"
                                        , span # set class_ "icon-bar"
                                        , span # set class_ "icon-bar"
@@ -39,6 +33,8 @@ mkNavbar =
                                         #+ [ a # set class_ "dropdown-toggle"
                                                # set datatoggle "dropdown"
                                                # set role "button"
+                                               # set ariahaspopup "true"
+                                               # set ariaexpanded "false"
                                                # set text "Rooms"
                                                # set href "#"
                                                #+ [ span # set class_ "caret"

@@ -4,21 +4,26 @@ module Sarah.GUI
   ( setup
   ) where
 --------------------------------------------------------------------------------
-import           Control.Monad                            (void)
-import           Control.Monad.Except                     (ExceptT, runExceptT, liftIO)
+import           Control.Monad                             (void)
+import           Control.Monad.Except                      (ExceptT, runExceptT, liftIO)
+import           Graphics.UI.Threepenny
 import           Graphics.UI.Threepenny.Core
+import           Prelude                            hiding (div)
 import           Sarah.GUI.Model
-import           Sarah.GUI.Templates
+import           Sarah.GUI.Widgets
 import           Sarah.Middleware.Client
 import           Sarah.Middleware.Device.AC.Toshiba as AC
---------------------------------------------------------------------------------
-import qualified Graphics.UI.Threepenny      as UI
 --------------------------------------------------------------------------------
 
 setup :: MiddlewareConfig -> Window -> UI ()
 setup MiddlewareConfig{..} window = void $ do
   navbar <- mkNavbar
-  getBody window #+ [element navbar]
+
+  content <- renderInfo
+
+  getBody window #+ [ element navbar
+                    , div # set id_ "content"
+                    ]
 
 {-
   buttonOn  <- UI.button # set UI.text "On"
