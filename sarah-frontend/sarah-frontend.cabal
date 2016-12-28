@@ -25,8 +25,10 @@ executable sarah-frontend
                      , blaze-markup
                      , bytestring
                      , http-client
+                     , lens
                      , mtl
                      , optparse-applicative
                      , sarah-middleware
                      , servant-client
+                     , text
                      , threepenny-gui

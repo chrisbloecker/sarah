@@ -11,18 +11,20 @@ import           Graphics.UI.Threepenny.Core
 import           Prelude                            hiding (div)
 import           Sarah.GUI.Model
 import           Sarah.GUI.Widgets
-import           Sarah.Middleware.Client
 import           Sarah.Middleware.Device.AC.Toshiba as AC
+--------------------------------------------------------------------------------
+import qualified Sarah.Middleware.Client as Middleware
 --------------------------------------------------------------------------------
 
 setup :: MiddlewareConfig -> Window -> UI ()
 setup MiddlewareConfig{..} window = void $ do
-  navbar <- mkNavbar
-
-  content <- renderInfo
+  navbar  <- mkNavbar
+  content <- runEIO $ Middleware.getStatus manager middleware
 
   getBody window #+ [ element navbar
                     , div # set id_ "content"
+                          # set class_ "container"
+                          #+ either (const []) renderStatus content
                     ]
 
 {-

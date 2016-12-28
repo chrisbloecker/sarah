@@ -1,5 +1,5 @@
 build:
 	@stack install --local-bin-path .
-	@docker build -t sarah-persist:latest .
+#	@docker build -t sarah-persist:latest .
 
 .PHONY: build
