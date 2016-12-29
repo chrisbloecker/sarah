@@ -1,5 +1,5 @@
-#ifndef __DHT22_H_
-#define __DHT22_H_
+#ifndef __DHT22_H__
+#define __DHT22_H__
 
 #include <stdio.h>
 #include <pigpio.h>
@@ -15,14 +15,18 @@
 // the data afterwards.
 #define DHT_PULSES 41
 
-static inline int readDHT22(uint32_t pin, float* humidity, float* temperature)
+#define OK                (0)
+#define ERROR_INIT_FAILED (1)
+#define ERROR_TIMEOUT     (2)
+
+static inline int readDHT22(uint32_t pin, double* humidity, double* temperature)
 {
   // Init pigpio
   if (gpioInitialise() < 0)
   {
     // Initialization failed
     fprintf(stderr, "GPIO Initialization failed\n");
-    return 1;
+    return ERROR_INIT_FAILED;
   }
 
   unsigned i = 0;
@@ -50,7 +54,7 @@ static inline int readDHT22(uint32_t pin, float* humidity, float* temperature)
     if (++waiting >= DHT_MAXCOUNT)
     {
       fprintf(stderr, "Timeout reading DHT22\n");
-      return 1;
+      return ERROR_TIMEOUT;
     }
 
   for (i = 0; i < 2*DHT_PULSES; i += 2)
@@ -59,14 +63,14 @@ static inline int readDHT22(uint32_t pin, float* humidity, float* temperature)
       if (++pulseCounts[i] >= DHT_MAXCOUNT)
       {
         fprintf(stderr, "Timeout reading DHT22\n");
-        return 1;
+        return ERROR_TIMEOUT;
       }
 
     while (gpioRead(pin))
       if (++pulseCounts[i+1] >= DHT_MAXCOUNT)
       {
         fprintf(stderr, "Timeout reading DHT22\n");
-        return 1;
+        return ERROR_TIMEOUT;
       }
   }
 
@@ -85,21 +89,21 @@ static inline int readDHT22(uint32_t pin, float* humidity, float* temperature)
       data[index] |= 1;
   }
 
-  // Useful debug info:
-  fprintf(stderr, "Data: 0x%x 0x%x 0x%x 0x%x 0x%x\n", data[0], data[1], data[2], data[3], data[4]);
+  // debug
+  //fprintf(stderr, "Data: 0x%x 0x%x 0x%x 0x%x 0x%x\n", data[0], data[1], data[2], data[3], data[4]);
 
   // Verify checksum of received data.
   if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF))
   {
-    *humidity    = (data[0] * 256 + data[1]) / 10.0f;
-    *temperature = ((data[2] & 0x7F) * 256 + data[3]) / 10.0f;
+    *humidity    = (data[0] * 256 + data[1]) / 10.0;
+    *temperature = ((data[2] & 0x7F) * 256 + data[3]) / 10.0;
     if (data[2] & 0x80)
-      *temperature *= -1.0f;
+      *temperature *= -1.0;
   }
 
   // Cleanup
   gpioTerminate();
-  return 0;
+  return OK;
 }
 
 #endif
