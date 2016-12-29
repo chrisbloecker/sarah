@@ -70,6 +70,24 @@ static inline int readDHT22(uint32_t pin, float* humidity, float* temperature)
       }
   }
 
+  unsigned threshold = 0;
+  for (i = 2; i < DHT_PULSES*2; i += 2)
+    threshold += pulseCounts[i];
+  threshold /= DHT_PULSES-1;
+
+  uint8_t data[5] = {0};
+  for (i = 3; i < DHT_PULSES*2; i += 2)
+  {
+    int index = (i-3) / 16;
+    data[index] <<= 1;
+    // One bit for long pulse.
+    if (pulseCounts[i] >= threshold)
+      data[index] |= 1;
+  }
+
+  // Useful debug info:
+  fprintf(stderr, "Data: 0x%x 0x%x 0x%x 0x%x 0x%x\n", data[0], data[1], data[2], data[3], data[4]);
+
   for (i = 0; i < DHT_PULSES; ++i)
     fprintf(stderr, "%i", pulseCounts[i]);
 
