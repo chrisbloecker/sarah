@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RecordWildCards   #-}
@@ -11,22 +13,24 @@ import           Data.Bits             (Bits, testBit, xor, zeroBits)
 import           Data.ByteString       (ByteString)
 import           Data.Monoid           ((<>))
 import           Import.DeriveJSON
+import           Import.MkBinary
 import           Raspberry.GPIO
 --------------------------------------------------------------------------------
 import qualified Data.ByteString   as BS
 import qualified Language.C.Inline as C
 --------------------------------------------------------------------------------
 
-data Temperature = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30
-data Fan         = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh
-data Mode        = ModeAuto | ModeCool | ModeDry | ModeFan | ModeOff
-data Power       = PowerHigh | PowerEco
+data Temperature = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30 deriving (Binary, Generic, Typeable)
+data Fan         = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Binary, Generic, Typeable)
+data Mode        = ModeAuto | ModeCool | ModeDry | ModeFan | ModeOff                                 deriving (Binary, Generic, Typeable)
+data Power       = PowerHigh | PowerEco                                                              deriving (Binary, Generic, Typeable)
 
 data Config = Config { temperature :: Temperature
                      , fan         :: Fan
                      , mode        :: Mode
                      , mpower      :: Maybe Power
                      }
+  deriving (Binary, Generic, Typeable)
 
 instance ToBits Temperature where
   toBits T17 = 0x0
@@ -175,3 +179,5 @@ send (Pin pin) config = do
            }
          |]
   return ()
+
+--------------------------------------------------------------------------------

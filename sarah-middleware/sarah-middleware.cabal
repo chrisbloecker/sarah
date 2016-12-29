@@ -25,6 +25,7 @@ library
                      , Sarah.Middleware.Api.Sensor
                      , Sarah.Middleware.Api.Status
                      , Sarah.Middleware.Client
+                     , Sarah.Middleware.Device
                      , Sarah.Middleware.Device.AC.Toshiba
                      , Sarah.Middleware.Device.Sensor.DHT22
                      , Sarah.Middleware.Master
