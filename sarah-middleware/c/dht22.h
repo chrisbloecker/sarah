@@ -88,8 +88,14 @@ static inline int readDHT22(uint32_t pin, float* humidity, float* temperature)
   // Useful debug info:
   fprintf(stderr, "Data: 0x%x 0x%x 0x%x 0x%x 0x%x\n", data[0], data[1], data[2], data[3], data[4]);
 
-  for (i = 0; i < DHT_PULSES; ++i)
-    fprintf(stderr, "%i", pulseCounts[i]);
+  // Verify checksum of received data.
+  if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF))
+  {
+    *humidity    = (data[0] * 256 + data[1]) / 10.0f;
+    *temperature = ((data[2] & 0x7F) * 256 + data[3]) / 10.0f;
+    if (data[2] & 0x80)
+      *temperature *= -1.0f;
+  }
 
   // Cleanup
   gpioTerminate();
