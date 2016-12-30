@@ -28,7 +28,7 @@ type MiddlewareApi = DeviceApi
                 :<|> StatusApi
 
 --------------------------------------------------------------------------------
-
+{-
 runAppProcess :: Process a -> MiddlewareApp a
 runAppProcess p = do
   Config{..} <- ask
@@ -38,7 +38,7 @@ runAppProcess p = do
       res <- p
       liftIO $ putMVar mvar res
     takeMVar mvar
-
+-}
 apiServer :: ServerT MiddlewareApi MiddlewareApp
 apiServer = deviceServer
        :<|> sensorServer

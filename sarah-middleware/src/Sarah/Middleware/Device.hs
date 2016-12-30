@@ -24,9 +24,9 @@ setupDevice device = do
 toshibaServer :: Interface -> Process ()
 toshibaServer interface =
   case interface of
-    GPIO (Pin pin) -> do
+    GPIO pin -> do
       _config <- expect
-      Toshiba.send pin _config
+      liftIO $ Toshiba.send pin _config
       toshibaServer interface
 
 dht22Server :: Interface -> Process ()

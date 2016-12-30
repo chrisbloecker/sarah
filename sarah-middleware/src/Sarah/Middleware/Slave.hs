@@ -39,7 +39,7 @@ runSlave SlaveSettings{..} = do
     Nothing ->
       say "No master found... Terminating..."
     Just master -> do
-      deviceProcesses <- fromList . zip [1..] <$> mapM (runDeviceProcess . view deviceModel) devices
+      deviceProcesses <- fromList . zip [1..] <$> mapM (liftIO . setupDevice) devices
 
       self <- getSelfPid
       nodeUp master self (NodeInfo nodeName devices)

@@ -13,15 +13,17 @@ import qualified Data.Vector.Storable.Mutable as V
 newtype Temperature = Temperature { unTemperature :: Double } deriving (Show)
 newtype Humidity    = Humidity    { unHumidity    :: Double } deriving (Show)
 
-data Error = INIT_FAILED
-           | TIMEOUT
-           | UNKNOWN
+data Error = InitFailed
+           | Timeout
+           | Parameter
+           | Unknown
   deriving (Show)
 
 toError :: C.CInt -> Error
-toError 1 = INIT_FAILED
-toError 2 = TIMEOUT
-toError _ = UNKNOWN
+toError 1 = InitFailed
+toError 2 = Timeout
+toError 3 = Parameter
+toError _ = Unknown
 
 --------------------------------------------------------------------------------
 
