@@ -16,6 +16,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Sarah.Persist.Api
+                     , Sarah.Persist.Api.Log
                      , Sarah.Persist.Api.Sensor
                      , Sarah.Persist.Client
                      , Sarah.Persist.Model

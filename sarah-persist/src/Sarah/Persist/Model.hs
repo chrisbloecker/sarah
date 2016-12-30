@@ -34,7 +34,9 @@ SensorReading json
 Log json
     date Day
     time TimeOfDay
+    source Text
     text Text
+    level LogLevel
     deriving Show
 |]
 

@@ -1,15 +1,17 @@
-{-# LANGUAGE DataKinds         #-}
-{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE DataKinds     #-}
+{-# LANGUAGE TypeOperators #-}
 --------------------------------------------------------------------------------
 module Sarah.Persist.Api.Sensor
-  where
+  ( SensorApi
+  , sensorServer
+  ) where
 --------------------------------------------------------------------------------
-import           Data.Time.Calendar       (Day)
-import           Database.Persist
-import           Sarah.Persist.Model
-import           Sarah.Persist.Types
-import           Servant
-import           Servant.Client
+import Data.Time.Calendar  (Day)
+import Database.Persist
+import Sarah.Persist.Model
+import Sarah.Persist.Types
+import Servant
+import Servant.Client
 --------------------------------------------------------------------------------
 
 type SensorApi = "sensor-readings" :> "date"   :> Capture "date"   Day
