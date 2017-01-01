@@ -4,19 +4,20 @@
 module Main
   where
 --------------------------------------------------------------------------------
-import Control.Monad.Logger                 (runStderrLoggingT)
-import Database.Persist.MySQL               (ConnectInfo (..), createMySQLPool, defaultConnectInfo)
-import Database.Persist.Sql                 (ConnectionPool, runMigration, runSqlPool)
-import Network.Wai                          (Application, Middleware)
-import Network.Wai.Handler.Warp             (run)
-import Network.Wai.Middleware.RequestLogger (logStdoutDev)
-import Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
-import Servant
-import System.Envy
+import           Control.Monad.Logger                 (runStderrLoggingT)
+import           Database.Persist.MySQL               (ConnectInfo (..), createMySQLPool, defaultConnectInfo)
+import           Database.Persist.Sql                 (ConnectionPool, runMigration, runSqlPool)
+import           Network.Wai                          (Application, Middleware)
+import           Network.Wai.Handler.Warp             (run)
+import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
+import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
+import           Sarah.Persist.Api                    (app)
+import           Sarah.Persist.Model
+import           Sarah.Persist.Settings
+import           Servant
 --------------------------------------------------------------------------------
-import Sarah.Persist.Api                    (app)
-import Sarah.Persist.Model
-import Sarah.Persist.Settings
+import qualified Data.ByteString as BS
+import qualified Data.Yaml       as Y
 --------------------------------------------------------------------------------
 
 corsPolicy :: Middleware
@@ -39,10 +40,11 @@ mkPool settings =
 
 main :: IO ()
 main = do
-  msettings <- decodeEnv :: IO (Either String Settings)
+  let settingsFile = "settings.yml"
+  msettings <- Y.decodeEither <$> BS.readFile settingsFile
 
   case msettings of
-    Left err -> putStrLn err
+    Left err -> putStrLn $ "Parsing error: " ++ settingsFile ++ " is invalid. " ++ err
     Right settings@Settings{..} -> do
       print settings
 

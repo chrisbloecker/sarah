@@ -1,10 +1,9 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE TemplateHaskell #-}
 --------------------------------------------------------------------------------
 module Sarah.Persist.Settings
   where
 --------------------------------------------------------------------------------
-import GHC.Generics (Generic)
-import System.Envy
+import Import.DeriveJSON
 --------------------------------------------------------------------------------
 
 data Settings = Settings { appPort    :: Int
@@ -14,15 +13,6 @@ data Settings = Settings { appPort    :: Int
                          , dbPassword :: String
                          , dbDatabase :: String
                          }
-  deriving (Generic, Show)
+  deriving (Show)
 
-instance DefConfig Settings where
-  defConfig = Settings { appPort    = 8080
-                       , dbHost     = "localhost"
-                       , dbPort     = 3306
-                       , dbUser     = "anonymous"
-                       , dbPassword = "secret"
-                       , dbDatabase = "test"
-                       }
-
-instance FromEnv Settings
+deriveJSON jsonOptions ''Settings
