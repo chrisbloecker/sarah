@@ -2,7 +2,7 @@ slaveNode:
   host: localhost
   port: 50001
 master:
-  host: localhost
+  host: 192.168.0.7
   port: 50000
 devices:
 - name: AC

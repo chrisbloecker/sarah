@@ -48,7 +48,7 @@ data Config = Config { master     :: Master
 type Host = String
 type Port = Int
 
-data WebAddress = WebAddress { host :: Host, port :: Port }
+data WebAddress = WebAddress { host :: Host, port :: Port } deriving (Show)
 deriveJSON jsonOptions ''WebAddress
 
 --------------------------------------------------------------------------------

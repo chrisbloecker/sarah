@@ -25,6 +25,7 @@ data SlaveSettings = SlaveSettings { slaveNode :: WebAddress
                                    , devices   :: [Device]
                                    , nodeName  :: Text
                                    }
+  deriving (Show)
 deriveJSON jsonOptions ''SlaveSettings
 
 data State = State { _deviceProcesses :: Map Int ProcessId }
@@ -48,4 +49,7 @@ runSlave SlaveSettings{..} = do
       loop $ State deviceProcesses
 
 loop :: State -> Process ()
-loop state = undefined
+loop state =
+  receiveWait [ match $ \Terminate ->
+                  return ()
+              ]

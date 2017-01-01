@@ -25,7 +25,7 @@ fieldLabel "mpower"      = "power"
 fieldLabel "_deviceName"      = "name"
 fieldLabel "_deviceModel"     = "model"
 fieldLabel "_deviceInterface" = "interface"
-fieldLabel "unPin"           = "gpio"
+fieldLabel "unPin"            = "gpio"
 
 fieldLabel s             = s
 

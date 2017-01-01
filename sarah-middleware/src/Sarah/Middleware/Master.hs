@@ -21,6 +21,7 @@ data MasterSettings = MasterSettings { masterNode :: WebAddress
                                      , backend    :: WebAddress
                                      , webPort    :: Port
                                      }
+  deriving (Show)
 deriveJSON jsonOptions ''MasterSettings
 
 data State = State { _nodes :: Map ProcessId NodeInfo }

@@ -60,6 +60,7 @@ go Options{..} = case nodeRole of
       Left err ->
         putStrLn $ "Parsing error: " ++ masterSettingsFile ++ " is invalid. " ++ err
       Right settings@MasterSettings{..} -> do
+        print settings
         mTransport <- createTransport (host masterNode) (show . port $ masterNode) defaultTCPParameters
         case mTransport of
           Left err ->
@@ -84,18 +85,19 @@ go Options{..} = case nodeRole of
 
   RoleSlave -> do
     let slaveSettingsFile = fromMaybe "slave.yml" settingsFile
-    mSlaveSettings <- Y.decodeEither <$> BS.readFile slaveSettingsFile
-    case mSlaveSettings of
+    mSettings <- Y.decodeEither <$> BS.readFile slaveSettingsFile
+    case mSettings of
       Left err ->
         putStrLn $ "Parse error: " ++ slaveSettingsFile ++ " is invalid. " ++ err
-      Right slaveSettings@SlaveSettings{..} -> do
+      Right settings@SlaveSettings{..} -> do
+        print settings
         mTransport <- createTransport (host slaveNode) (show . port $ slaveNode) defaultTCPParameters
         case mTransport of
           Left err ->
             throw err
           Right transport -> do
             node <- newLocalNode transport initRemoteTable
-            runProcess node (runSlave slaveSettings)
+            runProcess node (runSlave settings)
 
 
 main :: IO ()
