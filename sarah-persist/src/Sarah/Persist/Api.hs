@@ -13,7 +13,7 @@ import Data.Text            (Text)
 import Network.Wai          (Application)
 import Sarah.Persist.Api.Log
 import Sarah.Persist.Api.Sensor
-import Sarah.Persist.Types
+import Sarah.Persist.Model
 import Servant
 --------------------------------------------------------------------------------
 

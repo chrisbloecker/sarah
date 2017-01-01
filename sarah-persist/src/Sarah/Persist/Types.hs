@@ -7,29 +7,18 @@
 module Sarah.Persist.Types
   where
 --------------------------------------------------------------------------------
-import Control.Monad.Except (MonadError, ExceptT)
-import Control.Monad.Reader (MonadIO, MonadReader, ReaderT)
 import Data.Aeson.TH
 import Data.Bifunctor       (bimap)
 import Data.Text            (pack, unpack)
-import Database.Persist.Sql (ConnectionPool)
 import Database.Persist.TH
 import GHC.Generics         (Generic)
-import Servant              (FromHttpApiData (..), ToHttpApiData (..), ServantErr)
+import Servant              (FromHttpApiData (..), ToHttpApiData (..))
 import Text.Read            (readEither)
---------------------------------------------------------------------------------
-
-newtype PersistApp a = PersistApp { runPersistApp :: ReaderT Config (ExceptT ServantErr IO) a }
-  deriving (Functor, Applicative, Monad, MonadReader Config, MonadError ServantErr, MonadIO)
-
-data Config = Config { getPool :: ConnectionPool }
-
 --------------------------------------------------------------------------------
 
 data Room     = Bedroom | Livingroom | Kitchen | Office  deriving (Show, Read, Eq, Generic)
 data Sensor   = Temperature | Humidity | Pressure        deriving (Show, Read, Eq, Generic)
 data LogLevel = Info | Debug | Error                     deriving (Show, Read, Eq, Generic)
---------------------------------------------------------------------------------
 
 instance FromHttpApiData Room      where parseUrlPiece = bimap pack id . readEither . unpack
 instance FromHttpApiData Sensor    where parseUrlPiece = bimap pack id . readEither . unpack
