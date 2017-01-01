@@ -6,6 +6,7 @@ module Sarah.Middleware.Slave
   , runSlave
   ) where
 --------------------------------------------------------------------------------
+import           Control.Concurrent               (threadDelay)
 import           Control.Distributed.Process
 import           Control.Monad
 import           Control.Lens
@@ -16,6 +17,7 @@ import           Sarah.Middleware.Model
 import           Sarah.Middleware.Slave.Messages
 import           Sarah.Middleware.Device
 import           Sarah.Middleware.Util
+import           Sarah.Persist.Model
 --------------------------------------------------------------------------------
 import qualified Data.Map as M
 --------------------------------------------------------------------------------
@@ -24,6 +26,7 @@ data SlaveSettings = SlaveSettings { slaveNode :: WebAddress
                                    , master    :: WebAddress
                                    , devices   :: [Device]
                                    , nodeName  :: Text
+                                   , room      :: Room
                                    }
   deriving (Show)
 deriveJSON jsonOptions ''SlaveSettings
@@ -37,10 +40,12 @@ runSlave :: SlaveSettings -> Process ()
 runSlave SlaveSettings{..} = do
   mmaster <- findMaster (host master) (show . port $ master) (seconds 1)
   case mmaster of
-    Nothing ->
+    Nothing -> do
       say "No master found... Terminating..."
+      -- make sure there's enough time to print the message
+      liftIO $ threadDelay 100000
     Just master -> do
-      deviceProcesses <- fromList . zip [1..] <$> mapM (liftIO . setupDevice) devices
+      deviceProcesses <- fromList . zip [1..] <$> mapM (liftIO . setupDevice master room) devices
 
       self <- getSelfPid
       nodeUp master self (NodeInfo nodeName devices)

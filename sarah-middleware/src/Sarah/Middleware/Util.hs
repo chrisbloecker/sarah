@@ -37,7 +37,6 @@ findMaster host port (Timeout timeout) = do
   let remoteNode = NodeId $ encodeEndPointAddress host port 0
   whereisRemoteAsync remoteNode masterName
   mpid <- join <$> receiveTimeout timeout [ match $ \(WhereIsReply _ mpid) -> return mpid ]
-  say $ "Master found at " ++ show mpid
   return $ Master <$> mpid
 
 linkMaster :: Master -> Process ()

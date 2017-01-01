@@ -17,6 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Import.DeriveJSON
                      , Import.MkBinary
+                     , Physics
                      , Raspberry.GPIO
                      , Raspberry.Hardware
                      , Raspberry.I2C
@@ -48,6 +49,7 @@ library
                      , binary
                      , bytestring
                      , containers
+                     , clock
                      , distributed-process
                      , distributed-process-extras
                      , http-client

@@ -4,14 +4,12 @@
 module Sarah.Middleware.Device.Sensor.DHT22
   where
 --------------------------------------------------------------------------------
+import           Physics
 import           Raspberry.GPIO
 --------------------------------------------------------------------------------
 import qualified Language.C.Inline            as C
 import qualified Data.Vector.Storable.Mutable as V
 --------------------------------------------------------------------------------
-
-newtype Temperature = Temperature { unTemperature :: Double } deriving (Show)
-newtype Humidity    = Humidity    { unHumidity    :: Double } deriving (Show)
 
 data Error = InitFailed
            | Timeout
