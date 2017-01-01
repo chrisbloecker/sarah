@@ -60,15 +60,15 @@ go Options{..} = case nodeRole of
       Left err ->
         putStrLn $ "Parsing error: " ++ masterSettingsFile ++ " is invalid. " ++ err
       Right settings@MasterSettings{..} -> do
-        print settings
         mTransport <- createTransport (host masterNode) (show . port $ masterNode) defaultTCPParameters
         case mTransport of
           Left err ->
             throw err
           Right transport -> do
-            node      <- newLocalNode transport initRemoteTable
-            masterPid <- forkProcess node runMaster
             manager   <- newManager defaultManagerSettings
+            let persist = BaseUrl Http (host backend) (port backend) ""
+            node      <- newLocalNode transport initRemoteTable
+            masterPid <- forkProcess node (runMaster manager persist)
 
             let config = Config { master     = Master masterPid
                                 , localNode  = node
@@ -76,7 +76,7 @@ go Options{..} = case nodeRole of
                                                                  runProcess node $ do r <- p
                                                                                       liftIO $ putMVar m r
                                                                  takeMVar m
-                                , backend    = BaseUrl Http (host backend) (port backend) ""
+                                , backend    = persist
                                 , manager    = manager
                                 }
 
@@ -90,7 +90,6 @@ go Options{..} = case nodeRole of
       Left err ->
         putStrLn $ "Parse error: " ++ slaveSettingsFile ++ " is invalid. " ++ err
       Right settings@SlaveSettings{..} -> do
-        print settings
         mTransport <- createTransport (host slaveNode) (show . port $ slaveNode) defaultTCPParameters
         case mTransport of
           Left err ->

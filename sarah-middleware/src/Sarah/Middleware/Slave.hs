@@ -28,7 +28,6 @@ data SlaveSettings = SlaveSettings { slaveNode :: WebAddress
                                    , nodeName  :: Text
                                    , room      :: Room
                                    }
-  deriving (Show)
 deriveJSON jsonOptions ''SlaveSettings
 
 data State = State { _deviceProcesses :: Map Int ProcessId }

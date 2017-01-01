@@ -11,37 +11,56 @@ import Control.Distributed.Process
 import Control.Lens
 import Data.Map
 import Data.Text                        (unpack)
+import Data.Time.Calendar
+import Data.Time.Clock
+import Data.Time.LocalTime
 import Import.DeriveJSON
+import Network.HTTP.Client              (Manager)
 import Sarah.Middleware.Master.Messages
-import Sarah.Middleware.Model
+import Sarah.Middleware.Model           hiding (manager)
 import Sarah.Middleware.Util
+import Servant.Common.BaseUrl           (BaseUrl)
+--------------------------------------------------------------------------------
+import qualified Sarah.Persist.Model  as Persist
+import qualified Sarah.Persist.Client as Persist
 --------------------------------------------------------------------------------
 
 data MasterSettings = MasterSettings { masterNode :: WebAddress
                                      , backend    :: WebAddress
                                      , webPort    :: Port
                                      }
-  deriving (Show)
 deriveJSON jsonOptions ''MasterSettings
 
-data State = State { _nodes :: Map ProcessId NodeInfo }
+data State = State { _nodes   :: Map ProcessId NodeInfo
+                   , _manager :: Manager
+                   , _persist :: BaseUrl
+                   }
 makeLenses ''State
-
-initialState :: State
-initialState = State { _nodes = empty }
 
 --------------------------------------------------------------------------------
 
-runMaster :: Process ()
-runMaster = do
+runMaster :: Manager -> BaseUrl -> Process ()
+runMaster manager persist = do
   self <- getSelfPid
   register masterName self
   say "Master up"
-  loop initialState
+  loop $ State empty manager persist
+
 
 loop :: State -> Process ()
 loop state =
-  receiveWait [ match $ \(NodeUp pid nodeInfo) -> do
+  receiveWait [ match $ \(GetStatus pid) -> do
+                  send pid (Status $ state^.nodes^..folded)
+                  loop state
+
+              , match $ \(Log nodeName message logLevel) -> do
+                  spawnLocal $ liftIO $ do now <- getCurrentTime
+                                           let logEntry = Persist.Log (utctDay now) (timeToTimeOfDay . utctDayTime $ now) nodeName message logLevel
+                                           runEIO $ Persist.putLog logEntry (state^.manager) (state^.persist)
+                                           return ()
+                  loop state
+
+              , match $ \(NodeUp pid nodeInfo) -> do
                   say . unwords $ [ nodeInfo^.nodeName & unpack
                                   , "connected"
                                   , show pid
@@ -49,8 +68,11 @@ loop state =
                   mon <- monitor pid
                   loop $ state & nodes.at pid .~ Just nodeInfo
 
-              , match $ \(GetStatus pid) -> do
-                  send pid (Status $ state^.nodes^..folded)
+              , match $ \(SensorReading room sensor value) -> do
+                  spawnLocal $ liftIO $ do now <- getCurrentTime
+                                           let sensorReading = Persist.SensorReading (utctDay now) (timeToTimeOfDay . utctDayTime $ now) room sensor value
+                                           runEIO $ Persist.putSensorReading sensorReading (state^.manager) (state^.persist)
+                                           return ()
                   loop state
 
               , match $ \(ProcessMonitorNotification monRef pid reason) -> do
