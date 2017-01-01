@@ -1,0 +1,6 @@
+appPort:    8080
+dbHost:     192.168.0.2
+dbPort:     3306
+dbUser:     sarah
+dbPassword: sarah
+dbDatabase: sarah
