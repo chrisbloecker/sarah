@@ -22,10 +22,9 @@ import qualified Sarah.Persist.Types                  as T
 
 (+++) = append
 
-setupDevice :: Master -> T.Room -> Device -> IO ProcessId
-setupDevice master room device = do
-  let node = undefined
-  forkProcess node $ case device^.deviceModel of
+setupDevice :: Master -> T.Room -> Device -> Process ProcessId
+setupDevice master room device =
+  spawnLocal $ case device^.deviceModel of
     AC     Toshiba_RAS_M13NKCV -> toshibaServer master device
     AC     Toshiba_RAS_M16NKCV -> toshibaServer master device
     AC     Toshiba_16NKV_E     -> toshibaServer master device

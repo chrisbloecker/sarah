@@ -44,7 +44,7 @@ runSlave SlaveSettings{..} = do
       -- make sure there's enough time to print the message
       liftIO $ threadDelay 100000
     Just master -> do
-      deviceProcesses <- fromList . zip [1..] <$> mapM (liftIO . setupDevice master room) devices
+      deviceProcesses <- fromList . zip [1..] <$> mapM (setupDevice master room) devices
 
       self <- getSelfPid
       nodeUp master self (NodeInfo nodeName devices)
