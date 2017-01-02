@@ -42,102 +42,95 @@
 
 static inline int readDHT22(uint32_t pin, double* humidity, double* temperature)
 {
-  int error = humidity == NULL || temperature == NULL
-            ? ERROR_PARAMS
-            : OK
-            ;
+  if (humidity == NULL || temperature == NULL)
+  {
+    fprintf(stderr, "Parameter error (null pointers)\n");
+    return ERROR_PARAMS;
+  }
 
-  if (error == OK && gpioInitialise() < 0)
-    error = ERROR_INIT_FAILED;
+  if (gpioInitialise() < 0)
+  {
+    fprintf(stderr, "GPIO Initialization failed\n");
+    return ERROR_INIT_FAILED;
+  }
 
   unsigned i = 0;
 
-  if (error == OK)
+  *humidity    = 0;
+  *temperature = 0;
+
+  // Store the count that each DHT bit pulse is low and high.
+  // Make sure array is initialized to start at zero.
+  int pulseCounts[DHT_PULSES*2] = {0};
+
+  // Set the connected pin to output mode
+  gpioSetMode(pin, PI_OUTPUT);
+
+  // Tell DHT22 that we want its readings
+  gpioWrite(pin, 1);
+  time_sleep(0.500);
+  gpioWrite(pin, 0);
+  time_sleep(0.020);
+
+  // Switch pin to input mode
+  gpioSetMode(pin, PI_INPUT);
+  // Wait a tiny amount of time for DHT22 to be ready
+  for (i = 0; i < 50; ++i);
+
+  unsigned waiting;
+  while (gpioRead(pin))
+    if (++waiting >= DHT_MAXCOUNT)
+    {
+      fprintf(stderr, "Timeout reading DHT22\n");
+      return ERROR_TIMEOUT;
+    }
+
+  for (i = 0; i < 2*DHT_PULSES; i += 2)
   {
-    *humidity    = 0;
-    *temperature = 0;
+    while (!gpioRead(pin))
+      if (++pulseCounts[i] >= DHT_MAXCOUNT)
+      {
+        fprintf(stderr, "Timeout reading DHT22\n");
+        return ERROR_TIMEOUT;
+      }
 
-    // Store the count that each DHT bit pulse is low and high.
-    // Make sure array is initialized to start at zero.
-    int pulseCounts[DHT_PULSES*2] = {0};
-
-    // Set the connected pin to output mode
-    gpioSetMode(pin, PI_OUTPUT);
-
-    // Tell DHT22 that we want its readings
-    gpioWrite(pin, 1);
-    time_sleep(0.500);
-    gpioWrite(pin, 0);
-    time_sleep(0.020);
-
-    // Switch pin to input mode
-    gpioSetMode(pin, PI_INPUT);
-    // Wait a tiny amount of time for DHT22 to be ready
-    for (i = 0; i < 50; ++i);
-
-    unsigned waiting;
     while (gpioRead(pin))
-      if (++waiting >= DHT_MAXCOUNT)
-        error = ERROR_TIMEOUT;
+      if (++pulseCounts[i+1] >= DHT_MAXCOUNT)
+      {
+        fprintf(stderr, "Timeout reading DHT22\n");
+        return ERROR_TIMEOUT;
+      }
+  }
 
-    for (i = 0; i < 2*DHT_PULSES; i += 2)
-    {
-      while (!gpioRead(pin))
-        if (++pulseCounts[i] >= DHT_MAXCOUNT)
-          error = ERROR_TIMEOUT;
+  unsigned threshold = 0;
+  for (i = 2; i < 2*DHT_PULSES; i += 2)
+    threshold += pulseCounts[i];
+  threshold /= DHT_PULSES-1;
 
-      while (gpioRead(pin))
-        if (++pulseCounts[i+1] >= DHT_MAXCOUNT)
-          error = ERROR_TIMEOUT;
-    }
-
-    unsigned threshold = 0;
-    for (i = 2; i < 2*DHT_PULSES; i += 2)
-      threshold += pulseCounts[i];
-    threshold /= DHT_PULSES-1;
-
-    uint8_t data[5] = {0};
-    for (i = 3; i < 2*DHT_PULSES; i += 2)
-    {
-      int index = (i-3) / 16;
-      data[index] <<= 1;
-      // One bit for long pulse
-      if (pulseCounts[i] >= threshold)
-        data[index] |= 1;
-    }
+  uint8_t data[5] = {0};
+  for (i = 3; i < 2*DHT_PULSES; i += 2)
+  {
+    int index = (i-3) / 16;
+    data[index] <<= 1;
+    // One bit for long pulse
+    if (pulseCounts[i] >= threshold)
+      data[index] |= 1;
+  }
 
 
-    // Verify checksum of received data.
-    if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF))
-    {
-      *humidity    = (data[0] * 256 + data[1]) / 10.0;
-      *temperature = ((data[2] & 0x7F) * 256 + data[3]) / 10.0;
-      if (data[2] & 0x80)
-        *temperature *= -1.0;
-    }
+  // Verify checksum of received data.
+  if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF))
+  {
+    *humidity    = (data[0] * 256 + data[1]) / 10.0;
+    *temperature = ((data[2] & 0x7F) * 256 + data[3]) / 10.0;
+    if (data[2] & 0x80)
+      *temperature *= -1.0;
   }
 
   // Cleanup
-  if (error != ERROR_INIT_FAILED)
-    gpioTerminate();
+  gpioTerminate();
 
-  switch (error)
-  {
-    case ERROR_INIT_FAILED:
-      fprintf(stderr, "GPIO Initialization failed\n");
-      break;
-    case ERROR_TIMEOUT:
-      fprintf(stderr, "Timeout reading DHT22\n");
-      break;
-    case ERROR_PARAMS:
-      fprintf(stderr, "Parameter error (null pointers)\n");
-      break;
-    case OK:
-    default:
-      break;
-  }
-
-  return error;
+  return OK;
 }
 
 #endif

@@ -49,14 +49,18 @@ toshibaServer master device = case device^.deviceInterface of
 dht22Server :: Master -> Device -> T.Room -> Process ()
 dht22Server master device room = case device^.deviceInterface of
   GPIO pin -> do
-    liftIO $ threadDelay =<< flip mod 60 . fromIntegral . sec <$> getTime Realtime
-    mReadings <- liftIO $ DHT22.get pin
+    mReadings <- liftIO $ do secs <- flip mod 60 . fromIntegral . sec <$> getTime Realtime
+                             threadDelay (1000000 * (60 - secs))
+                             DHT22.get pin
     case mReadings of
-      Left err ->
+      Left err -> do
         -- ToDo: fiddle the node name in
-        sendMaster master $ Log "NoneName" ("Reading " +++ (device^.deviceName) +++ " failed: " +++ (pack . show $ err)) T.Error
+        let message = "Reading " +++ (device^.deviceName) +++ " failed: " +++ (pack . show $ err)
+        say $ unpack message
+        sendMaster master $ Log "NoneName" message T.Error
 
       Right (Temperature t, Humidity h) -> do
         sendMaster master $ SensorReading room T.Temperature t
         sendMaster master $ SensorReading room T.Humidity    h
-        dht22Server master device room
+
+    dht22Server master device room
