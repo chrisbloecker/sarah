@@ -56,7 +56,4 @@ main :: IO ()
 main = execParser opts >>= run
   where
     opts = info (helper <*> options)
-           ( fullDesc
-          <> progDesc "Sarah GUI"
-          <> header ""
-           )
+                (mconcat [fullDesc, progDesc "Sarah GUI", header ""])

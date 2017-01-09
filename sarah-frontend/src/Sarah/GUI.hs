@@ -4,27 +4,42 @@ module Sarah.GUI
   ( setup
   ) where
 --------------------------------------------------------------------------------
-import           Control.Monad                             (void)
+import           Control.Lens                       hiding ((#), div, element, set)
+import           Control.Monad                             (void, mapM_)
 import           Control.Monad.Except                      (ExceptT, runExceptT, liftIO)
-import           Graphics.UI.Threepenny
+import           Graphics.UI.Threepenny             hiding (map)
 import           Graphics.UI.Threepenny.Core
 import           Prelude                            hiding (div)
 import           Sarah.GUI.Model
 import           Sarah.GUI.Widgets
 import           Sarah.Middleware.Device.AC.Toshiba as AC
+import           Sarah.Middleware.Model
 --------------------------------------------------------------------------------
 import qualified Sarah.Middleware.Client as Middleware
 --------------------------------------------------------------------------------
 
 setup :: MiddlewareConfig -> Window -> UI ()
 setup MiddlewareConfig{..} window = void $ do
-  navbar  <- mkNavbar
-  content <- runEIO $ Middleware.getStatus manager middleware
+  (remotesLink, devicesLink, navbar)  <- mkNavbar
+
+  on click remotesLink $ \_ -> do
+    mapM_ delete =<< getElementById window "content"
+    devices <- runEIO $ Middleware.getStatus manager middleware
+    getBody window #+ [ div # set id_ "content"
+                            # set class_ "container"
+                            #+ either (const []) (renderRemotes . view connectedNodes) devices
+                      ]
+
+  on click devicesLink $ \_ -> do
+    mapM_ delete =<< getElementById window "content"
+    status <- runEIO $ Middleware.getStatus manager middleware
+    getBody window #+ [ div # set id_ "content"
+                            # set class_ "container"
+                            #+ either (const []) renderStatus status
+                      ]
 
   getBody window #+ [ element navbar
                     , div # set id_ "content"
-                          # set class_ "container"
-                          #+ either (const []) renderStatus content
                     ]
 
 {-
@@ -38,6 +53,3 @@ setup MiddlewareConfig{..} window = void $ do
     element buttonOff # set UI.text "OFF!"
     runEIO $ runAcServer (AC.Config AC.T20 AC.FanAuto AC.ModeOff Nothing) manager middleware
 -}
-
-runEIO :: (MonadIO m) => ExceptT e IO a -> m (Either e a)
-runEIO = liftIO . runExceptT

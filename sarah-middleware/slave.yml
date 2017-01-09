@@ -18,3 +18,4 @@ devices:
   interface:
     gpio: 4
 nodeName: Node One
+room: Livingroom
