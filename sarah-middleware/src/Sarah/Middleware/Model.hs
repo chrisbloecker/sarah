@@ -53,6 +53,8 @@ deriveJSON jsonOptions ''WebAddress
 
 --------------------------------------------------------------------------------
 
+type NodeName = Text
+
 data Device = Device { _deviceName      :: Text
                      , _deviceModel     :: DeviceModel
                      , _deviceInterface :: Interface
@@ -105,8 +107,6 @@ data NodeInfo = NodeInfo { _nodeName    :: NodeName
                          , _nodeDevices :: [Device]
                          }
   deriving (Generic, Typeable, Show)
-
-type NodeName = Text
 
 instance Binary Status
 instance Binary NodeInfo

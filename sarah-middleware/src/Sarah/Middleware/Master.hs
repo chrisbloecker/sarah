@@ -56,12 +56,14 @@ loop state =
 
               , match $ \(Log nodeName message logLevel) -> do
                   say "Received Log message"
-                  now <- liftIO getCurrentTime
-                  let logEntry = Persist.Log (utctDay now) (timeToTimeOfDay . utctDayTime $ now) nodeName message logLevel
-                  mRes <- runEIO $ Persist.putLog logEntry (state^.manager) (state^.persist)
-                  case mRes of
-                    Left err -> say (show err)
-                    Right _  -> return ()
+                  -- ToDo: pass the result back to the master instead of just printing something
+                  spawnLocal $ do
+                    now <- liftIO getCurrentTime
+                    let logEntry = Persist.Log (utctDay now) (timeToTimeOfDay . utctDayTime $ now) nodeName message logLevel
+                    mRes <- runEIO $ Persist.putLog logEntry (state^.manager) (state^.persist)
+                    case mRes of
+                      Left err -> say (show err)
+                      Right _  -> return ()
                   loop state
 
               , match $ \(NodeUp pid nodeInfo) -> do
@@ -74,12 +76,14 @@ loop state =
 
               , match $ \(SensorReading room sensor value) -> do
                   say "Received SensorReading message"
-                  now <- liftIO getCurrentTime
-                  let sensorReading = Persist.SensorReading (utctDay now) (timeToTimeOfDay . utctDayTime $ now) room sensor value
-                  mRes <- runEIO $ Persist.putSensorReading sensorReading (state^.manager) (state^.persist)
-                  case mRes of
-                    Left err -> say (show err)
-                    Right _  -> return ()
+                  -- ToDo: same here, pass the result back to the master
+                  spawnLocal $ do
+                    now <- liftIO getCurrentTime
+                    let sensorReading = Persist.SensorReading (utctDay now) (timeToTimeOfDay . utctDayTime $ now) room sensor value
+                    mRes <- runEIO $ Persist.putSensorReading sensorReading (state^.manager) (state^.persist)
+                    case mRes of
+                      Left err -> say (show err)
+                      Right _  -> return ()
                   loop state
 
               , match $ \(ProcessMonitorNotification monRef pid reason) -> do

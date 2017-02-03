@@ -22,32 +22,31 @@ import qualified Sarah.Persist.Types                  as T
 
 (+++) = append
 
-setupDevice :: Master -> T.Room -> Device -> Process ProcessId
-setupDevice master room device =
+setupDevice :: NodeName -> Master -> T.Room -> Device -> Process ProcessId
+setupDevice nodeName master room device =
   spawnLocal $ case device^.deviceModel of
-    AC     Toshiba_RAS_M13NKCV -> toshibaServer master device
-    AC     Toshiba_RAS_M16NKCV -> toshibaServer master device
-    AC     Toshiba_16NKV_E     -> toshibaServer master device
-    Sensor DHT22               -> dht22Server   master device room
-    model                      -> dummyServer   master device
+    AC     Toshiba_RAS_M13NKCV -> toshibaServer nodeName master device
+    AC     Toshiba_RAS_M16NKCV -> toshibaServer nodeName master device
+    AC     Toshiba_16NKV_E     -> toshibaServer nodeName master device
+    Sensor DHT22               -> dht22Server   nodeName master device room
+    model                      -> dummyServer   nodeName master device
 
 
-dummyServer :: Master -> Device -> Process ()
-dummyServer master device =
-  -- ToDo: fiddle the node name in
-  sendMaster master $ Log "NodeName" ("Dummy server starterd for " +++ (device^.deviceName)) T.Debug
+dummyServer :: NodeName -> Master -> Device -> Process ()
+dummyServer nodeName master device =
+  sendMaster master $ Log nodeName ("Dummy server starterd for " +++ (device^.deviceName)) T.Debug
 
-
-toshibaServer :: Master -> Device -> Process ()
-toshibaServer master device = case device^.deviceInterface of
+-- ToDo: carry around the current state somewhere
+toshibaServer :: NodeName -> Master -> Device -> Process ()
+toshibaServer nodeName master device = case device^.deviceInterface of
   GPIO pin -> do
     _config <- expect
     liftIO $ Toshiba.send pin _config
-    toshibaServer master device
+    toshibaServer nodeName master device
 
 
-dht22Server :: Master -> Device -> T.Room -> Process ()
-dht22Server master device room = case device^.deviceInterface of
+dht22Server :: NodeName -> Master -> Device -> T.Room -> Process ()
+dht22Server nodeName master device room = case device^.deviceInterface of
   GPIO pin -> do
     mReadings <- liftIO $ do secs <- flip mod 60 . fromIntegral . sec <$> getTime Realtime
                              threadDelay (1000000 * (60 - secs))
@@ -55,12 +54,12 @@ dht22Server master device room = case device^.deviceInterface of
     case mReadings of
       Left err -> do
         -- ToDo: fiddle the node name in
-        let message = "Reading " +++ (device^.deviceName) +++ " failed: " +++ (pack . show $ err)
+        let message = "Reading " +++ (pack .show $ device^.deviceName) +++ " failed: " +++ (pack . show $ err)
         say $ unpack message
-        sendMaster master $ Log "NoneName" message T.Error
+        sendMaster master $ Log nodeName message T.Error
 
       Right (Temperature t, Humidity h) -> do
         sendMaster master $ SensorReading room T.Temperature t
         sendMaster master $ SensorReading room T.Humidity    h
 
-    dht22Server master device room
+    dht22Server nodeName master device room

@@ -1,5 +1,3 @@
-{-# LANGUAGE RecordWildCards #-}
---------------------------------------------------------------------------------
 module Sarah.GUI
   ( setup
   ) where
@@ -13,26 +11,26 @@ import           Prelude                            hiding (div)
 import           Sarah.GUI.Model
 import           Sarah.GUI.Widgets
 import           Sarah.Middleware.Device.AC.Toshiba as AC
-import           Sarah.Middleware.Model
+import           Sarah.Middleware.Model                    (connectedNodes, runEIO)
 --------------------------------------------------------------------------------
 import qualified Sarah.Middleware.Client as Middleware
 --------------------------------------------------------------------------------
 
-setup :: MiddlewareConfig -> Window -> UI ()
-setup MiddlewareConfig{..} window = void $ do
+setup :: AppEnv -> Window -> UI ()
+setup appEnv window = void $ do
   (remotesLink, devicesLink, navbar)  <- mkNavbar
 
   on click remotesLink $ \_ -> do
     mapM_ delete =<< getElementById window "content"
-    devices <- runEIO $ Middleware.getStatus manager middleware
+    devices <- runEIO $ Middleware.getStatus (appEnv^.manager) (appEnv^.middleware)
     getBody window #+ [ div # set id_ "content"
                             # set class_ "container"
-                            #+ either (const []) (renderRemotes . view connectedNodes) devices
+                            #+ either (const []) (renderRemotes appEnv . view connectedNodes) devices
                       ]
 
   on click devicesLink $ \_ -> do
     mapM_ delete =<< getElementById window "content"
-    status <- runEIO $ Middleware.getStatus manager middleware
+    status <- runEIO $ Middleware.getStatus (appEnv^.manager) (appEnv^.middleware)
     getBody window #+ [ div # set id_ "content"
                             # set class_ "container"
                             #+ either (const []) renderStatus status
