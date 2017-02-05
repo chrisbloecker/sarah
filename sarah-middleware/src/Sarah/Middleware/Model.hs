@@ -56,45 +56,28 @@ deriveJSON jsonOptions ''WebAddress
 type NodeName = Text
 
 data Device = Device { _deviceName      :: Text
---                     , _deviceModel     :: DeviceModel
                      , _deviceInterface :: Interface
                      }
   deriving (Generic, Typeable, Show)
 {-
-data DeviceModel = AC     ACModel
-                 | Sensor SensorModel
-                 | TV     TVModel
-  deriving (Generic, Typeable, Show, Eq)
-
-data ACModel = Toshiba_RAS_M13NKCV
-             | Toshiba_RAS_M16NKCV
-             | Toshiba_16NKV_E
-  deriving (Generic, Typeable, Show, Eq)
+data DeviceType = AC
+                | Sensor
+                | TV
 -}
-data SensorModel = BPM180
-                 | DHT22
-  deriving (Generic, Typeable, Show, Eq)
-
-data TVModel = LG
-  deriving (Generic, Typeable, Show, Eq)
+-- ToDo: this should be somewhere else
+data DeviceModel = Model_Toshiba_16NKV_E
+                 | Model_Toshiba_RAS_M13NKCV
+                 | Model_Toshiba_RAS_M16NKCV
 
 data Interface = GPIO Pin
   deriving (Generic, Typeable, Show, Eq)
 
 instance Binary Device
---instance Binary DeviceModel
---instance Binary ACModel
-instance Binary SensorModel
-instance Binary TVModel
 instance Binary Interface
 
 makeLenses ''Device
 
 deriveJSON jsonOptions ''Interface
-deriveJSON jsonOptions ''TVModel
-deriveJSON jsonOptions ''SensorModel
---deriveJSON jsonOptions ''ACModel
---deriveJSON jsonOptions ''DeviceModel
 deriveJSON jsonOptions ''Device
 
 --------------------------------------------------------------------------------
@@ -116,18 +99,3 @@ makeLenses ''NodeInfo
 
 deriveJSON jsonOptions ''NodeInfo
 deriveJSON jsonOptions ''Status
-
---------------------------------------------------------------------------------
-
-class Remote d where
-  type DeviceState d :: *
-  setState :: MonadIO m => d -> DeviceState d -> m ()
-  getState :: MonadIO m => d -> m (DeviceState d)
-
-data DeviceCommand     = DeviceCommand
-data DeviceQuery       = DeviceQuery
-data DeviceQueryResult = DeviceQueryResult
-
-deriveJSON jsonOptions ''DeviceCommand
-deriveJSON jsonOptions ''DeviceQuery
-deriveJSON jsonOptions ''DeviceQueryResult

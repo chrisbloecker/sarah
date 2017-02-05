@@ -10,6 +10,7 @@ import           Control.Monad.IO.Class                        (liftIO)
 import           Raspberry.GPIO
 import           Servant
 import           Sarah.Middleware.Model
+import           Sarah.Middleware.Remote
 --------------------------------------------------------------------------------
 import qualified Sarah.Middleware.Device.AC.Toshiba as Toshiba
 --------------------------------------------------------------------------------

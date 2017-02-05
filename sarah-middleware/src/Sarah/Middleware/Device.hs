@@ -22,6 +22,7 @@ import qualified Sarah.Persist.Types                  as T
 
 (+++) = append
 
+{-
 setupDevice :: NodeName -> Master -> T.Room -> Device -> Process ProcessId
 setupDevice nodeName master room device =
   spawnLocal $ case device^.deviceModel of
@@ -30,7 +31,7 @@ setupDevice nodeName master room device =
     AC     Toshiba_16NKV_E     -> toshibaServer nodeName master device
     Sensor DHT22               -> dht22Server   nodeName master device room
     model                      -> dummyServer   nodeName master device
-
+-}
 
 dummyServer :: NodeName -> Master -> Device -> Process ()
 dummyServer nodeName master device =
