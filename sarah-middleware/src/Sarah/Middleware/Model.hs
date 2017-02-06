@@ -65,7 +65,13 @@ data DeviceModel = Model_Toshiba_16NKV_E
 class IsInterface interface where
   startInterfaceController :: interface -> Process ProcessId
 
-data Interface = forall i. IsInterface i => Interface i
+data Interface = forall interface. IsInterface interface => Interface interface
+
+instance ToJSON Interface where
+  toJSON (Interface interface) = toJSON ("Interface" :: String)
+
+instance FromJSON Interface where
+  parseJSON = undefined
 
 instance IsInterface Interface where
   startInterfaceController (Interface interface) = startInterfaceController interface

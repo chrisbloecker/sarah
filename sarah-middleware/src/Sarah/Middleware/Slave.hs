@@ -12,6 +12,7 @@ import           Control.Distributed.Process
 import           Control.Monad
 import           Control.Lens
 import           Data.Map
+import           Data.Constraint
 import           Import.DeriveJSON
 import           Sarah.Middleware.Master.Messages
 import           Sarah.Middleware.Model           hiding (master, nodeName)
@@ -32,13 +33,13 @@ deriveJSON jsonOptions ''DeviceDescription
 data SlaveSettings = SlaveSettings { slaveNode  :: WebAddress
                                    , master     :: WebAddress
                                    , interfaces :: [Interface]
-                                   , devices    :: [DeviceDescription]
+                                   , devices    :: [Device]
                                    , nodeName   :: Text
                                    , room       :: Text
                                    }
 deriveJSON jsonOptions ''SlaveSettings
 
-data State = State { _interfaceControllers :: Map Interface ProcessId
+data State = State { _interfaceControllers :: [(Interface, ProcessId)]
                    , _deviceControllers    :: Map Int       ProcessId
                    }
 makeLenses ''State
@@ -54,8 +55,8 @@ runSlave SlaveSettings{..} = do
       -- make sure there's enough time to print the message
       liftIO $ threadDelay 100000
     Just master -> do
-      interfaceControllers <- fromList . zip interfaces <$> forM interfaces startInterfaceController
-      deviceControllers    <- fromList . zip [1..] <$> forM devices startDeviceController
+      interfaceControllers <- zip interfaces <$> forM interfaces startInterfaceController
+      deviceControllers    <- fromList . zip [1..] <$> forM devices (\(Device model) -> startDeviceController model)
 
       self <- getSelfPid
       nodeUp master self (NodeInfo nodeName)

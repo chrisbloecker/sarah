@@ -1,11 +1,11 @@
 module Import.DeriveJSON
-  ( FromJSON, decode', eitherDecode'
+  ( FromJSON (..), ToJSON (..), decode', eitherDecode'
   , deriveJSON, jsonOptions
   , Text
   , encodeUtf8
   ) where
 --------------------------------------------------------------------------------
-import Data.Aeson         (FromJSON, decode', eitherDecode')
+import Data.Aeson         (FromJSON (..), ToJSON (..), decode', eitherDecode')
 import Data.Aeson.TH      (Options (..), SumEncoding (..), deriveJSON, defaultOptions)
 import Data.Text          (Text)
 import Data.Text.Encoding (encodeUtf8)

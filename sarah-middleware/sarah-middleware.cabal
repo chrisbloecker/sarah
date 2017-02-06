@@ -48,6 +48,7 @@ library
                      , aeson
                      , binary
                      , bytestring
+                     , constraints
                      , containers
                      , clock
                      , distributed-process

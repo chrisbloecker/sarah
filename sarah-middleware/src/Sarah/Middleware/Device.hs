@@ -1,11 +1,6 @@
-{-# LANGUAGE AllowAmbiguousTypes       #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE GADTs                     #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE FunctionalDependencies    #-}
 {-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE RankNTypes                #-}
-{-# LANGUAGE StandaloneDeriving        #-}
 {-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeFamilies              #-}
 --------------------------------------------------------------------------------
@@ -38,11 +33,7 @@ deriveJSON jsonOptions ''DeviceCommand
 deriveJSON jsonOptions ''DeviceQuery
 deriveJSON jsonOptions ''DeviceQueryResult
 
-data Device = forall model interface. (IsDevice model interface) => Device model
-
-instance FromJSON Device where
-
-class IsInterface interface => IsDevice model interface where
+class IsInterface interface => IsDevice model interface | model -> interface where
   getInterface :: model -> interface
   startDeviceController :: model -> Process ProcessId
 
@@ -51,6 +42,18 @@ class IsDevice model interface => IsAC model interface where
 
 class IsDevice model interface => IsSensor model interface
 class IsDevice model interface => IsTV     model interface
+
+data Device = forall model interface. (IsDevice model interface) => Device model
+
+--instance IsInterface interface => IsDevice Device interface where
+--  getInterface (Device model) = getInterface model
+--  startDeviceController = error "startDeviceController not implemented for instance IsDevice Device interface"
+
+instance ToJSON Device where
+  toJSON (Device model) = toJSON ("Device" :: String)
+
+instance FromJSON Device where
+  parseJSON = undefined
 
 data DHT22 = DHT22 GPIO
 instance IsDevice DHT22 GPIO where
