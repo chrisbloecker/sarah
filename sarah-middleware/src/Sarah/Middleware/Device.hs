@@ -5,6 +5,7 @@
 {-# LANGUAGE MultiParamTypeClasses     #-}
 {-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE RankNTypes                #-}
+{-# LANGUAGE StandaloneDeriving        #-}
 {-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeFamilies              #-}
 --------------------------------------------------------------------------------
@@ -16,6 +17,7 @@ import           Control.Distributed.Process
 import           Control.Distributed.Process.Node
 import           Control.Lens
 import           Data.Text
+import           GHC.Generics                     (Generic)
 import           Import.DeriveJSON
 import           Physics
 import           Raspberry.GPIO
@@ -36,16 +38,14 @@ deriveJSON jsonOptions ''DeviceCommand
 deriveJSON jsonOptions ''DeviceQuery
 deriveJSON jsonOptions ''DeviceQueryResult
 
-data Device = forall model interface. IsDevice model interface => Device model
+data Device = forall model interface. (IsDevice model interface) => Device model
+
+instance FromJSON Device where
 
 class IsInterface interface => IsDevice model interface where
   getInterface :: model -> interface
   startDeviceController :: model -> Process ProcessId
-{-
-instance IsInterface interface => IsDevice Device interface where
-  getInterface (Device d _) = getInterface d
-  startDeviceController (Device d _) = startDeviceController d
--}
+
 class IsDevice model interface => IsAC model interface where
   type State model :: *
 
@@ -64,7 +64,7 @@ deriveJSON jsonOptions ''DHT22
 data Toshiba_16NKV_E = Toshiba_16NKV_E GPIO
 instance IsDevice Toshiba_16NKV_E GPIO where
   getInterface (Toshiba_16NKV_E gpio) = gpio
-  startDeviceController = error "startDeviceController not implemented for instance IsDevice DHT22"
+  startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_16NKV_E"
 instance IsAC Toshiba_16NKV_E GPIO where
   type State Toshiba_16NKV_E = Toshiba.Config
 deriveJSON jsonOptions ''Toshiba_16NKV_E
@@ -74,7 +74,7 @@ deriveJSON jsonOptions ''Toshiba_16NKV_E
 newtype Toshiba_RAS_M13NKCV = Toshiba_RAS_M13NKCV GPIO
 instance IsDevice Toshiba_RAS_M13NKCV GPIO where
   getInterface (Toshiba_RAS_M13NKCV gpio) = gpio
-  startDeviceController = error "startDeviceController not implemented for instance IsDevice DHT22"
+  startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_RAS_M13NKCV"
 instance IsAC Toshiba_RAS_M13NKCV GPIO where
   type State Toshiba_RAS_M13NKCV = Toshiba.Config
 deriveJSON jsonOptions ''Toshiba_RAS_M13NKCV
@@ -84,7 +84,7 @@ deriveJSON jsonOptions ''Toshiba_RAS_M13NKCV
 newtype Toshiba_RAS_M16NKCV = Toshiba_RAS_M16NKCV GPIO
 instance IsDevice Toshiba_RAS_M16NKCV GPIO where
   getInterface (Toshiba_RAS_M16NKCV gpio) = gpio
-  startDeviceController = error "startDeviceController not implemented for instance IsDevice DHT22"
+  startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_RAS_M16NKCV"
 instance IsAC Toshiba_RAS_M16NKCV GPIO where
   type State Toshiba_RAS_M16NKCV = Toshiba.Config
 deriveJSON jsonOptions ''Toshiba_RAS_M16NKCV

@@ -56,17 +56,7 @@ deriveJSON jsonOptions ''WebAddress
 
 type NodeName = Text
 
-{-
-data Device = Device { _deviceName      :: Text
-                     , _deviceInterface :: Interface a => a
-                     }
-  deriving (Generic, Typeable, Show)
-
-data DeviceType = AC
-                | Sensor
-                | TV
--}
--- ToDo: this should be somewhere else
+-- ToDo: do we need this at all?
 data DeviceModel = Model_Toshiba_16NKV_E
                  | Model_Toshiba_RAS_M13NKCV
                  | Model_Toshiba_RAS_M16NKCV
@@ -95,15 +85,6 @@ instance IsInterface IP where
   startInterfaceController = error "startController not implemented for instance IsInterface IP"
 deriveJSON jsonOptions ''IP
 
---instance Binary Device
---instance Binary Interface
-
---makeLenses ''Device
-
---deriveJSON jsonOptions ''InterfaceDescription
---deriveJSON jsonOptions ''Interface
---deriveJSON jsonOptions ''Device
-
 --------------------------------------------------------------------------------
 
 data Status = Status { _connectedNodes :: [NodeInfo]
@@ -111,7 +92,8 @@ data Status = Status { _connectedNodes :: [NodeInfo]
   deriving (Generic, Typeable, Show)
 
 data NodeInfo = NodeInfo { _nodeName    :: NodeName
-                         , _nodeDevices :: [Text]
+-- ToDo: add this back in
+--                         , _nodeDevices :: [Device]
                          }
   deriving (Generic, Typeable, Show)
 

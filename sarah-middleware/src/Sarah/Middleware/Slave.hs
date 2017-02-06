@@ -24,7 +24,7 @@ import qualified Data.Map as M
 --------------------------------------------------------------------------------
 
 data DeviceDescription = DeviceDescription { _deviceName :: Text
-                                           , _device     :: forall model i. IsDevice model i => Device model
+                                           , _device     :: Device
                                            }
 makeLenses ''DeviceDescription
 deriveJSON jsonOptions ''DeviceDescription
@@ -54,14 +54,14 @@ runSlave SlaveSettings{..} = do
       -- make sure there's enough time to print the message
       liftIO $ threadDelay 100000
     Just master -> do
-      interfaceControllers <- fromList . zip interfaces <$> forM interfaces startController
-      deviceControllers    <- fromList . zip [1..] <$> forM devices undefined
+      interfaceControllers <- fromList . zip interfaces <$> forM interfaces startInterfaceController
+      deviceControllers    <- fromList . zip [1..] <$> forM devices startDeviceController
 
       self <- getSelfPid
-      nodeUp master self (NodeInfo nodeName devices)
+      nodeUp master self (NodeInfo nodeName)
       linkMaster master
 
-      loop $ State deviceControllers
+      loop $ State interfaceControllers deviceControllers
 
 loop :: State -> Process ()
 loop state =
