@@ -1,5 +1,12 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes        #-}
+{-# LANGUAGE AllowAmbiguousTypes       #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE GADTs                     #-}
+{-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE OverloadedStrings         #-}
+{-# LANGUAGE RankNTypes                #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE TypeFamilies              #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device
   where
@@ -9,6 +16,7 @@ import           Control.Distributed.Process
 import           Control.Distributed.Process.Node
 import           Control.Lens
 import           Data.Text
+import           Import.DeriveJSON
 import           Physics
 import           Raspberry.GPIO
 import           Sarah.Middleware.Model
@@ -20,22 +28,78 @@ import qualified Sarah.Middleware.Device.Sensor.DHT22 as DHT22
 import qualified Sarah.Persist.Types                  as T
 --------------------------------------------------------------------------------
 
-(+++) = append
+data DeviceCommand     = DeviceCommand
+data DeviceQuery       = DeviceQuery
+data DeviceQueryResult = DeviceQueryResult
 
+deriveJSON jsonOptions ''DeviceCommand
+deriveJSON jsonOptions ''DeviceQuery
+deriveJSON jsonOptions ''DeviceQueryResult
+
+data Device = forall model interface. IsDevice model interface => Device model
+
+class IsInterface interface => IsDevice model interface where
+  getInterface :: model -> interface
+  startDeviceController :: model -> Process ProcessId
 {-
-setupDevice :: NodeName -> Master -> T.Room -> Device -> Process ProcessId
-setupDevice nodeName master room device =
-  spawnLocal $ case device^.deviceModel of
-    AC     Toshiba_RAS_M13NKCV -> toshibaServer nodeName master device
-    AC     Toshiba_RAS_M16NKCV -> toshibaServer nodeName master device
-    AC     Toshiba_16NKV_E     -> toshibaServer nodeName master device
-    Sensor DHT22               -> dht22Server   nodeName master device room
-    model                      -> dummyServer   nodeName master device
+instance IsInterface interface => IsDevice Device interface where
+  getInterface (Device d _) = getInterface d
+  startDeviceController (Device d _) = startDeviceController d
 -}
+class IsDevice model interface => IsAC model interface where
+  type State model :: *
 
-dummyServer :: NodeName -> Master -> Device -> Process ()
-dummyServer nodeName master device =
-  sendMaster master $ Log nodeName ("Dummy server starterd for " +++ (device^.deviceName)) T.Debug
+class IsDevice model interface => IsSensor model interface
+class IsDevice model interface => IsTV     model interface
+
+data DHT22 = DHT22 GPIO
+instance IsDevice DHT22 GPIO where
+  getInterface (DHT22 gpio) = gpio
+  startDeviceController = error "startDeviceController not implemented for instance IsDevice DHT22"
+instance IsSensor DHT22 GPIO where
+deriveJSON jsonOptions ''DHT22
+
+--------------------------------------------------------------------------------
+
+data Toshiba_16NKV_E = Toshiba_16NKV_E GPIO
+instance IsDevice Toshiba_16NKV_E GPIO where
+  getInterface (Toshiba_16NKV_E gpio) = gpio
+  startDeviceController = error "startDeviceController not implemented for instance IsDevice DHT22"
+instance IsAC Toshiba_16NKV_E GPIO where
+  type State Toshiba_16NKV_E = Toshiba.Config
+deriveJSON jsonOptions ''Toshiba_16NKV_E
+
+--------------------------------------------------------------------------------
+
+newtype Toshiba_RAS_M13NKCV = Toshiba_RAS_M13NKCV GPIO
+instance IsDevice Toshiba_RAS_M13NKCV GPIO where
+  getInterface (Toshiba_RAS_M13NKCV gpio) = gpio
+  startDeviceController = error "startDeviceController not implemented for instance IsDevice DHT22"
+instance IsAC Toshiba_RAS_M13NKCV GPIO where
+  type State Toshiba_RAS_M13NKCV = Toshiba.Config
+deriveJSON jsonOptions ''Toshiba_RAS_M13NKCV
+
+--------------------------------------------------------------------------------
+
+newtype Toshiba_RAS_M16NKCV = Toshiba_RAS_M16NKCV GPIO
+instance IsDevice Toshiba_RAS_M16NKCV GPIO where
+  getInterface (Toshiba_RAS_M16NKCV gpio) = gpio
+  startDeviceController = error "startDeviceController not implemented for instance IsDevice DHT22"
+instance IsAC Toshiba_RAS_M16NKCV GPIO where
+  type State Toshiba_RAS_M16NKCV = Toshiba.Config
+deriveJSON jsonOptions ''Toshiba_RAS_M16NKCV
+
+--------------------------------------------------------------------------------
+{-
+convert :: DeviceModel -> Device
+convert Model_Toshiba_16NKV_E     = Device $ AC $ Toshiba_16NKV_E (GPIO undefined)
+convert Model_Toshiba_RAS_M13NKCV = Device $ AC $ Toshiba_RAS_M13NKCV (GPIO undefined)
+convert Model_Toshiba_RAS_M16NKCV = Device $ AC $ Toshiba_RAS_M16NKCV (GPIO undefined)
+convert Model_DHT22               = Device $ Sensor $ DHT22 (GPIO undefined)
+-}
+--------------------------------------------------------------------------------
+{-
+(+++) = append
 
 -- ToDo: carry around the current state somewhere
 toshibaServer :: NodeName -> Master -> Device -> Process ()
@@ -64,3 +128,4 @@ dht22Server nodeName master device room = case device^.deviceInterface of
         sendMaster master $ SensorReading room T.Humidity    h
 
     dht22Server nodeName master device room
+-}

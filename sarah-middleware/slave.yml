@@ -2,20 +2,19 @@ slaveNode:
   host: localhost
   port: 50001
 master:
-  host: 192.168.0.7
+  host: localhost
   port: 50000
+interfaces:
+- name: IR-LED
+  gpio: 23
+- name: DHT22
+  gpio: 4
 devices:
 - name: AC
-  model:
-    AC:
-      Toshiba_RAS_M16NKCV: []
-  interface:
-    gpio: 23
+  model: Toshiba_RAS_M16NKCV
+  interface: IR-LED
 - name: DHT22
-  model:
-    Sensor:
-      DHT22: []
-  interface:
-    gpio: 4
+  model: DHT22
+  interface: DHT22
 nodeName: Node One
 room: Livingroom

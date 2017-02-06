@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
+{-# LANGUAGE ExistentialQuantification  #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Model
   where
@@ -55,11 +56,12 @@ deriveJSON jsonOptions ''WebAddress
 
 type NodeName = Text
 
+{-
 data Device = Device { _deviceName      :: Text
-                     , _deviceInterface :: Interface
+                     , _deviceInterface :: Interface a => a
                      }
   deriving (Generic, Typeable, Show)
-{-
+
 data DeviceType = AC
                 | Sensor
                 | TV
@@ -68,17 +70,39 @@ data DeviceType = AC
 data DeviceModel = Model_Toshiba_16NKV_E
                  | Model_Toshiba_RAS_M13NKCV
                  | Model_Toshiba_RAS_M16NKCV
+                 | Model_DHT22
 
-data Interface = GPIO Pin
-  deriving (Generic, Typeable, Show, Eq)
+class IsInterface interface where
+  startInterfaceController :: interface -> Process ProcessId
 
-instance Binary Device
-instance Binary Interface
+data Interface = forall i. IsInterface i => Interface i
 
-makeLenses ''Device
+instance IsInterface Interface where
+  startInterfaceController (Interface interface) = startInterfaceController interface
 
-deriveJSON jsonOptions ''Interface
-deriveJSON jsonOptions ''Device
+newtype GPIO = GPIO Pin
+instance IsInterface GPIO where
+  startInterfaceController = error "startController not implemented for instance IsInterface GPIO"
+deriveJSON jsonOptions ''GPIO
+
+newtype I2C = I2C Integer
+instance IsInterface I2C where
+  startInterfaceController = error "startController not implemented for instance IsInterface I2C"
+deriveJSON jsonOptions ''I2C
+
+newtype IP = IP WebAddress
+instance IsInterface IP where
+  startInterfaceController = error "startController not implemented for instance IsInterface IP"
+deriveJSON jsonOptions ''IP
+
+--instance Binary Device
+--instance Binary Interface
+
+--makeLenses ''Device
+
+--deriveJSON jsonOptions ''InterfaceDescription
+--deriveJSON jsonOptions ''Interface
+--deriveJSON jsonOptions ''Device
 
 --------------------------------------------------------------------------------
 
@@ -87,7 +111,7 @@ data Status = Status { _connectedNodes :: [NodeInfo]
   deriving (Generic, Typeable, Show)
 
 data NodeInfo = NodeInfo { _nodeName    :: NodeName
-                         , _nodeDevices :: [Device]
+                         , _nodeDevices :: [Text]
                          }
   deriving (Generic, Typeable, Show)
 

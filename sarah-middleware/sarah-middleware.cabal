@@ -32,7 +32,6 @@ library
                      , Sarah.Middleware.Master
                      , Sarah.Middleware.Master.Messages
                      , Sarah.Middleware.Model
-                     , Sarah.Middleware.Remote
                      , Sarah.Middleware.Slave
                      , Sarah.Middleware.Slave.Messages
                      , Sarah.Middleware.Util
