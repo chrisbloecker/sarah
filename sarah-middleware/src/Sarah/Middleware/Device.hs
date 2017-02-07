@@ -10,7 +10,9 @@ module Sarah.Middleware.Device
 import           Control.Concurrent               (threadDelay)
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Node
-import           Control.Lens
+import           Control.Lens                     hiding ((.=))
+-- ToDo: why do I need this import to get Data.Aeson.Object into scope?
+import           Data.Aeson
 import           Data.Text
 import           GHC.Generics                     (Generic)
 import           Import.DeriveJSON
@@ -43,14 +45,10 @@ class IsDevice model interface => IsAC model interface where
 class IsDevice model interface => IsSensor model interface
 class IsDevice model interface => IsTV     model interface
 
-data Device = forall model interface. (IsDevice model interface) => Device model
-
---instance IsInterface interface => IsDevice Device interface where
---  getInterface (Device model) = getInterface model
---  startDeviceController = error "startDeviceController not implemented for instance IsDevice Device interface"
+data Device = forall model interface. (IsDevice model interface, ToJSON model, FromJSON model) => Device model
 
 instance ToJSON Device where
-  toJSON (Device model) = toJSON ("Device" :: String)
+  toJSON (Device model) = object [ "device" .= toJSON model ]
 
 instance FromJSON Device where
   parseJSON = undefined
@@ -64,14 +62,23 @@ deriveJSON jsonOptions ''DHT22
 
 --------------------------------------------------------------------------------
 
-data Toshiba_16NKV_E = Toshiba_16NKV_E GPIO
+newtype Toshiba_16NKV_E = Toshiba_16NKV_E { unToshiba_16NKV_E :: GPIO }
 instance IsDevice Toshiba_16NKV_E GPIO where
   getInterface (Toshiba_16NKV_E gpio) = gpio
   startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_16NKV_E"
 instance IsAC Toshiba_16NKV_E GPIO where
   type State Toshiba_16NKV_E = Toshiba.Config
-deriveJSON jsonOptions ''Toshiba_16NKV_E
+deriveJSON defaultOptions ''Toshiba_16NKV_E
+{-instance ToJSON Toshiba_16NKV_E where
+  toJSON (Toshiba_16NKV_E gpio) = object [ "model"     .= pack "Toshiba_16NKV_E"
+                                         , "interface" .= toJSON gpio
+                                         ]
 
+instance FromJSON Toshiba_16NKV_E where
+  parseJSON (Object v) = case (v .: "model") of
+    "Toshiba_16NKV_E" -> Toshiba_16NKV_E <$> (v .: "interface")
+    _ -> error "Can't parse this"
+-}
 --------------------------------------------------------------------------------
 
 newtype Toshiba_RAS_M13NKCV = Toshiba_RAS_M13NKCV GPIO
