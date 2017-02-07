@@ -1,5 +1,6 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE FunctionalDependencies    #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings         #-}
 {-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeFamilies              #-}
@@ -13,6 +14,9 @@ import           Control.Distributed.Process.Node
 import           Control.Lens                     hiding ((.=))
 -- ToDo: why do I need this import to get Data.Aeson.Object into scope?
 import           Data.Aeson
+import           Data.Aeson.Lens
+import           Data.Aeson.Types
+import           Data.Maybe
 import           Data.Text
 import           GHC.Generics                     (Generic)
 import           Import.DeriveJSON
@@ -35,70 +39,62 @@ deriveJSON jsonOptions ''DeviceCommand
 deriveJSON jsonOptions ''DeviceQuery
 deriveJSON jsonOptions ''DeviceQueryResult
 
-class IsInterface interface => IsDevice model interface | model -> interface where
-  getInterface :: model -> interface
+class IsDevice model
+
+class (IsDevice model, IsInterface interface) => HasBackend model interface where
   startDeviceController :: model -> Process ProcessId
 
-class IsDevice model interface => IsAC model interface where
+class IsDevice model => IsAC model where
   type State model :: *
 
-class IsDevice model interface => IsSensor model interface
-class IsDevice model interface => IsTV     model interface
+class IsDevice model => IsSensor model
+class IsDevice model => IsTV     model
 
-data Device = forall model interface. (IsDevice model interface, ToJSON model, FromJSON model) => Device model
+data Device = forall model interface. (HasBackend model interface, FromJSON model, ToJSON model, FromJSON interface, ToJSON interface) => Device model interface
 
 instance ToJSON Device where
-  toJSON (Device model) = object [ "device" .= toJSON model ]
+  toJSON (Device model interface) = object [ "model"     .= toJSON model
+                                           , "interface" .= toJSON interface
+                                           ]
 
-instance FromJSON Device where
-  parseJSON = undefined
-
-data DHT22 = DHT22 GPIO
-instance IsDevice DHT22 GPIO where
-  getInterface (DHT22 gpio) = gpio
+data DHT22 = DHT22 deriving (Show)
+instance FromJSON DHT22 where
+  parseJSON (String "DHT22") = return DHT22
+  parseJSON invalid          = typeMismatch "DHT22" invalid
+instance ToJSON DHT22 where toJSON DHT22 = "DHT22"
+instance IsDevice DHT22
+instance IsSensor DHT22
+instance HasBackend DHT22 GPIO where
   startDeviceController = error "startDeviceController not implemented for instance IsDevice DHT22"
-instance IsSensor DHT22 GPIO where
-deriveJSON jsonOptions ''DHT22
+
 
 --------------------------------------------------------------------------------
 
-newtype Toshiba_16NKV_E = Toshiba_16NKV_E { unToshiba_16NKV_E :: GPIO }
-instance IsDevice Toshiba_16NKV_E GPIO where
-  getInterface (Toshiba_16NKV_E gpio) = gpio
-  startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_16NKV_E"
-instance IsAC Toshiba_16NKV_E GPIO where
-  type State Toshiba_16NKV_E = Toshiba.Config
-deriveJSON defaultOptions ''Toshiba_16NKV_E
-{-instance ToJSON Toshiba_16NKV_E where
-  toJSON (Toshiba_16NKV_E gpio) = object [ "model"     .= pack "Toshiba_16NKV_E"
-                                         , "interface" .= toJSON gpio
-                                         ]
-
+data Toshiba_16NKV_E = Toshiba_16NKV_E deriving (Show)
 instance FromJSON Toshiba_16NKV_E where
-  parseJSON (Object v) = case (v .: "model") of
-    "Toshiba_16NKV_E" -> Toshiba_16NKV_E <$> (v .: "interface")
-    _ -> error "Can't parse this"
--}
---------------------------------------------------------------------------------
+  parseJSON (String "Toshiba_16NKV_E") = return Toshiba_16NKV_E
+  parseJSON invalid                    = typeMismatch "Toshiba_16NKV_E" invalid
+instance ToJSON Toshiba_16NKV_E where toJSON Toshiba_16NKV_E = "Toshiba_16NKV_E"
+instance IsDevice Toshiba_16NKV_E
+instance HasBackend Toshiba_16NKV_E GPIO where
+  startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_16NKV_E"
 
-newtype Toshiba_RAS_M13NKCV = Toshiba_RAS_M13NKCV GPIO
-instance IsDevice Toshiba_RAS_M13NKCV GPIO where
-  getInterface (Toshiba_RAS_M13NKCV gpio) = gpio
+--------------------------------------------------------------------------------
+{-
+data Toshiba_RAS_M13NKCV = Toshiba_RAS_M13NKCV
+instance IsDevice Toshiba_RAS_M13NKCV
+instance HasBackend Toshiba_RAS_M13NKCV GPIO where
   startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_RAS_M13NKCV"
-instance IsAC Toshiba_RAS_M13NKCV GPIO where
-  type State Toshiba_RAS_M13NKCV = Toshiba.Config
 deriveJSON jsonOptions ''Toshiba_RAS_M13NKCV
 
 --------------------------------------------------------------------------------
 
-newtype Toshiba_RAS_M16NKCV = Toshiba_RAS_M16NKCV GPIO
-instance IsDevice Toshiba_RAS_M16NKCV GPIO where
-  getInterface (Toshiba_RAS_M16NKCV gpio) = gpio
+data Toshiba_RAS_M16NKCV = Toshiba_RAS_M16NKCV
+instance IsDevice Toshiba_RAS_M16NKCV
+instance HasBackend Toshiba_RAS_M16NKCV GPIO where
   startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_RAS_M16NKCV"
-instance IsAC Toshiba_RAS_M16NKCV GPIO where
-  type State Toshiba_RAS_M16NKCV = Toshiba.Config
 deriveJSON jsonOptions ''Toshiba_RAS_M16NKCV
-
+-}
 --------------------------------------------------------------------------------
 {-
 convert :: DeviceModel -> Device

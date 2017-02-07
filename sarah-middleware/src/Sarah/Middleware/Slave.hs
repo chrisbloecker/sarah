@@ -25,7 +25,7 @@ import qualified Data.Map as M
 --------------------------------------------------------------------------------
 
 data DeviceDescription = DeviceDescription { _deviceName :: Text
-                                           , _device     :: Device
+--                                           , _device     :: Device
                                            }
 makeLenses ''DeviceDescription
 deriveJSON jsonOptions ''DeviceDescription
@@ -33,7 +33,7 @@ deriveJSON jsonOptions ''DeviceDescription
 data SlaveSettings = SlaveSettings { slaveNode  :: WebAddress
                                    , master     :: WebAddress
                                    , interfaces :: [Interface]
-                                   , devices    :: [Device]
+--                                   , devices    :: [Device]
                                    , nodeName   :: Text
                                    , room       :: Text
                                    }
@@ -56,7 +56,7 @@ runSlave SlaveSettings{..} = do
       liftIO $ threadDelay 100000
     Just master -> do
       interfaceControllers <- zip interfaces <$> forM interfaces startInterfaceController
-      deviceControllers    <- fromList . zip [1..] <$> forM devices (\(Device model) -> startDeviceController model)
+      deviceControllers    <- undefined
 
       self <- getSelfPid
       nodeUp master self (NodeInfo nodeName)
