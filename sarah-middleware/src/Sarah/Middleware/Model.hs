@@ -95,17 +95,17 @@ instance Show Interface where
 instance ToJSON Interface where
   toJSON (Interface t) = object [ "interface" .= toJSON t ]
 instance FromJSON Interface where
-  parseJSON = withObject "Interface" $ \o -> do
-    interface <- o .: "interface" :: Parser Object
+  parseJSON = withObject "Interface" $ \o ->
+    parseGPIOInterface o <|> parseI2CInterface o <|> parseIPInterface o
 
-    case HM.lookup "gpio" interface of
-      Just _ -> Interface <$> (parseJSON (Object interface) :: Parser GPIO)
-      Nothing -> case HM.lookup "i2c" interface of
-        Just _ -> Interface <$> (parseJSON (Object interface) :: Parser I2C)
-        Nothing -> case HM.lookup "ip" interface of
-          Just _ -> Interface <$> (parseJSON (Object interface) :: Parser IP)
-          Nothing -> fail "Can't parse Interface"
+parseGPIOInterface :: Object -> Parser Interface
+parseGPIOInterface o = Interface <$> (o .: "interface" :: Parser GPIO)
 
+parseI2CInterface :: Object -> Parser Interface
+parseI2CInterface o = Interface <$> (o .: "interface" :: Parser I2C)
+
+parseIPInterface :: Object -> Parser Interface
+parseIPInterface o = Interface <$> (o .: "interface" :: Parser IP)
 
 instance IsInterface Interface where
   startInterfaceController (Interface interface) = startInterfaceController interface
