@@ -90,7 +90,7 @@ go Options{..} = case nodeRole of
       Left err ->
         putStrLn $ "Parse error: " ++ slaveSettingsFile ++ " is invalid. " ++ err
       Right settings@SlaveSettings{..} -> do
-        mTransport <- createTransport (host slaveNode) (show . port $ slaveNode) defaultTCPParameters
+        mTransport <- createTransport (host nodeAddress) (show . port $ nodeAddress) defaultTCPParameters
         case mTransport of
           Left err ->
             throw err

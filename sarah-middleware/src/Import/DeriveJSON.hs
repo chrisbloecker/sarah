@@ -1,11 +1,13 @@
 module Import.DeriveJSON
   ( FromJSON (..), ToJSON (..), Object (..), decode', eitherDecode', object, (.=), (.:)
+  , Parser (..), withObject
   , deriveJSON, jsonOptions
   , Text
   , encodeUtf8
   ) where
 --------------------------------------------------------------------------------
 import Data.Aeson         (FromJSON (..), ToJSON (..), Object (..), decode', eitherDecode', object, (.=), (.:))
+import Data.Aeson.Types   (Parser (..), withObject)
 import Data.Aeson.TH      (Options (..), SumEncoding (..), deriveJSON, defaultOptions)
 import Data.Text          (Text)
 import Data.Text.Encoding (encodeUtf8)
@@ -22,7 +24,9 @@ fieldLabel "fan"         = "fan"
 fieldLabel "mode"        = "mode"
 fieldLabel "mpower"      = "power"
 
-fieldLabel "unPin"            = "gpio"
+fieldLabel "unPin"       = "gpio"
+fieldLabel "unAddress"   = "i2c"
+fieldLabel "unIP"        = "ip"
 
 fieldLabel s             = s
 

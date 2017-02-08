@@ -1,6 +1,9 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ExplicitForAll #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ExistentialQuantification #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Slave
   ( SlaveSettings (..)
@@ -10,7 +13,7 @@ module Sarah.Middleware.Slave
 import           Control.Concurrent               (threadDelay)
 import           Control.Distributed.Process
 import           Control.Monad
-import           Control.Lens
+import           Control.Lens                     hiding ((.=))
 import           Data.Map
 import           Data.Constraint
 import           Import.DeriveJSON
@@ -24,19 +27,23 @@ import           Sarah.Persist.Model
 import qualified Data.Map as M
 --------------------------------------------------------------------------------
 
-data DeviceDescription = DeviceDescription { _deviceName :: Text
---                                           , _device     :: Device
-                                           }
-makeLenses ''DeviceDescription
-deriveJSON jsonOptions ''DeviceDescription
-
-data SlaveSettings = SlaveSettings { slaveNode  :: WebAddress
-                                   , master     :: WebAddress
-                                   , interfaces :: [Interface]
---                                   , devices    :: [Device]
-                                   , nodeName   :: Text
-                                   , room       :: Text
+data SlaveSettings = SlaveSettings { nodeName      :: Text
+                                   , nodeAddress   :: WebAddress
+                                   , masterAddress :: WebAddress
+                                   , interfaces    :: [InterfaceDescription]
+                                   , devices       :: [DeviceDescription]
                                    }
+
+data InterfaceDescription = InterfaceDescription { interfaceName :: Text
+                                                 , interfacePort :: Text --forall interface. IsInterface interface => interface
+                                                 }
+
+data DeviceDescription = DeviceDescription { deviceName      :: Text
+                                           , deviceModel     :: Text --forall model. IsDevice model => model
+                                           , deviceInterface :: Text
+                                           }
+deriveJSON jsonOptions ''DeviceDescription
+deriveJSON jsonOptions ''InterfaceDescription
 deriveJSON jsonOptions ''SlaveSettings
 
 data State = State { _interfaceControllers :: [(Interface, ProcessId)]
@@ -48,21 +55,21 @@ makeLenses ''State
 
 runSlave :: SlaveSettings -> Process ()
 runSlave SlaveSettings{..} = do
-  mmaster <- findMaster (host master) (show . port $ master) (seconds 1)
+  mmaster <- findMaster (host masterAddress) (show . port $ masterAddress) (seconds 1)
   case mmaster of
     Nothing -> do
       say "No master found... Terminating..."
       -- make sure there's enough time to print the message
       liftIO $ threadDelay 100000
     Just master -> do
-      interfaceControllers <- zip interfaces <$> forM interfaces startInterfaceController
+      interfaceControllers <- undefined
       deviceControllers    <- undefined
 
       self <- getSelfPid
       nodeUp master self (NodeInfo nodeName)
       linkMaster master
 
-      loop $ State interfaceControllers deviceControllers
+      loop $ State undefined undefined
 
 loop :: State -> Process ()
 loop state =

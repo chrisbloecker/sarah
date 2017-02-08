@@ -1,6 +1,12 @@
+{-# LANGUAGE TemplateHaskell #-}
+--------------------------------------------------------------------------------
 module Raspberry.I2C
-  ( I2C (..)
+  ( Address (..)
   ) where
 --------------------------------------------------------------------------------
+import Import.DeriveJSON
+--------------------------------------------------------------------------------
 
-newtype I2C = I2C { unI2C :: Int } deriving (Show, Eq)
+newtype Address = Address { unAddress :: Int } deriving (Show, Eq)
+
+deriveJSON jsonOptions ''Address
