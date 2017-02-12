@@ -21,6 +21,7 @@ library
                      , Raspberry.GPIO
                      , Raspberry.Hardware
                      , Raspberry.I2C
+                     , Raspberry.IP
                      , Sarah.Middleware.Api
                      , Sarah.Middleware.Api.Device
                      , Sarah.Middleware.Api.Sensor
@@ -32,8 +33,8 @@ library
                      , Sarah.Middleware.Master
                      , Sarah.Middleware.Master.Messages
                      , Sarah.Middleware.Model
+                     , Sarah.Middleware.Model.Interface
                      , Sarah.Middleware.Slave
-                     , Sarah.Middleware.Slave.Messages
                      , Sarah.Middleware.Util
   c-sources:           src/Sarah/Middleware/Device/AC/Toshiba.c
                      , src/Sarah/Middleware/Device/Sensor/DHT22.c

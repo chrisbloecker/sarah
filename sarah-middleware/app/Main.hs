@@ -19,6 +19,7 @@ import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), 
 import           Options.Applicative
 import           Servant.Client                       (BaseUrl (..), Scheme (Http))
 --------------------------------------------------------------------------------
+import           Raspberry.Hardware
 import           Sarah.Middleware.Api
 import           Sarah.Middleware.Master
 import           Sarah.Middleware.Model

@@ -1,2 +1,2 @@
 build:
-	@stack install --local-bin-path .
+	stack install --local-bin-path .

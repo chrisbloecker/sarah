@@ -1,30 +1,33 @@
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE FunctionalDependencies    #-}
-{-# LANGUAGE OverloadedStrings         #-}
-{-# LANGUAGE TemplateHaskell           #-}
-{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE StandaloneDeriving         #-}
+{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE TypeFamilies               #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device
   where
 --------------------------------------------------------------------------------
+import           Control.Applicative              ((<|>))
 import           Control.Concurrent               (threadDelay)
 import           Control.Distributed.Process
 import           Control.Distributed.Process.Node
-import           Control.Lens                     hiding ((.=))
--- ToDo: why do I need this import to get Data.Aeson.Object into scope?
-import           Data.Aeson
-import           Data.Aeson.Lens
-import           Data.Aeson.Types
-import           Data.Maybe
-import           Data.Text
+import           Data.Aeson                       (encode, decode')
+import           Data.Aeson.Types                 (Parser, Value (..), typeMismatch)
+import           Data.ByteString.Lazy             (ByteString)
+import           Data.Maybe                       (fromJust)
+import           Data.Text                        (Text)
+import           Data.Text.Encoding               (encodeUtf8, decodeUtf8)
+import           Data.Word
 import           GHC.Generics                     (Generic)
 import           Import.DeriveJSON
-import           Physics
-import           Raspberry.GPIO
-import           Sarah.Middleware.Model
-import           Sarah.Middleware.Master.Messages
-import           System.Clock
+import           Import.MkBinary
+import           Raspberry.Hardware
+import           Sarah.Middleware.Model.Interface
 --------------------------------------------------------------------------------
+import qualified Data.ByteString.Lazy                 as BS
 import qualified Sarah.Middleware.Device.AC.Toshiba   as Toshiba
 import qualified Sarah.Middleware.Device.Sensor.DHT22 as DHT22
 import qualified Sarah.Persist.Types                  as T
@@ -49,59 +52,81 @@ class IsDevice model => IsAC model where
 class IsDevice model => IsSensor model
 class IsDevice model => IsTV     model
 
-data Device = forall model interface. (HasBackend model interface, FromJSON model, ToJSON model, FromJSON interface, ToJSON interface) => Device model interface
-
-instance ToJSON Device where
-  toJSON (Device model interface) = object [ "model"     .= toJSON model
-                                           , "interface" .= toJSON interface
-                                           ]
+--------------------------------------------------------------------------------
 
 data DHT22 = DHT22 deriving (Show)
+instance IsDevice DHT22
+instance ToJSON DHT22 where
+  toJSON DHT22 = "DHT22"
 instance FromJSON DHT22 where
   parseJSON (String "DHT22") = return DHT22
   parseJSON invalid          = typeMismatch "DHT22" invalid
-instance ToJSON DHT22 where toJSON DHT22 = "DHT22"
-instance IsDevice DHT22
 instance IsSensor DHT22
 instance HasBackend DHT22 GPIO where
   startDeviceController = error "startDeviceController not implemented for instance IsDevice DHT22"
 
-
 --------------------------------------------------------------------------------
 
 data Toshiba_16NKV_E = Toshiba_16NKV_E deriving (Show)
+instance IsDevice Toshiba_16NKV_E
+instance ToJSON Toshiba_16NKV_E where
+  toJSON Toshiba_16NKV_E = "Toshiba_16NKV_E"
 instance FromJSON Toshiba_16NKV_E where
   parseJSON (String "Toshiba_16NKV_E") = return Toshiba_16NKV_E
   parseJSON invalid                    = typeMismatch "Toshiba_16NKV_E" invalid
-instance ToJSON Toshiba_16NKV_E where toJSON Toshiba_16NKV_E = "Toshiba_16NKV_E"
-instance IsDevice Toshiba_16NKV_E
 instance HasBackend Toshiba_16NKV_E GPIO where
   startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_16NKV_E"
 
 --------------------------------------------------------------------------------
-{-
-data Toshiba_RAS_M13NKCV = Toshiba_RAS_M13NKCV
+
+data Toshiba_RAS_M13NKCV = Toshiba_RAS_M13NKCV deriving (Show)
 instance IsDevice Toshiba_RAS_M13NKCV
+instance ToJSON Toshiba_RAS_M13NKCV where
+  toJSON Toshiba_RAS_M13NKCV = "Toshiba_RAS_M13NKCV"
+instance FromJSON Toshiba_RAS_M13NKCV where
+  parseJSON (String "Toshiba_RAS_M13NKCV") = return Toshiba_RAS_M13NKCV
+  parseJSON invalid                        = typeMismatch "Toshiba_RAS_M13NKCV" invalid
 instance HasBackend Toshiba_RAS_M13NKCV GPIO where
   startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_RAS_M13NKCV"
-deriveJSON jsonOptions ''Toshiba_RAS_M13NKCV
 
 --------------------------------------------------------------------------------
 
-data Toshiba_RAS_M16NKCV = Toshiba_RAS_M16NKCV
+data Toshiba_RAS_M16NKCV = Toshiba_RAS_M16NKCV deriving (Show)
 instance IsDevice Toshiba_RAS_M16NKCV
+instance ToJSON Toshiba_RAS_M16NKCV where
+  toJSON Toshiba_RAS_M16NKCV = "Toshiba_RAS_M16NKCV"
+instance FromJSON Toshiba_RAS_M16NKCV where
+  parseJSON (String "Toshiba_RAS_M16NKCV") = return Toshiba_RAS_M16NKCV
+  parseJSON invalid                        = typeMismatch "Toshiba_RAS_M16NKCV" invalid
 instance HasBackend Toshiba_RAS_M16NKCV GPIO where
   startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_RAS_M16NKCV"
-deriveJSON jsonOptions ''Toshiba_RAS_M16NKCV
--}
+
 --------------------------------------------------------------------------------
-{-
-convert :: DeviceModel -> Device
-convert Model_Toshiba_16NKV_E     = Device $ AC $ Toshiba_16NKV_E (GPIO undefined)
-convert Model_Toshiba_RAS_M13NKCV = Device $ AC $ Toshiba_RAS_M13NKCV (GPIO undefined)
-convert Model_Toshiba_RAS_M16NKCV = Device $ AC $ Toshiba_RAS_M16NKCV (GPIO undefined)
-convert Model_DHT22               = Device $ Sensor $ DHT22 (GPIO undefined)
--}
+
+data Device = forall model. (IsDevice model, Show model, FromJSON model, ToJSON model) => Device model deriving (Typeable)
+instance Show Device where
+  show (Device model) = "Device " ++ show model
+instance ToJSON Device where
+  toJSON (Device model) = toJSON model
+instance FromJSON Device where
+  parseJSON v = Device <$> (parseJSON v :: Parser DHT22)
+            <|> Device <$> (parseJSON v :: Parser Toshiba_16NKV_E)
+            <|> Device <$> (parseJSON v :: Parser Toshiba_RAS_M13NKCV)
+            <|> Device <$> (parseJSON v :: Parser Toshiba_RAS_M16NKCV)
+            <|> fail ("Can't parse device from JSON: " ++ show v)
+
+-- ToDo: Instead of this, we should probably rather write instances for Binary and Typeable for Device
+newtype DeviceRep = DeviceRep { unDeviceRep :: Text } deriving (Show, Binary)
+deriveJSON jsonOptions ''DeviceRep
+
+toDeviceRep :: Device -> DeviceRep
+toDeviceRep = DeviceRep . decodeUtf8 . BS.toStrict . encode
+
+-- ToDo: This is not supposed to go wrong because DeviceReps can only be created
+--       from valid Devices, so we will be able to decode them again
+fromDeviceRep :: DeviceRep -> Device
+fromDeviceRep = fromJust . decode' . BS.fromStrict . encodeUtf8 . unDeviceRep
+
 --------------------------------------------------------------------------------
 {-
 (+++) = append
