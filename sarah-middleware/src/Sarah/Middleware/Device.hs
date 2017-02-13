@@ -1,8 +1,8 @@
-{-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE ExistentialQuantification  #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
+{-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
@@ -12,16 +12,13 @@ module Sarah.Middleware.Device
 --------------------------------------------------------------------------------
 import           Control.Applicative              ((<|>))
 import           Control.Concurrent               (threadDelay)
-import           Control.Distributed.Process
-import           Control.Distributed.Process.Node
+import           Control.Distributed.Process      (Process, ProcessId, say, spawnLocal, matchAny, receiveWait, liftIO)
+--import           Control.Distributed.Process.Node
 import           Data.Aeson                       (encode, decode')
 import           Data.Aeson.Types                 (Parser, Value (..), typeMismatch)
-import           Data.ByteString.Lazy             (ByteString)
 import           Data.Maybe                       (fromJust)
 import           Data.Text                        (Text)
 import           Data.Text.Encoding               (encodeUtf8, decodeUtf8)
-import           Data.Word
-import           GHC.Generics                     (Generic)
 import           Import.DeriveJSON
 import           Import.MkBinary
 import           Raspberry.Hardware
@@ -33,7 +30,9 @@ import qualified Sarah.Middleware.Device.Sensor.DHT22 as DHT22
 import qualified Sarah.Persist.Types                  as T
 --------------------------------------------------------------------------------
 
-data DeviceCommand     = DeviceCommand
+data DeviceCommand     = DeviceCommand { commandTarget  :: Text
+                                       , commandCommand :: Text
+                                       }
 data DeviceQuery       = DeviceQuery
 data DeviceQueryResult = DeviceQueryResult
 
@@ -41,73 +40,104 @@ deriveJSON jsonOptions ''DeviceCommand
 deriveJSON jsonOptions ''DeviceQuery
 deriveJSON jsonOptions ''DeviceQueryResult
 
-class IsDevice model
+newtype DeviceController = DeviceController { unDeviceController :: ProcessId }
 
-class (IsDevice model, IsInterface interface) => HasBackend model interface where
-  startDeviceController :: model -> Process ProcessId
+class IsDevice model where
+  type DeviceState model :: *
+  startDeviceController :: model -> InterfaceController -> Process DeviceController
 
 class IsDevice model => IsAC model where
   type State model :: *
 
-class IsDevice model => IsSensor model
-class IsDevice model => IsTV     model
-
 --------------------------------------------------------------------------------
 
 data DHT22 = DHT22 deriving (Show)
-instance IsDevice DHT22
+
+instance IsDevice DHT22 where
+  type DeviceState DHT22 = ()
+  startDeviceController _ (InterfaceController pid) = do
+    say "[DHT22.startDeviceController] starting controller for DHT22"
+    DeviceController <$> spawnLocal (DHT22.controller pid)
+
 instance ToJSON DHT22 where
   toJSON DHT22 = "DHT22"
+
 instance FromJSON DHT22 where
   parseJSON (String "DHT22") = return DHT22
   parseJSON invalid          = typeMismatch "DHT22" invalid
-instance IsSensor DHT22
-instance HasBackend DHT22 GPIO where
-  startDeviceController = error "startDeviceController not implemented for instance IsDevice DHT22"
 
 --------------------------------------------------------------------------------
 
 data Toshiba_16NKV_E = Toshiba_16NKV_E deriving (Show)
-instance IsDevice Toshiba_16NKV_E
+
+instance IsDevice Toshiba_16NKV_E where
+  type DeviceState Toshiba_16NKV_E = Toshiba.Config
+  startDeviceController _ (InterfaceController pid) = do
+    say "[Toshiba_16NKV_E.startDeviceController] starting controller for Toshiba_16NKV_E"
+    DeviceController <$> spawnLocal (Toshiba.controller pid Toshiba.defaultConfig)
+
 instance ToJSON Toshiba_16NKV_E where
   toJSON Toshiba_16NKV_E = "Toshiba_16NKV_E"
+
 instance FromJSON Toshiba_16NKV_E where
   parseJSON (String "Toshiba_16NKV_E") = return Toshiba_16NKV_E
   parseJSON invalid                    = typeMismatch "Toshiba_16NKV_E" invalid
-instance HasBackend Toshiba_16NKV_E GPIO where
-  startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_16NKV_E"
 
 --------------------------------------------------------------------------------
 
 data Toshiba_RAS_M13NKCV = Toshiba_RAS_M13NKCV deriving (Show)
-instance IsDevice Toshiba_RAS_M13NKCV
+
+instance IsDevice Toshiba_RAS_M13NKCV where
+  type DeviceState Toshiba_RAS_M13NKCV = Toshiba.Config
+  startDeviceController _ (InterfaceController pid) = do
+    say "[Toshiba_RAS_M13NKCV.startDeviceController] starting controller for Toshiba_RAS_M13NKCV"
+    DeviceController <$> spawnLocal (Toshiba.controller pid Toshiba.defaultConfig)
+
 instance ToJSON Toshiba_RAS_M13NKCV where
   toJSON Toshiba_RAS_M13NKCV = "Toshiba_RAS_M13NKCV"
+
 instance FromJSON Toshiba_RAS_M13NKCV where
   parseJSON (String "Toshiba_RAS_M13NKCV") = return Toshiba_RAS_M13NKCV
   parseJSON invalid                        = typeMismatch "Toshiba_RAS_M13NKCV" invalid
-instance HasBackend Toshiba_RAS_M13NKCV GPIO where
-  startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_RAS_M13NKCV"
 
 --------------------------------------------------------------------------------
 
 data Toshiba_RAS_M16NKCV = Toshiba_RAS_M16NKCV deriving (Show)
-instance IsDevice Toshiba_RAS_M16NKCV
+
+instance IsDevice Toshiba_RAS_M16NKCV where
+  type DeviceState Toshiba_RAS_M16NKCV = Toshiba.Config
+  startDeviceController _ (InterfaceController pid) = do
+    say "[Toshiba_RAS_M16NKCV.startDeviceController] starting controller for Toshiba_RAS_M16NKCV"
+    DeviceController <$> spawnLocal (Toshiba.controller pid Toshiba.defaultConfig)
+
 instance ToJSON Toshiba_RAS_M16NKCV where
   toJSON Toshiba_RAS_M16NKCV = "Toshiba_RAS_M16NKCV"
+
 instance FromJSON Toshiba_RAS_M16NKCV where
   parseJSON (String "Toshiba_RAS_M16NKCV") = return Toshiba_RAS_M16NKCV
   parseJSON invalid                        = typeMismatch "Toshiba_RAS_M16NKCV" invalid
-instance HasBackend Toshiba_RAS_M16NKCV GPIO where
-  startDeviceController = error "startDeviceController not implemented for instance IsDevice Model_Toshiba_RAS_M16NKCV"
 
 --------------------------------------------------------------------------------
 
-data Device = forall model. (IsDevice model, Show model, FromJSON model, ToJSON model) => Device model deriving (Typeable)
+-- A Device is a wrapper around something that is an instance of IsDevice. We're
+-- forgetting almost all type information here, and perhaps it would be better
+-- to model devices as something like
+-- data Device = DHT22 | Toshiba_16NKV_E | ...
+-- but then we would have a lot of case alternatives everywhere where we want to
+-- use devices and have to handle different models differently. So we're taking
+-- the approach of existentials and see how that goes.
+data Device = forall model. (IsDevice model, Show model, FromJSON model, ToJSON model)
+            => Device model
+
 instance Show Device where
-  show (Device model) = "Device " ++ show model
+  show (Device model) = "Device (" ++ show model ++ ")"
+
 instance ToJSON Device where
   toJSON (Device model) = toJSON model
+
+-- we have to explicitly list the devices we want to be able to parse because
+-- there are existentials in the context of Device and the FromJSON instance
+-- can't be derived automatically.
 instance FromJSON Device where
   parseJSON v = Device <$> (parseJSON v :: Parser DHT22)
             <|> Device <$> (parseJSON v :: Parser Toshiba_16NKV_E)
@@ -116,6 +146,7 @@ instance FromJSON Device where
             <|> fail ("Can't parse device from JSON: " ++ show v)
 
 -- ToDo: Instead of this, we should probably rather write instances for Binary and Typeable for Device
+--       but: we can't make TypeRep serilisable...
 newtype DeviceRep = DeviceRep { unDeviceRep :: Text } deriving (Show, Binary)
 deriveJSON jsonOptions ''DeviceRep
 

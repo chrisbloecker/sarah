@@ -8,10 +8,11 @@
 module Sarah.Middleware.Device.AC.Toshiba
   where
 --------------------------------------------------------------------------------
-import           Control.Concurrent    (forkIO)
-import           Data.Bits             (Bits, testBit, xor, zeroBits)
-import           Data.ByteString       (ByteString)
-import           Data.Monoid           ((<>))
+import           Control.Concurrent          (forkIO)
+import           Control.Distributed.Process
+import           Data.Bits                   (Bits, testBit, xor, zeroBits)
+import           Data.ByteString             (ByteString)
+import           Data.Monoid                 ((<>))
 import           Import.DeriveJSON
 import           Import.MkBinary
 import           Raspberry.GPIO
@@ -31,6 +32,19 @@ data Config = Config { temperature :: Temperature
                      , mpower      :: Maybe Power
                      }
   deriving (Binary, Generic, Typeable)
+
+defaultConfig :: Config
+defaultConfig = Config { temperature = T22
+                       , fan         = FanAuto
+                       , mode        = ModeAuto
+                       , mpower      = Nothing
+                       }
+
+controller :: ProcessId -> Config -> Process ()
+controller interface config = receiveWait [ matchAny $ \m -> do
+                                              say $ "Received unexpected message" ++ show m
+                                              controller interface config
+                                          ]
 
 instance ToBits Temperature where
   toBits T17 = 0x0

@@ -4,12 +4,19 @@
 module Sarah.Middleware.Device.Sensor.DHT22
   where
 --------------------------------------------------------------------------------
+import           Control.Distributed.Process
 import           Physics
 import           Raspberry.GPIO
 --------------------------------------------------------------------------------
 import qualified Language.C.Inline            as C
 import qualified Data.Vector.Storable.Mutable as V
 --------------------------------------------------------------------------------
+
+controller :: ProcessId -> Process ()
+controller interface = receiveWait [ matchAny $ \m -> do
+                                       say $ "Received unexpected message" ++ show m
+                                       controller interface
+                                   ]
 
 data Error = InitFailed
            | Timeout

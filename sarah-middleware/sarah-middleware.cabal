@@ -35,6 +35,7 @@ library
                      , Sarah.Middleware.Model
                      , Sarah.Middleware.Model.Interface
                      , Sarah.Middleware.Slave
+                     , Sarah.Middleware.Slave.Messages
                      , Sarah.Middleware.Util
   c-sources:           src/Sarah/Middleware/Device/AC/Toshiba.c
                      , src/Sarah/Middleware/Device/Sensor/DHT22.c

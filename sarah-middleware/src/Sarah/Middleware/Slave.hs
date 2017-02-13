@@ -17,7 +17,7 @@ import           Control.Distributed.Process
 import           Control.Monad
 import           Control.Lens                      hiding ((.=))
 import           Data.List                                ((\\), elem, notElem)
-import           Data.Map                                 (Map, fromList)
+import           Data.Map                                 (Map, (!), fromList)
 import           Import.DeriveJSON
 import           Raspberry.Hardware
 import           Sarah.Middleware.Device           hiding (State)
@@ -90,8 +90,8 @@ instance FromJSON SlaveSettings where
       difference :: (Eq a) => [a] -> [a] -> [a]
       difference l1 l2 = [x | x <- l1, x `notElem` l2]
 
-data State = State { _interfaceControllers :: Map Text ProcessId
-                   , _deviceControllers    :: Map Text ProcessId
+data State = State { _interfaceControllers :: Map Text InterfaceController
+                   , _deviceControllers    :: Map Text DeviceController
                    }
 makeLenses ''State
 
@@ -108,13 +108,15 @@ runSlave SlaveSettings{..} = do
     Just master -> do
       interfaceControllers <- fmap fromList <$> forM interfaces $ \InterfaceDescription{..} -> do pid <- startInterfaceController interfacePort
                                                                                                   return (interfaceName, pid)
-      deviceControllers    <- undefined
+      deviceControllers    <- fmap fromList <$> forM devices $ \DeviceDescription{..} -> case deviceModel of
+                                                                                           Device model -> do pid <- startDeviceController model (interfaceControllers ! deviceInterface)
+                                                                                                              return (deviceName, pid)
 
       self <- getSelfPid
       nodeUp master self (NodeInfo nodeName [])
       linkMaster master
 
-      loop $ State interfaceControllers undefined
+      loop $ State interfaceControllers deviceControllers
 
 loop :: State -> Process ()
 loop state =

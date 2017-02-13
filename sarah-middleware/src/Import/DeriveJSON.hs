@@ -19,6 +19,14 @@ fieldLabel "sensorReadingRoom"   = "room"
 fieldLabel "sensorReadingSensor" = "sensor"
 fieldLabel "sensorReadingValues" = "values"
 
+-- InterfaceDescription
+fieldLabel "interfaceName" = "name"
+fieldLabel "interfacePort" = "port"
+-- DeviceDescription
+fieldLabel "deviceName"      = "name"
+fieldLabel "deviceModel"     = "model"
+fieldLabel "deviceInterface" = "interface"
+
 fieldLabel "temperature" = "temperature"
 fieldLabel "fan"         = "fan"
 fieldLabel "mode"        = "mode"
