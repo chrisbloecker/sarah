@@ -13,7 +13,6 @@ module Sarah.Middleware.Device
 import           Control.Applicative              ((<|>))
 import           Control.Concurrent               (threadDelay)
 import           Control.Distributed.Process      (Process, ProcessId, say, spawnLocal, matchAny, receiveWait, liftIO)
---import           Control.Distributed.Process.Node
 import           Data.Aeson                       (encode, decode')
 import           Data.Aeson.Types                 (Parser, Value (..), typeMismatch)
 import           Data.Maybe                       (fromJust)
@@ -44,7 +43,7 @@ newtype DeviceController = DeviceController { unDeviceController :: ProcessId }
 
 class IsDevice model where
   type DeviceState model :: *
-  startDeviceController :: model -> InterfaceController -> Process DeviceController
+  startDeviceController :: model -> PortManager -> Process DeviceController
 
 class IsDevice model => IsAC model where
   type State model :: *
@@ -55,9 +54,9 @@ data DHT22 = DHT22 deriving (Show)
 
 instance IsDevice DHT22 where
   type DeviceState DHT22 = ()
-  startDeviceController _ (InterfaceController pid) = do
+  startDeviceController _ portManager = do
     say "[DHT22.startDeviceController] starting controller for DHT22"
-    DeviceController <$> spawnLocal (DHT22.controller pid)
+    DeviceController <$> spawnLocal (DHT22.controller portManager)
 
 instance ToJSON DHT22 where
   toJSON DHT22 = "DHT22"
@@ -68,54 +67,37 @@ instance FromJSON DHT22 where
 
 --------------------------------------------------------------------------------
 
-data Toshiba_16NKV_E = Toshiba_16NKV_E deriving (Show)
+data HS110 = HS110 deriving (Show)
 
-instance IsDevice Toshiba_16NKV_E where
-  type DeviceState Toshiba_16NKV_E = Toshiba.Config
+instance IsDevice HS110 where
+  type DeviceState HS110 = ()
   startDeviceController _ (InterfaceController pid) = do
-    say "[Toshiba_16NKV_E.startDeviceController] starting controller for Toshiba_16NKV_E"
-    DeviceController <$> spawnLocal (Toshiba.controller pid Toshiba.defaultConfig)
+    say "[HS110.startDeviceController] starting controller for HS110"
+    DeviceController <$> spawnLocal undefined
 
-instance ToJSON Toshiba_16NKV_E where
-  toJSON Toshiba_16NKV_E = "Toshiba_16NKV_E"
+instance ToJSON HS110 where
+  toJSON HS110 = "HS110"
 
-instance FromJSON Toshiba_16NKV_E where
-  parseJSON (String "Toshiba_16NKV_E") = return Toshiba_16NKV_E
-  parseJSON invalid                    = typeMismatch "Toshiba_16NKV_E" invalid
+instance FromJSON HS110 where
+  parseJSON (String "HS110") = return HS110
+  parseJSON invalid          = typeMismatch "HS110" invalid
 
 --------------------------------------------------------------------------------
 
-data Toshiba_RAS_M13NKCV = Toshiba_RAS_M13NKCV deriving (Show)
+data ToshibaAC = ToshibaAC deriving (Show)
 
-instance IsDevice Toshiba_RAS_M13NKCV where
-  type DeviceState Toshiba_RAS_M13NKCV = Toshiba.Config
+instance IsDevice ToshibaAC where
+  type DeviceState ToshibaAC = Toshiba.Config
   startDeviceController _ (InterfaceController pid) = do
-    say "[Toshiba_RAS_M13NKCV.startDeviceController] starting controller for Toshiba_RAS_M13NKCV"
+    say "[ToshibaAC.startDeviceController] starting controller for ToshibaAC"
     DeviceController <$> spawnLocal (Toshiba.controller pid Toshiba.defaultConfig)
 
-instance ToJSON Toshiba_RAS_M13NKCV where
-  toJSON Toshiba_RAS_M13NKCV = "Toshiba_RAS_M13NKCV"
+instance ToJSON ToshibaAC where
+  toJSON ToshibaAC = "ToshibaAC"
 
-instance FromJSON Toshiba_RAS_M13NKCV where
-  parseJSON (String "Toshiba_RAS_M13NKCV") = return Toshiba_RAS_M13NKCV
-  parseJSON invalid                        = typeMismatch "Toshiba_RAS_M13NKCV" invalid
-
---------------------------------------------------------------------------------
-
-data Toshiba_RAS_M16NKCV = Toshiba_RAS_M16NKCV deriving (Show)
-
-instance IsDevice Toshiba_RAS_M16NKCV where
-  type DeviceState Toshiba_RAS_M16NKCV = Toshiba.Config
-  startDeviceController _ (InterfaceController pid) = do
-    say "[Toshiba_RAS_M16NKCV.startDeviceController] starting controller for Toshiba_RAS_M16NKCV"
-    DeviceController <$> spawnLocal (Toshiba.controller pid Toshiba.defaultConfig)
-
-instance ToJSON Toshiba_RAS_M16NKCV where
-  toJSON Toshiba_RAS_M16NKCV = "Toshiba_RAS_M16NKCV"
-
-instance FromJSON Toshiba_RAS_M16NKCV where
-  parseJSON (String "Toshiba_RAS_M16NKCV") = return Toshiba_RAS_M16NKCV
-  parseJSON invalid                        = typeMismatch "Toshiba_RAS_M16NKCV" invalid
+instance FromJSON ToshibaAC where
+  parseJSON (String "ToshibaAC") = return ToshibaAC
+  parseJSON invalid              = typeMismatch "ToshibaAC" invalid
 
 --------------------------------------------------------------------------------
 
@@ -140,9 +122,8 @@ instance ToJSON Device where
 -- can't be derived automatically.
 instance FromJSON Device where
   parseJSON v = Device <$> (parseJSON v :: Parser DHT22)
-            <|> Device <$> (parseJSON v :: Parser Toshiba_16NKV_E)
-            <|> Device <$> (parseJSON v :: Parser Toshiba_RAS_M13NKCV)
-            <|> Device <$> (parseJSON v :: Parser Toshiba_RAS_M16NKCV)
+            <|> Device <$> (parseJSON v :: Parser HS110)
+            <|> Device <$> (parseJSON v :: Parser ToshibaAC)
             <|> fail ("Can't parse device from JSON: " ++ show v)
 
 -- ToDo: Instead of this, we should probably rather write instances for Binary and Typeable for Device

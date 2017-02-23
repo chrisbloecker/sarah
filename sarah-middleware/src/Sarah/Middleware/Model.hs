@@ -63,3 +63,5 @@ data Status = Status { _connectedNodes :: [NodeInfo]
 instance Binary Status
 deriveJSON jsonOptions ''Status
 makeLenses ''Status
+
+newtype PortManager = PortManager { unPortManager :: ProcessId }
