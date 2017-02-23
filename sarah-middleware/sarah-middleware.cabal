@@ -28,7 +28,9 @@ library
                      , Sarah.Middleware.Api.Status
                      , Sarah.Middleware.Client
                      , Sarah.Middleware.Device
+                     , Sarah.Middleware.Distributed
                      , Sarah.Middleware.Device.AC.Toshiba
+                     , Sarah.Middleware.Device.Power.HS110
                      , Sarah.Middleware.Device.Sensor.DHT22
                      , Sarah.Middleware.Master
                      , Sarah.Middleware.Master.Messages

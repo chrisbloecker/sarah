@@ -4,22 +4,55 @@
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device.AC.Toshiba
   where
 --------------------------------------------------------------------------------
-import           Control.Concurrent          (forkIO)
-import           Control.Distributed.Process
-import           Data.Bits                   (Bits, testBit, xor, zeroBits)
-import           Data.ByteString             (ByteString)
-import           Data.Monoid                 ((<>))
-import           Import.DeriveJSON
-import           Import.MkBinary
-import           Raspberry.GPIO
+import Control.Concurrent          (forkIO)
+import Control.Distributed.Process
+import Data.Aeson
+import Data.Aeson.Types            (typeMismatch)
+import Data.Bits                   (Bits, testBit, xor, zeroBits)
+import Data.ByteString             (ByteString)
+import Data.Monoid                 ((<>))
+import Data.Text                   (unpack)
+import Import.DeriveJSON
+import Import.MkBinary
+import Raspberry.GPIO
+import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..))
 --------------------------------------------------------------------------------
 import qualified Data.ByteString   as BS
 import qualified Language.C.Inline as C
 --------------------------------------------------------------------------------
+
+data ToshibaAC = ToshibaAC Pin deriving (Show)
+
+instance IsDevice ToshibaAC where
+  type DeviceState ToshibaAC = Config
+  startDeviceController (ToshibaAC pin) portManager = do
+    say "[ToshibaAC.startDeviceController] starting controller for ToshibaAC"
+    DeviceController <$> spawnLocal (controller portManager pin defaultConfig)
+
+      where
+        controller :: PortManager -> Pin -> Config -> Process ()
+        controller portManager pin config = receiveWait [ matchAny $ \m -> do
+                                                        say $ "[ToshibaAC] Received unexpected message " ++ show m
+                                                        controller portManager pin config
+                                                    ]
+
+instance ToJSON ToshibaAC where
+  toJSON (ToshibaAC (Pin pin)) = object [ "model" .= String "ToshibaAC"
+                                        , "gpio"  .= toJSON pin
+                                        ]
+
+instance FromJSON ToshibaAC where
+  parseJSON = withObject "ToshibaAC" $ \o -> do
+    model <- o .: "model" :: Parser Text
+    case model of
+      "ToshibaAC" -> ToshibaAC <$> o .: "gpio"
+      model       -> fail $ "Invalid model identifier: " ++ unpack model
+
 
 data Temperature = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30 deriving (Binary, Generic, Typeable)
 data Fan         = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Binary, Generic, Typeable)
@@ -39,12 +72,6 @@ defaultConfig = Config { temperature = T22
                        , mode        = ModeAuto
                        , mpower      = Nothing
                        }
-
-controller :: ProcessId -> Config -> Process ()
-controller interface config = receiveWait [ matchAny $ \m -> do
-                                              say $ "Received unexpected message" ++ show m
-                                              controller interface config
-                                          ]
 
 instance ToBits Temperature where
   toBits T17 = 0x0

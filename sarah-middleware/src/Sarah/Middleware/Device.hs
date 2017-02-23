@@ -1,104 +1,32 @@
 {-# LANGUAGE ExistentialQuantification  #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TemplateHaskell            #-}
-{-# LANGUAGE TypeFamilies               #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device
   where
 --------------------------------------------------------------------------------
-import           Control.Applicative              ((<|>))
-import           Control.Concurrent               (threadDelay)
-import           Control.Distributed.Process      (Process, ProcessId, say, spawnLocal, matchAny, receiveWait, liftIO)
-import           Data.Aeson                       (encode, decode')
-import           Data.Aeson.Types                 (Parser, Value (..), typeMismatch)
-import           Data.Maybe                       (fromJust)
-import           Data.Text                        (Text)
-import           Data.Text.Encoding               (encodeUtf8, decodeUtf8)
-import           Import.DeriveJSON
-import           Import.MkBinary
-import           Raspberry.Hardware
-import           Sarah.Middleware.Model.Interface
+import Control.Applicative              ((<|>))
+import Control.Concurrent               (threadDelay)
+import Control.Distributed.Process      (Process, ProcessId, say, spawnLocal, matchAny, receiveWait, liftIO)
+import Data.Aeson                       (encode, decode')
+import Data.Aeson.Types                 (Parser, Value (..), typeMismatch)
+import Data.Maybe                       (fromJust)
+import Data.Text                        (Text, unpack)
+import Data.Text.Encoding               (encodeUtf8, decodeUtf8)
+import Import.DeriveJSON
+import Import.MkBinary
+import Raspberry.Hardware
+import Sarah.Middleware.Model               (IsDevice)
+import Sarah.Middleware.Model.Interface
+import Sarah.Middleware.Device.AC.Toshiba   (ToshibaAC)
+import Sarah.Middleware.Device.Power.HS110  (HS110)
+import Sarah.Middleware.Device.Sensor.DHT22 (DHT22)
 --------------------------------------------------------------------------------
 import qualified Data.ByteString.Lazy                 as BS
-import qualified Sarah.Middleware.Device.AC.Toshiba   as Toshiba
-import qualified Sarah.Middleware.Device.Sensor.DHT22 as DHT22
+--import qualified Sarah.Middleware.Device.AC.Toshiba   as Toshiba
+--import qualified Sarah.Middleware.Device.Sensor.DHT22 as DHT22
 import qualified Sarah.Persist.Types                  as T
---------------------------------------------------------------------------------
-
-data DeviceCommand     = DeviceCommand { commandTarget  :: Text
-                                       , commandCommand :: Text
-                                       }
-data DeviceQuery       = DeviceQuery
-data DeviceQueryResult = DeviceQueryResult
-
-deriveJSON jsonOptions ''DeviceCommand
-deriveJSON jsonOptions ''DeviceQuery
-deriveJSON jsonOptions ''DeviceQueryResult
-
-newtype DeviceController = DeviceController { unDeviceController :: ProcessId }
-
-class IsDevice model where
-  type DeviceState model :: *
-  startDeviceController :: model -> PortManager -> Process DeviceController
-
-class IsDevice model => IsAC model where
-  type State model :: *
-
---------------------------------------------------------------------------------
-
-data DHT22 = DHT22 deriving (Show)
-
-instance IsDevice DHT22 where
-  type DeviceState DHT22 = ()
-  startDeviceController _ portManager = do
-    say "[DHT22.startDeviceController] starting controller for DHT22"
-    DeviceController <$> spawnLocal (DHT22.controller portManager)
-
-instance ToJSON DHT22 where
-  toJSON DHT22 = "DHT22"
-
-instance FromJSON DHT22 where
-  parseJSON (String "DHT22") = return DHT22
-  parseJSON invalid          = typeMismatch "DHT22" invalid
-
---------------------------------------------------------------------------------
-
-data HS110 = HS110 deriving (Show)
-
-instance IsDevice HS110 where
-  type DeviceState HS110 = ()
-  startDeviceController _ (InterfaceController pid) = do
-    say "[HS110.startDeviceController] starting controller for HS110"
-    DeviceController <$> spawnLocal undefined
-
-instance ToJSON HS110 where
-  toJSON HS110 = "HS110"
-
-instance FromJSON HS110 where
-  parseJSON (String "HS110") = return HS110
-  parseJSON invalid          = typeMismatch "HS110" invalid
-
---------------------------------------------------------------------------------
-
-data ToshibaAC = ToshibaAC deriving (Show)
-
-instance IsDevice ToshibaAC where
-  type DeviceState ToshibaAC = Toshiba.Config
-  startDeviceController _ (InterfaceController pid) = do
-    say "[ToshibaAC.startDeviceController] starting controller for ToshibaAC"
-    DeviceController <$> spawnLocal (Toshiba.controller pid Toshiba.defaultConfig)
-
-instance ToJSON ToshibaAC where
-  toJSON ToshibaAC = "ToshibaAC"
-
-instance FromJSON ToshibaAC where
-  parseJSON (String "ToshibaAC") = return ToshibaAC
-  parseJSON invalid              = typeMismatch "ToshibaAC" invalid
-
 --------------------------------------------------------------------------------
 
 -- A Device is a wrapper around something that is an instance of IsDevice. We're

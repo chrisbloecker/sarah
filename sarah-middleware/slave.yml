@@ -4,19 +4,12 @@ nodeAddress:
 masterAddress:
   host: localhost
   port: 50000
-interfaces:
-- name: IR-LED
-  port:
-    gpio: 23
-- name: DHT22
-  port:
-    gpio: 4
 devices:
 - name: AC
-  model: Toshiba_RAS_M16NKCV
-  interface: IR-LED
+  model: ToshibaAC
+  gpio: 23
 - name: DHT22
   model: DHT22
-  interface: DHT22
+  gpio: 4
 nodeName: Node One
 room: Livingroom

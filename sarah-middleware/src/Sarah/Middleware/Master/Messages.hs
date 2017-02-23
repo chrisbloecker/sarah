@@ -11,6 +11,7 @@ import Control.Distributed.Process.Serializable (Serializable)
 import Data.Text                                (Text)
 import Import.MkBinary
 import Sarah.Middleware.Device
+import Sarah.Middleware.Distributed
 import Sarah.Middleware.Model
 import Sarah.Persist.Model
 --------------------------------------------------------------------------------

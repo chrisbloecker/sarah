@@ -17,6 +17,7 @@ import Data.Time.LocalTime
 import Import.DeriveJSON
 import Network.HTTP.Client              (Manager)
 import Raspberry.Hardware
+import Sarah.Middleware.Distributed
 import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model           hiding (manager)
 import Sarah.Middleware.Util

@@ -7,12 +7,13 @@ module Sarah.Middleware.Api.Status
   , statusServer
   ) where
 --------------------------------------------------------------------------------
-import           Control.Distributed.Process      (Process, getSelfPid, liftIO, expect)
-import           Control.Distributed.Process.Node (runProcess)
-import           Control.Monad.Reader             (ask)
-import           Control.Monad
-import           Sarah.Middleware.Model
-import           Servant
+import Control.Distributed.Process      (Process, getSelfPid, liftIO, expect)
+import Control.Distributed.Process.Node (runProcess)
+import Control.Monad.Reader             (ask)
+import Control.Monad
+import Sarah.Middleware.Distributed
+import Sarah.Middleware.Model
+import Servant
 --------------------------------------------------------------------------------
 import qualified Sarah.Middleware.Master.Messages as Master
 --------------------------------------------------------------------------------

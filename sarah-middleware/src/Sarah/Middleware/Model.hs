@@ -10,20 +10,19 @@ module Sarah.Middleware.Model
   ( module Sarah.Middleware.Model
   ) where
 --------------------------------------------------------------------------------
-import           Control.Applicative
-import           Control.Distributed.Process                (Process, expect, say, spawnLocal)
-import           Control.Distributed.Process.Internal.Types (LocalNode, ProcessId)
-import           Control.Lens                               hiding ((.=))
-import           Control.Monad.Reader                       (MonadIO, MonadReader, ReaderT, runReaderT, runReader)
-import           Control.Monad.Except                       (MonadError, ExceptT, runExceptT, liftIO)
-import           Data.Typeable
-import           Import.DeriveJSON
-import           Import.MkBinary
-import           Network.HTTP.Client                        (Manager)
-import           Sarah.Middleware.Device
-import           Servant                                    (FromHttpApiData (..), ToHttpApiData (..), ServantErr)
-import           Servant.Common.BaseUrl                     (BaseUrl)
-import           Text.Read                                  (readEither)
+import Control.Applicative
+import Control.Distributed.Process                (Process, expect, say, spawnLocal)
+import Control.Distributed.Process.Internal.Types (LocalNode, ProcessId)
+import Control.Lens                               hiding ((.=))
+import Control.Monad.Reader                       (MonadIO, MonadReader, ReaderT, runReaderT, runReader)
+import Control.Monad.Except                       (MonadError, ExceptT, runExceptT, liftIO)
+import Data.Typeable
+import Import.DeriveJSON
+import Import.MkBinary
+import Network.HTTP.Client                        (Manager)
+import Servant                                    (FromHttpApiData (..), ToHttpApiData (..), ServantErr)
+import Servant.Common.BaseUrl                     (BaseUrl)
+import Text.Read                                  (readEither)
 --------------------------------------------------------------------------------
 import qualified Data.HashMap.Strict as HM
 --------------------------------------------------------------------------------
@@ -49,19 +48,21 @@ data Config = Config { master     :: Master
                      , backend    :: BaseUrl
                      }
 
-data NodeInfo = NodeInfo { _nodeName    :: Text
-                         , _nodeDevices :: [(Text, DeviceRep)]
-                         }
-  deriving (Generic, Typeable, Show)
-instance Binary NodeInfo
-deriveJSON jsonOptions ''NodeInfo
-makeLenses ''NodeInfo
+data DeviceCommand     = DeviceCommand { commandTarget  :: Text
+                                       , commandCommand :: Text
+                                       }
+data DeviceQuery       = DeviceQuery
+data DeviceQueryResult = DeviceQueryResult
 
-data Status = Status { _connectedNodes :: [NodeInfo]
-                     }
-  deriving (Generic, Typeable, Show)
-instance Binary Status
-deriveJSON jsonOptions ''Status
-makeLenses ''Status
+deriveJSON jsonOptions ''DeviceCommand
+deriveJSON jsonOptions ''DeviceQuery
+deriveJSON jsonOptions ''DeviceQueryResult
 
-newtype PortManager = PortManager { unPortManager :: ProcessId }
+newtype PortManager      = PortManager ProcessId
+newtype DeviceController = DeviceController { unDeviceController :: ProcessId }
+
+type DeviceName = Text
+
+class IsDevice model where
+  type DeviceState model :: *
+  startDeviceController :: model -> PortManager -> Process DeviceController

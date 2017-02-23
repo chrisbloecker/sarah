@@ -41,3 +41,12 @@ findMaster host port (Timeout timeout) = do
 
 linkMaster :: Master -> Process ()
 linkMaster (Master master) = link master
+
+duplicates :: (Eq a) => [a] -> [a]
+duplicates []     = []
+duplicates (x:xs) | x `elem` xs = x : duplicates xs
+                  | otherwise   =     duplicates xs
+
+-- the difference l1 - l2
+difference :: (Eq a) => [a] -> [a] -> [a]
+difference l1 l2 = [x | x <- l1, x `notElem` l2]
