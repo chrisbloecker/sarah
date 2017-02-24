@@ -31,7 +31,7 @@ data ToshibaAC = ToshibaAC Pin deriving (Show)
 instance IsDevice ToshibaAC where
   type DeviceState ToshibaAC = Config
   startDeviceController (ToshibaAC pin) portManager = do
-    say "[ToshibaAC.startDeviceController] starting controller for ToshibaAC"
+    say "[ToshibaAC.startDeviceController]"
     DeviceController <$> spawnLocal (controller portManager pin defaultConfig)
 
       where

@@ -65,6 +65,17 @@ makeLenses ''State
 
 --------------------------------------------------------------------------------
 
+startPortManager :: Process PortManager
+startPortManager = do
+  say "[startPortManager]"
+  PortManager <$> spawnLocal portManager
+    where
+      portManager :: Process ()
+      portManager = receiveWait [ matchAny $ \m -> do
+                                    say $ "[portManager] Received unexpected message: " ++ show m
+                                    portManager
+                                ]
+
 runSlave :: SlaveSettings -> Process ()
 runSlave SlaveSettings{..} = do
   mmaster <- findMaster (host masterAddress) (show . port $ masterAddress) (seconds 1)
@@ -74,12 +85,12 @@ runSlave SlaveSettings{..} = do
       -- make sure there's enough time to print the message
       liftIO $ threadDelay 100000
     Just master -> do
-      portManager <- undefined
-      deviceControllers <- undefined -- fmap fromList <$> forM devices $ \(Device model) -> do pid <- startDeviceController model portManager
-                                      --                                            return ("SomeDevice", pid)
+      portManager <- startPortManager
+      deviceControllers <- fmap M.fromList <$> forM devices $ \(DeviceDescription name (Device model)) -> do pid <- startDeviceController model portManager
+                                                                                                             return (name, pid)
 
       self <- getSelfPid
-      nodeUp master self (NodeInfo nodeName [])
+      nodeUp master self (NodeInfo nodeName [ (name, toDeviceRep device) | (DeviceDescription name device) <- devices ])
       linkMaster master
 
       loop $ State deviceControllers
