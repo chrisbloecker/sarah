@@ -4,6 +4,7 @@
 {-# LANGUAGE ExplicitForAll #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE LambdaCase #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Slave
   ( SlaveSettings (..)
@@ -40,6 +41,12 @@ data SlaveSettings = SlaveSettings { nodeName      :: Text
                                    }
   deriving (Show)
 
+-- ToDo: this should work but is really not nice
+toObject :: ToJSON a => a -> Object
+toObject a = case toJSON a of
+  Object o -> o
+  _        -> error "Not an object" -- ToDo: something more informative
+
 instance ToJSON SlaveSettings where
   toJSON SlaveSettings{..} = object [ "nodeName"      .= toJSON nodeName
                                     , "nodeAddress"   .= toJSON nodeAddress
@@ -50,11 +57,22 @@ instance ToJSON SlaveSettings where
       encodeDevice :: DeviceName -> Device -> Value
       encodeDevice name device = Object $ toObject device <> HM.fromList [ "name" .= toJSON name ]
 
-      -- ToDo: this should work but is really not nice
-      toObject :: ToJSON a => a -> Object
-      toObject a = case toJSON a of
-        Object o -> o
-        _        -> error "Not an object" -- ToDo: something more informative
+instance FromJSON SlaveSettings where
+  parseJSON = withObject "SlaveSettings" $ \o -> do
+    nodeName      <- o .: "nodeName"
+    nodeAddress   <- o .: "nodeAddress"
+    masterAddress <- o .: "masterAddress"
+    devices_      <- o .: "devices" >>= \case
+                            Array a -> fmap decodeDevice a
+                            invalid -> fail $ "Unexpected json: " ++ show invalid
+    fail $ show devices_
+    devices <- undefined
+    return SlaveSettings{..}
+
+    where
+      decodeDevice :: Value -> Parser (DeviceName, Device)
+      decodeDevice = withObject "Device" $ \o -> (,) <$> o .: "name"
+                                                     <*> parseJSON (Object o)
 
 data State = State { _deviceControllers :: Map Text DeviceController
                    }
