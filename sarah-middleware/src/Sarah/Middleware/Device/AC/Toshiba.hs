@@ -50,7 +50,7 @@ instance FromJSON ToshibaAC where
   parseJSON = withObject "ToshibaAC" $ \o -> do
     model <- o .: "model" :: Parser Text
     case model of
-      "ToshibaAC" -> ToshibaAC <$> o .: "gpio"
+      "ToshibaAC" -> ToshibaAC <$> (Pin <$> o .: "gpio")
       model       -> fail $ "Invalid model identifier: " ++ unpack model
 
 

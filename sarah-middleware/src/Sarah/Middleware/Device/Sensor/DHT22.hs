@@ -19,7 +19,7 @@ import qualified Language.C.Inline            as C
 import qualified Data.Vector.Storable.Mutable as V
 --------------------------------------------------------------------------------
 
-data DHT22 = DHT22 Pin deriving (Show, Typeable)
+data DHT22 = DHT22 Pin deriving (Show)
 
 instance IsDevice DHT22 where
   type DeviceState DHT22 = ()

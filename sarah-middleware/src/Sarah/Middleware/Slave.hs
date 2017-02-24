@@ -8,6 +8,7 @@
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Slave
   ( SlaveSettings (..)
+  , DeviceDescription (..)
   , runSlave
   ) where
 --------------------------------------------------------------------------------
@@ -34,45 +35,29 @@ import qualified Data.Map          as M  (fromList)
 import qualified Data.HashMap.Lazy as HM (fromList)
 --------------------------------------------------------------------------------
 
+data DeviceDescription = DeviceDescription DeviceName Device deriving (Show)
+
+instance ToJSON DeviceDescription where
+  toJSON (DeviceDescription name device) = Object $ toObject device <> HM.fromList [ "name" .= toJSON name ]
+    where
+      -- ToDo: this should work but is really not nice
+      toObject :: ToJSON a => a -> Object
+      toObject a = case toJSON a of
+        Object o -> o
+        _        -> error "Not an object" -- ToDo: something more informative
+
+instance FromJSON DeviceDescription where
+  parseJSON = withObject "DeviceDescription" $ \o ->
+    DeviceDescription <$> o .: "name"
+                      <*> parseJSON (Object o)
+
 data SlaveSettings = SlaveSettings { nodeName      :: Text
                                    , nodeAddress   :: WebAddress
                                    , masterAddress :: WebAddress
-                                   , devices       :: [(DeviceName, Device)]
+                                   , devices       :: [DeviceDescription]
                                    }
   deriving (Show)
-
--- ToDo: this should work but is really not nice
-toObject :: ToJSON a => a -> Object
-toObject a = case toJSON a of
-  Object o -> o
-  _        -> error "Not an object" -- ToDo: something more informative
-
-instance ToJSON SlaveSettings where
-  toJSON SlaveSettings{..} = object [ "nodeName"      .= toJSON nodeName
-                                    , "nodeAddress"   .= toJSON nodeAddress
-                                    , "masterAddress" .= toJSON masterAddress
-                                    , "devices"       .= toJSON (map (uncurry encodeDevice) devices)
-                                    ]
-    where
-      encodeDevice :: DeviceName -> Device -> Value
-      encodeDevice name device = Object $ toObject device <> HM.fromList [ "name" .= toJSON name ]
-
-instance FromJSON SlaveSettings where
-  parseJSON = withObject "SlaveSettings" $ \o -> do
-    nodeName      <- o .: "nodeName"
-    nodeAddress   <- o .: "nodeAddress"
-    masterAddress <- o .: "masterAddress"
-    devices_      <- o .: "devices" >>= \case
-                            Array a -> fmap decodeDevice a
-                            invalid -> fail $ "Unexpected json: " ++ show invalid
-    fail $ show devices_
-    devices <- undefined
-    return SlaveSettings{..}
-
-    where
-      decodeDevice :: Value -> Parser (DeviceName, Device)
-      decodeDevice = withObject "Device" $ \o -> (,) <$> o .: "name"
-                                                     <*> parseJSON (Object o)
+deriveJSON jsonOptions ''SlaveSettings
 
 data State = State { _deviceControllers :: Map Text DeviceController
                    }
