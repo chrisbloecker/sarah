@@ -23,6 +23,11 @@ data DHT22 = DHT22 Pin deriving (Show)
 
 instance IsDevice DHT22 where
   type DeviceState DHT22 = ()
+
+  data DeviceCommand DHT22 = GetTemperature
+                           | GetHumidity
+                           | GetTemperatureAndHumidity
+
   startDeviceController (DHT22 pin) portManager = do
     say $ "[DHT22.startDeviceController]"
     DeviceController <$> spawnLocal (controller portManager pin)

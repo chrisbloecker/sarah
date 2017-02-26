@@ -30,6 +30,16 @@ data ToshibaAC = ToshibaAC Pin deriving (Show)
 
 instance IsDevice ToshibaAC where
   type DeviceState ToshibaAC = Config
+
+  data DeviceCommand ToshibaAC = SetTemperature Temperature
+                               | GetTemperature
+                               | SetFanMode     Fan
+                               | GetFanMode
+                               | SetMode        Mode
+                               | GetMode
+                               | SetPowerMode   (Maybe Power)
+                               | GetPowerMode
+
   startDeviceController (ToshibaAC pin) portManager = do
     say "[ToshibaAC.startDeviceController]"
     DeviceController <$> spawnLocal (controller portManager pin defaultConfig)
@@ -37,9 +47,9 @@ instance IsDevice ToshibaAC where
       where
         controller :: PortManager -> Pin -> Config -> Process ()
         controller portManager pin config = receiveWait [ matchAny $ \m -> do
-                                                        say $ "[ToshibaAC] Received unexpected message " ++ show m
-                                                        controller portManager pin config
-                                                    ]
+                                                            say $ "[ToshibaAC] Received unexpected message " ++ show m
+                                                            controller portManager pin config
+                                                        ]
 
 instance ToJSON ToshibaAC where
   toJSON (ToshibaAC (Pin pin)) = object [ "model" .= String "ToshibaAC"

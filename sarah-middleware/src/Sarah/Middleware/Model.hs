@@ -48,11 +48,11 @@ data Config = Config { master     :: Master
                      , backend    :: BaseUrl
                      }
 
-data DeviceCommand     = DeviceCommand { commandTarget  :: Text
-                                       , commandCommand :: Text
-                                       }
-data DeviceQuery       = DeviceQuery
-data DeviceQueryResult = DeviceQueryResult
+data Command     = Command { target  :: (Text, DeviceName)
+                           , command :: Text
+                           }
+data Query       = Query
+data QueryResult = QueryResult
 
 deriveJSON jsonOptions ''DeviceCommand
 deriveJSON jsonOptions ''DeviceQuery
@@ -63,6 +63,13 @@ newtype DeviceController = DeviceController { unDeviceController :: ProcessId }
 
 type DeviceName = Text
 
+-- models can be devices
 class IsDevice model where
+  -- the state of a device
   type DeviceState model :: *
+
+  -- the commands a device understands
+  data DeviceCommand model :: *
+
+  -- a device controller runs a process for a device, takes commands and executes them
   startDeviceController :: model -> PortManager -> Process DeviceController
