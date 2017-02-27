@@ -16,19 +16,19 @@ import qualified Sarah.Middleware.Device.AC.Toshiba as Toshiba
 --------------------------------------------------------------------------------
 
 type DeviceApi = "device" :> "set"
-                          :> ReqBody '[JSON] DeviceCommand
-                          :> Post    '[JSON] DeviceCommand
+                          :> ReqBody '[JSON] Command
+                          :> Post    '[JSON] Command
             :<|> "device" :> "get"
-                          :> ReqBody '[JSON] DeviceQuery
-                          :> Get     '[JSON] DeviceQueryResult
+                          :> ReqBody '[JSON] Query
+                          :> Get     '[JSON] QueryResult
 
 --------------------------------------------------------------------------------
 
 deviceServer :: ServerT DeviceApi MiddlewareApp
 deviceServer = setServer :<|> getServer
 
-setServer :: DeviceCommand -> MiddlewareApp DeviceCommand
+setServer :: Command -> MiddlewareApp Command
 setServer config = undefined --liftIO $ Toshiba.send (Pin 23) config >> return config
 
-getServer :: DeviceQuery -> MiddlewareApp DeviceQueryResult
+getServer :: Query -> MiddlewareApp eQueryResult
 getServer = undefined

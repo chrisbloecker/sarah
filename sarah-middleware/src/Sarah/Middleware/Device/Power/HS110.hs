@@ -7,6 +7,7 @@ module Sarah.Middleware.Device.Power.HS110
 import Control.Distributed.Process
 import Data.Aeson.Types            (Value (..), typeMismatch)
 import Import.DeriveJSON
+import Raspberry.IP
 import Sarah.Middleware.Model
 
 data HS110 = HS110 WebAddress deriving (Show)
@@ -29,10 +30,15 @@ instance IsDevice HS110 where
                                                         ]
 
 instance ToJSON HS110 where
-  toJSON HS110 = "HS110"
+  toJSON (HS110 webAddress) = object [ "model" .= String "HS110"
+                                     , "ip"    .= toJSON webAddress
+                                     ]
 
 instance FromJSON HS110 where
-  parseJSON (String "HS110") = return HS110
-  parseJSON invalid          = typeMismatch "HS110" invalid
+  parseJSON = withObject "HS110" $ \o -> do
+    model <- o .: "model" :: Parser Text
+    case model of
+      "HS110" -> HS110 <$> o .: "ip"
+      model   -> fail $ "Invalid model identifier: " ++ show model
 
 data Power = PowerOn | PowerOff

@@ -38,6 +38,8 @@ runEIO = liftIO . runExceptT
 
 --------------------------------------------------------------------------------
 
+type DeviceName = Text
+
 newtype Master = Master ProcessId deriving (Eq, Generic, Typeable, Show)
 newtype Slave  = Slave  ProcessId deriving (Eq, Generic, Typeable, Show)
 
@@ -48,20 +50,18 @@ data Config = Config { master     :: Master
                      , backend    :: BaseUrl
                      }
 
-data Command     = Command { target  :: (Text, DeviceName)
-                           , command :: Text
+data Command     = Command { commandTarget  :: (Text, DeviceName)
+                           , commandCommand :: Text
                            }
 data Query       = Query
 data QueryResult = QueryResult
 
-deriveJSON jsonOptions ''DeviceCommand
-deriveJSON jsonOptions ''DeviceQuery
-deriveJSON jsonOptions ''DeviceQueryResult
+deriveJSON jsonOptions ''Command
+deriveJSON jsonOptions ''Query
+deriveJSON jsonOptions ''QueryResult
 
 newtype PortManager      = PortManager ProcessId
 newtype DeviceController = DeviceController { unDeviceController :: ProcessId }
-
-type DeviceName = Text
 
 -- models can be devices
 class IsDevice model where
