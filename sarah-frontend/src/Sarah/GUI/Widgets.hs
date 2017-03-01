@@ -6,12 +6,16 @@ module Sarah.GUI.Widgets
 import Control.Lens                 hiding ((#), element, set)
 import Control.Monad                       (forM)
 import Control.Monad.Reader                (ask)
+import Data.Either                         (isRight)
+import Data.Either.Combinators             (fromRight)
 import Data.Text                           (unpack)
 import Prelude                      hiding (div, span, id)
 import Graphics.UI.Threepenny       hiding (map)
 import Graphics.UI.Threepenny.Extra
 import Sarah.GUI.Model                     (AppEnv, AppIO, manager, middleware)
 import Sarah.Middleware.Model       hiding (manager)
+import Sarah.Middleware
+import Sarah.GUI.Remote
 --------------------------------------------------------------------------------
 import           Sarah.Middleware.Device.AC.Toshiba as AC
 import qualified Sarah.Middleware.Client as Middleware
@@ -82,50 +86,17 @@ renderStatus :: Status -> [UI Element]
 renderStatus status = map renderNodeInfo (status^.connectedNodes) -- $ \nodeInfo -> mkTile (nodeInfo^.nodeName & unpack) (nodeInfo^.nodeDevices & map )
   where
     renderNodeInfo :: NodeInfo -> UI Element
-    renderNodeInfo nodeInfo = mkTile (nodeInfo^.nodeName & unpack) (listGroup "Devices" $ map showDevice (nodeInfo^.nodeDevices))
+    renderNodeInfo nodeInfo = mkTile (nodeInfo^.nodeName & unpack) (listGroup "Devices" $ map (uncurry showDevice) (nodeInfo^.nodeDevices))
 
-    showDevice :: Device -> UI Element
-    showDevice device = listGroupItem [ string (device^.deviceName      & unpack)
-                                      , string (device^.deviceModel     & show)
-                                      ]
+    showDevice :: DeviceName -> DeviceRep -> UI Element
+    showDevice deviceName deviceRep = listGroupItem [ string ("a device: " ++ unpack deviceName) ]
 
 
 renderRemotes :: AppEnv -> [NodeInfo] -> [UI Element]
 renderRemotes appEnv = concatMap (renderNodeRemotes appEnv)
   where
     renderNodeRemotes :: AppEnv -> NodeInfo -> [UI Element]
-    renderNodeRemotes appEnv node = map (renderRemote appEnv $ node^.nodeName) (node^.nodeDevices)
+    renderNodeRemotes appEnv node = map (mkTile "remote" . \(Remote model) -> renderRemote appEnv model) . catRight . map (fromDeviceRep . snd) $ (node^.nodeDevices)
 
-    renderRemote :: AppEnv -> NodeName -> Device -> UI Element
-    renderRemote appEnv nodeName device =
-      let title = unpack nodeName ++ " " ++ unpack (device^.deviceName)
-      in mkTile title $ case device^.deviceModel of
-                          AC _ -> do
-                            onButton   <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-flash" ]
-                            offButton  <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-off" ]
-                            coolButton <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "fa fa-snowflake-o" ]
-                            dryButton  <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-tint" ]
-                            fanButton  <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-cloud" ]
-                            ecoButton  <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-leaf" ]
-                            hiButton   <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-fire" ]
-
-
-                            -- ToDo: get the state of the device and modify it, don't just overwrite the state
-                            on click onButton   $ \_ -> runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool Nothing)             (appEnv^.manager) (appEnv^.middleware)
-                            on click offButton  $ \_ -> runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeOff  Nothing)             (appEnv^.manager) (appEnv^.middleware)
-                            on click coolButton $ \_ -> runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool Nothing)             (appEnv^.manager) (appEnv^.middleware)
-                            on click dryButton  $ \_ -> runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeDry  Nothing)             (appEnv^.manager) (appEnv^.middleware)
-                            on click fanButton  $ \_ -> runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeFan  Nothing)             (appEnv^.manager) (appEnv^.middleware)
-                            on click ecoButton  $ \_ -> runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeAuto (Just AC.PowerEco))  (appEnv^.manager) (appEnv^.middleware)
-                            on click hiButton   $ \_ -> runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool (Just AC.PowerHigh)) (appEnv^.manager) (appEnv^.middleware)
-
-                            div #+ [ p # set class_ "text-center"
-                                       #+ map element[ onButton, offButton ]
-                                   , p # set class_ "text-center"
-                                       #+ map element [ coolButton, dryButton, fanButton ]
-                                   , p # set class_ "text-center"
-                                       #+ map element [ ecoButton, hiButton ]
-                                   ]
-                          -- ToDo: build those remotes somewhere else
-                          Sensor _ -> div
-                          TV _ -> div
+    catRight :: [Either l r] -> [r]
+    catRight = map (fromRight undefined) . filter isRight

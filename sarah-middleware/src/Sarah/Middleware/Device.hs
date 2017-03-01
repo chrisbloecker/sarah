@@ -4,7 +4,13 @@
 {-# LANGUAGE TemplateHaskell            #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device
-  where
+  ( IsDevice (..)
+  , Device (..)
+  , DeviceRep (..), toDeviceRep
+  , DHT22     -- temperature and humidity sensor
+  , HS110     -- TPLink smart plug
+  , ToshibaAC -- well, guess...
+  ) where
 --------------------------------------------------------------------------------
 import Control.Applicative              ((<|>))
 import Control.Concurrent               (threadDelay)
@@ -23,16 +29,14 @@ import Sarah.Middleware.Device.AC.Toshiba   (ToshibaAC)
 import Sarah.Middleware.Device.Power.HS110  (HS110)
 import Sarah.Middleware.Device.Sensor.DHT22 (DHT22)
 --------------------------------------------------------------------------------
-import qualified Data.ByteString.Lazy                 as BS
---import qualified Sarah.Middleware.Device.AC.Toshiba   as Toshiba
---import qualified Sarah.Middleware.Device.Sensor.DHT22 as DHT22
-import qualified Sarah.Persist.Types                  as T
+import qualified Data.ByteString.Lazy as BS
+import qualified Sarah.Persist.Types  as T
 --------------------------------------------------------------------------------
 
 -- A Device is a wrapper around something that is an instance of IsDevice. We're
 -- forgetting almost all type information here, and perhaps it would be better
 -- to model devices as something like
--- data Device = DHT22 | Toshiba_16NKV_E | ...
+-- data Device = DHT22 | ToshibaAC | ...
 -- but then we would have a lot of case alternatives everywhere where we want to
 -- use devices and have to handle different models differently. So we're taking
 -- the approach of existentials and see how that goes.

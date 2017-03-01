@@ -53,7 +53,9 @@ loop :: State -> Process ()
 loop state =
   receiveWait [ match $ \(GetStatus pid) -> do
                   say "Received GetStatus message"
-                  send pid (Status $ state^.nodes^..folded)
+                  let status = Status $ state^.nodes^..folded
+                  say . show $ status
+                  send pid status
                   loop state
 
               , match $ \(Log nodeName message logLevel) -> do

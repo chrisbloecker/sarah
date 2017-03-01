@@ -7,7 +7,7 @@ license:             BSD3
 license-file:        LICENSE
 author:              Christopher Blöcker
 maintainer:          chrisbloecker@googlemail.com
-copyright:           2016 Christopher Blöcker
+copyright:           2016-2017 Christopher Blöcker
 category:            Web
 build-type:          Simple
 -- extra-source-files:

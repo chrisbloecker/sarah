@@ -9,9 +9,12 @@ import Data.Text               (Text)
 import Import.MkBinary
 import Import.DeriveJSON
 import Sarah.Middleware.Device (DeviceRep)
+import Sarah.Middleware.Model  (DeviceName)
 
-data NodeInfo = NodeInfo { _nodeName    :: Text
-                         , _nodeDevices :: [(Text, DeviceRep)]
+type NodeName = Text
+
+data NodeInfo = NodeInfo { _nodeName    :: NodeName
+                         , _nodeDevices :: [(DeviceName, DeviceRep)]
                          }
   deriving (Generic, Typeable, Show)
 instance Binary NodeInfo
