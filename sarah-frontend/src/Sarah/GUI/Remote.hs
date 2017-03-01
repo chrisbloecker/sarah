@@ -24,7 +24,7 @@ instance HasRemote DHT22 where
     readTemperatureButton <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "fa fa-thermometer-full" ]
     readHumidityButton    <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-tint" ]
 
-    on click readTemperatureButton $ \_ -> undefined
+    on click readTemperatureButton $ \_ -> GetTemperature >> undefined 
     on click readHumidityButton    $ \_ -> undefined
 
     div #+ [ p # set class_ "text-center"

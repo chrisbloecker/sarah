@@ -2,13 +2,15 @@
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase        #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device.Sensor.DHT22
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
 import Data.Text                   (unpack)
-import Data.Aeson                  (Value (..))
+import Data.Aeson                  (Value (..), withText)
 import Data.Typeable               (Typeable)
 import Import.DeriveJSON
 import Physics
@@ -34,7 +36,9 @@ instance IsDevice DHT22 where
 
       where
         controller :: PortManager -> Pin -> Process ()
-        controller portManager pin = receiveWait [ matchAny $ \m -> do
+        controller portManager pin = receiveWait [ match $ \(Command GetTemperature) -> do
+                                                    controller portManager pin
+                                                 , matchAny $ \m -> do
                                                      say $ "[DHT22] Received unexpected message" ++ show m
                                                      controller portManager pin
                                                  ]
@@ -50,6 +54,18 @@ instance FromJSON DHT22 where
     case model of
       "DHT22" -> DHT22 <$> (Pin <$> o .: "gpio")
       model   -> fail $ "Invalid model identifier: " ++ unpack model
+
+instance ToJSON (DeviceCommand DHT22) where
+  toJSON GetTemperature            = String "GetTemperature"
+  toJSON GetHumidity               = String "GetHumidity"
+  toJSON GetTemperatureAndHumidity = String "GetTemperatureAndHumidity"
+
+instance FromJSON (DeviceCommand DHT22) where
+  parseJSON = withText "DeviceCommand DHT22" $ \case
+    "GetTemperature"            -> return GetTemperature
+    "GetHumidity"               -> return GetHumidity
+    "GetTemperatureAndHumidity" -> return GetTemperatureAndHumidity
+    invalid                     -> fail $ "Invalid command: " ++ unpack invalid
 
 data Error = InitFailed
            | Timeout
