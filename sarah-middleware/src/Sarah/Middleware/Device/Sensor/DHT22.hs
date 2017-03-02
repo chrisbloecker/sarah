@@ -1,9 +1,11 @@
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeFamilies      #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device.Sensor.DHT22
   where
@@ -12,6 +14,7 @@ import Control.Distributed.Process
 import Data.Text                   (unpack)
 import Data.Aeson                  (Value (..), withText)
 import Data.Typeable               (Typeable)
+import GHC.Generics                (Generic)
 import Import.DeriveJSON
 import Physics
 import Raspberry.GPIO
@@ -29,6 +32,7 @@ instance IsDevice DHT22 where
   data DeviceCommand DHT22 = GetTemperature
                            | GetHumidity
                            | GetTemperatureAndHumidity
+    deriving (Generic, ToJSON, FromJSON)
 
   startDeviceController (DHT22 pin) portManager = do
     say $ "[DHT22.startDeviceController]"
@@ -54,7 +58,7 @@ instance FromJSON DHT22 where
     case model of
       "DHT22" -> DHT22 <$> (Pin <$> o .: "gpio")
       model   -> fail $ "Invalid model identifier: " ++ unpack model
-
+{-
 instance ToJSON (DeviceCommand DHT22) where
   toJSON GetTemperature            = String "GetTemperature"
   toJSON GetHumidity               = String "GetHumidity"
@@ -66,7 +70,7 @@ instance FromJSON (DeviceCommand DHT22) where
     "GetHumidity"               -> return GetHumidity
     "GetTemperatureAndHumidity" -> return GetTemperatureAndHumidity
     invalid                     -> fail $ "Invalid command: " ++ unpack invalid
-
+-}
 data Error = InitFailed
            | Timeout
            | Parameter

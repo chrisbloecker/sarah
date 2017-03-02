@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveAnyClass    #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
 
@@ -17,6 +19,7 @@ instance IsDevice HS110 where
 
   data DeviceCommand HS110 = SetPower Power
                            | GetPower
+    deriving (Generic, ToJSON, FromJSON)
 
   startDeviceController (HS110 webAddress) portManager = do
     say "[HS110.startDeviceController] starting controller for HS110"

@@ -39,6 +39,7 @@ instance IsDevice ToshibaAC where
                                | GetMode
                                | SetPowerMode   (Maybe Power)
                                | GetPowerMode
+    deriving (Generic, ToJSON, FromJSON)
 
   startDeviceController (ToshibaAC pin) portManager = do
     say "[ToshibaAC.startDeviceController]"

@@ -1,5 +1,11 @@
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric  #-}
+
 module Physics
   where
 
-newtype Temperature = Temperature { unTemperature :: Double } deriving (Show)
-newtype Humidity    = Humidity    { unHumidity    :: Double } deriving (Show)
+import Data.Aeson   (ToJSON, FromJSON)
+import GHC.Generics (Generic)
+
+newtype Temperature = Temperature { unTemperature :: Double } deriving (Generic, ToJSON, FromJSON, Show)
+newtype Humidity    = Humidity    { unHumidity    :: Double } deriving (Generic, ToJSON, FromJSON, Show)
