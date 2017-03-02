@@ -8,11 +8,12 @@ module Sarah.Middleware.Device.Power.HS110
 
 import Control.Distributed.Process
 import Data.Aeson.Types            (Value (..), typeMismatch)
+import GHC.Generics                (Generic)
 import Import.DeriveJSON
 import Raspberry.IP
 import Sarah.Middleware.Model
 
-data HS110 = HS110 WebAddress deriving (Show)
+newtype HS110 = HS110 WebAddress deriving (Show)
 
 instance IsDevice HS110 where
   type DeviceState HS110 = ()
@@ -44,4 +45,4 @@ instance FromJSON HS110 where
       "HS110" -> HS110 <$> o .: "ip"
       model   -> fail $ "Invalid model identifier: " ++ show model
 
-data Power = PowerOn | PowerOff
+data Power = PowerOn | PowerOff deriving (Generic, ToJSON, FromJSON)

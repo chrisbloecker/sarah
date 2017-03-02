@@ -1,13 +1,16 @@
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE ExistentialQuantification  #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes                 #-}
-{-# LANGUAGE StandaloneDeriving         #-}
-{-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Model
-  ( module Sarah.Middleware.Model
+  ( MiddlewareApp (..), runApp, runEIO
+  , Master (..), Slave (..)
+  , Config (..)
+  , PortManager (..), DeviceController (..)
+  , IsDevice (..)
   ) where
 --------------------------------------------------------------------------------
 import Control.Applicative
@@ -16,15 +19,18 @@ import Control.Distributed.Process.Internal.Types (LocalNode, ProcessId)
 import Control.Lens                               hiding ((.=))
 import Control.Monad.Reader                       (MonadIO, MonadReader, ReaderT, runReaderT, runReader)
 import Control.Monad.Except                       (MonadError, ExceptT, runExceptT, liftIO)
+import Data.ByteString.Lazy                       (ByteString)
 import Data.Typeable
 import Import.DeriveJSON
 import Import.MkBinary
 import Network.HTTP.Client                        (Manager)
+import Sarah.Middleware.Types                     (DeviceName, NodeName)
 import Servant                                    (FromHttpApiData (..), ToHttpApiData (..), ServantErr)
 import Servant.Common.BaseUrl                     (BaseUrl)
 import Text.Read                                  (readEither)
 --------------------------------------------------------------------------------
-import qualified Data.HashMap.Strict as HM
+import qualified Data.HashMap.Strict  as HM
+import qualified Data.ByteString.Lazy as BS (fromStrict)
 --------------------------------------------------------------------------------
 
 newtype MiddlewareApp a = MiddlewareApp { unMiddlewareApp :: ReaderT Config (ExceptT ServantErr IO) a }
@@ -38,8 +44,6 @@ runEIO = liftIO . runExceptT
 
 --------------------------------------------------------------------------------
 
-type DeviceName = Text
-
 newtype Master = Master ProcessId deriving (Eq, Generic, Typeable, Show)
 newtype Slave  = Slave  ProcessId deriving (Eq, Generic, Typeable, Show)
 
@@ -49,16 +53,6 @@ data Config = Config { master     :: Master
                      , manager    :: Manager
                      , backend    :: BaseUrl
                      }
-
-data Command     = Command { commandTarget  :: (Text, DeviceName)
-                           , commandCommand :: Text
-                           }
-data Query       = Query
-data QueryResult = QueryResult
-
-deriveJSON jsonOptions ''Command
-deriveJSON jsonOptions ''Query
-deriveJSON jsonOptions ''QueryResult
 
 newtype PortManager      = PortManager ProcessId
 newtype DeviceController = DeviceController { unDeviceController :: ProcessId }

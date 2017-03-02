@@ -19,12 +19,14 @@ import Import.DeriveJSON
 import Physics
 import Raspberry.GPIO
 import Sarah.Middleware.Model
+import Sarah.Middleware.Types      (Command, getCommand, Query (..))
 --------------------------------------------------------------------------------
 import qualified Language.C.Inline            as C
 import qualified Data.Vector.Storable.Mutable as V
 --------------------------------------------------------------------------------
 
-data DHT22 = DHT22 Pin deriving (Show)
+-- DHT22 sensors are connected through a GPIO pin.
+newtype DHT22 = DHT22 Pin deriving (Show)
 
 instance IsDevice DHT22 where
   type DeviceState DHT22 = ()
@@ -35,12 +37,18 @@ instance IsDevice DHT22 where
     deriving (Generic, ToJSON, FromJSON)
 
   startDeviceController (DHT22 pin) portManager = do
-    say $ "[DHT22.startDeviceController]"
+    say "[DHT22.startDeviceController]"
     DeviceController <$> spawnLocal (controller portManager pin)
 
       where
         controller :: PortManager -> Pin -> Process ()
-        controller portManager pin = receiveWait [ match $ \(Command GetTemperature) -> do
+        controller portManager pin = receiveWait [ match $ \(Query pid command) -> do
+                                                    case (getCommand command :: Either String (DeviceCommand DHT22)) of
+                                                      Left err -> say $ "[DHT22] Can't decode command: " ++ err
+                                                      Right command -> case command of
+                                                        GetTemperature            -> return ()
+                                                        GetHumidity               -> return ()
+                                                        GetTemperatureAndHumidity -> return ()
                                                     controller portManager pin
                                                  , matchAny $ \m -> do
                                                      say $ "[DHT22] Received unexpected message" ++ show m
@@ -58,19 +66,7 @@ instance FromJSON DHT22 where
     case model of
       "DHT22" -> DHT22 <$> (Pin <$> o .: "gpio")
       model   -> fail $ "Invalid model identifier: " ++ unpack model
-{-
-instance ToJSON (DeviceCommand DHT22) where
-  toJSON GetTemperature            = String "GetTemperature"
-  toJSON GetHumidity               = String "GetHumidity"
-  toJSON GetTemperatureAndHumidity = String "GetTemperatureAndHumidity"
 
-instance FromJSON (DeviceCommand DHT22) where
-  parseJSON = withText "DeviceCommand DHT22" $ \case
-    "GetTemperature"            -> return GetTemperature
-    "GetHumidity"               -> return GetHumidity
-    "GetTemperatureAndHumidity" -> return GetTemperatureAndHumidity
-    invalid                     -> fail $ "Invalid command: " ++ unpack invalid
--}
 data Error = InitFailed
            | Timeout
            | Parameter

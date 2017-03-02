@@ -1,29 +1,25 @@
+{-# LANGUAGE DeriveAnyClass  #-}
 {-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE TemplateHaskell #-}
-
+--------------------------------------------------------------------------------
 module Sarah.Middleware.Distributed
   where
-
+--------------------------------------------------------------------------------
 import Control.Lens
-import Data.Text               (Text)
-import Import.MkBinary
-import Import.DeriveJSON
+import Data.Binary             (Binary)
+import Data.Typeable           (Typeable)
+import GHC.Generics            (Generic)
 import Sarah.Middleware.Device (DeviceRep)
-import Sarah.Middleware.Model  (DeviceName)
-
-type NodeName = Text
+import Sarah.Middleware.Types  (DeviceName, NodeName)
+--------------------------------------------------------------------------------
 
 data NodeInfo = NodeInfo { _nodeName    :: NodeName
                          , _nodeDevices :: [(DeviceName, DeviceRep)]
                          }
-  deriving (Generic, Typeable, Show)
-instance Binary NodeInfo
-deriveJSON jsonOptions ''NodeInfo
+  deriving (Generic, Binary, Typeable, Show)
 makeLenses ''NodeInfo
 
 data Status = Status { _connectedNodes :: [NodeInfo]
                      }
-  deriving (Generic, Typeable, Show)
-instance Binary Status
-deriveJSON jsonOptions ''Status
+  deriving (Generic, Binary, Typeable, Show)
 makeLenses ''Status

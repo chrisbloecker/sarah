@@ -49,25 +49,25 @@ instance Show Device where
 instance ToJSON Device where
   toJSON (Device model) = toJSON model
 
--- we have to explicitly list the devices we want to be able to parse because
+-- We have to explicitly list the devices we want to be able to parse because
 -- there are existentials in the context of Device and the FromJSON instance
 -- can't be derived automatically.
 instance FromJSON Device where
   parseJSON v = Device <$> (parseJSON v :: Parser DHT22)
             <|> Device <$> (parseJSON v :: Parser HS110)
             <|> Device <$> (parseJSON v :: Parser ToshibaAC)
-            <|> fail ("Can't parse device from JSON: " ++ show v)
+            <|> fail ("Can't parse Device from JSON: " ++ show v)
 
--- ToDo: Instead of this, we should probably rather write instances for Binary and Typeable for Device
---       but: we can't make TypeRep serilisable...
+-- We're representing devices using JSON. DeviceReps can be serialised and sent
+-- over the network.
 newtype DeviceRep = DeviceRep { unDeviceRep :: Text } deriving (Show, Binary)
 deriveJSON jsonOptions ''DeviceRep
 
 toDeviceRep :: Device -> DeviceRep
 toDeviceRep = DeviceRep . decodeUtf8 . BS.toStrict . encode
 
--- ToDo: This is not supposed to go wrong because DeviceReps can only be created
---       from valid Devices, so we will be able to decode them again
+-- This is not supposed to go wrong because DeviceReps *should only* be created
+-- from valid Devices, so we will be able to decode them again
 fromDeviceRep :: DeviceRep -> Device
 fromDeviceRep = fromJust . decode' . BS.fromStrict . encodeUtf8 . unDeviceRep
 

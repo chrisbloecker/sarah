@@ -29,6 +29,7 @@ import Sarah.Middleware.Model            hiding (master, nodeName)
 import Sarah.Middleware.Model.Interface
 import Sarah.Middleware.Slave.Messages
 import Sarah.Middleware.Util
+import Sarah.Middleware.Types                   (DeviceName)
 import Sarah.Persist.Model
 --------------------------------------------------------------------------------
 import qualified Data.Map          as M  (fromList)

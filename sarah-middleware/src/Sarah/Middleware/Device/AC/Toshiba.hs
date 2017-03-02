@@ -26,7 +26,7 @@ import qualified Data.ByteString   as BS
 import qualified Language.C.Inline as C
 --------------------------------------------------------------------------------
 
-data ToshibaAC = ToshibaAC Pin deriving (Show)
+newtype ToshibaAC = ToshibaAC Pin deriving (Show)
 
 instance IsDevice ToshibaAC where
   type DeviceState ToshibaAC = Config
@@ -65,17 +65,16 @@ instance FromJSON ToshibaAC where
       model       -> fail $ "Invalid model identifier: " ++ unpack model
 
 
-data Temperature = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30 deriving (Binary, Generic, Typeable)
-data Fan         = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Binary, Generic, Typeable)
-data Mode        = ModeAuto | ModeCool | ModeDry | ModeFan | ModeOff                                 deriving (Binary, Generic, Typeable)
-data Power       = PowerHigh | PowerEco                                                              deriving (Binary, Generic, Typeable)
+data Temperature = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30 deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+data Fan         = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+data Mode        = ModeAuto | ModeCool | ModeDry | ModeFan | ModeOff                                 deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+data Power       = PowerHigh | PowerEco                                                              deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
 
 data Config = Config { temperature :: Temperature
                      , fan         :: Fan
                      , mode        :: Mode
                      , mpower      :: Maybe Power
                      }
-  deriving (Binary, Generic, Typeable)
 
 defaultConfig :: Config
 defaultConfig = Config { temperature = T22
@@ -120,12 +119,6 @@ instance ToBits Power where
   toBits PowerHigh = 0x1
   toBits PowerEco  = 0x3
 
---------------------------------------------------------------------------------
-deriveJSON jsonOptions ''Temperature
-deriveJSON jsonOptions ''Fan
-deriveJSON jsonOptions ''Mode
-deriveJSON jsonOptions ''Power
-deriveJSON jsonOptions ''Config
 --------------------------------------------------------------------------------
 
 C.context (C.baseCtx <> C.bsCtx)
