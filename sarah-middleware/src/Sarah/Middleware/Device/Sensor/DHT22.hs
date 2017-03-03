@@ -44,14 +44,14 @@ instance IsDevice DHT22 where
         controller :: PortManager -> Pin -> Process ()
         controller portManager pin = receiveWait [ match $ \(Query pid command) -> do
                                                     case (getCommand command :: Either String (DeviceCommand DHT22)) of
-                                                      Left err -> say $ "[DHT22] Can't decode command: " ++ err
+                                                      Left err -> say $ "[DHT22.controller] Can't decode command: " ++ err
                                                       Right command -> case command of
-                                                        GetTemperature            -> return ()
-                                                        GetHumidity               -> return ()
-                                                        GetTemperatureAndHumidity -> return ()
+                                                        GetTemperature            -> say "[DHT22.controller] GetTemperature"
+                                                        GetHumidity               -> say "[DHT22.controller] GetHumidity"
+                                                        GetTemperatureAndHumidity -> say "[DHT22.controller] GetTemperatureAndHumidity"
                                                     controller portManager pin
                                                  , matchAny $ \m -> do
-                                                     say $ "[DHT22] Received unexpected message" ++ show m
+                                                     say $ "[DHT22.controller] Received unexpected message" ++ show m
                                                      controller portManager pin
                                                  ]
 

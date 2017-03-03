@@ -1,5 +1,5 @@
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric  #-}
+{-# LANGUAGE DeriveAnyClass  #-}
+{-# LANGUAGE DeriveGeneric   #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Types
   where
@@ -13,8 +13,18 @@ import GHC.Generics       (Generic)
 --------------------------------------------------------------------------------
 import qualified Data.ByteString.Lazy as BS (fromStrict)
 
-type DeviceName = Text
 type NodeName   = Text
+type DeviceName = Text
+
+-- A device can be uniquely identified by a pair of NodeName and DeviceName.
+-- This implied that every node must have a unique name. Similarly, every device
+-- that is connected to a node has to have a unique name.
+-- ToDo: make sure this requirement holds!
+data DeviceAddress = DeviceAddress { deviceNode :: NodeName
+                                   , deviceName :: DeviceName
+                                   }
+  deriving (Binary, Generic, Typeable, ToJSON, FromJSON, Eq)
+
 
 -- A Command is sent to devices in order to tell them what to do.
 -- The Text inside the command is a JSON representation of the command, which
@@ -26,7 +36,7 @@ newtype Command = Command { unCommand :: Text } deriving (Binary, Generic, Typea
 getCommand :: FromJSON a => Command -> Either String a
 getCommand = eitherDecode' . BS.fromStrict . encodeUtf8 . unCommand
 
-data Query = Query { queryTarget  :: NodeName
+data Query = Query { queryTarget  :: DeviceAddress
                    , queryCommand :: Command
                    }
   deriving (Generic, Binary, Typeable, ToJSON, FromJSON)

@@ -40,7 +40,7 @@ import qualified Sarah.Persist.Types  as T
 -- but then we would have a lot of case alternatives everywhere where we want to
 -- use devices and have to handle different models differently. So we're taking
 -- the approach of existentials and see how that goes.
-data Device = forall model. (IsDevice model, Show model, FromJSON model, ToJSON model)
+data Device = forall model. (IsDevice model, Show model)
             => Device model
 
 instance Show Device where

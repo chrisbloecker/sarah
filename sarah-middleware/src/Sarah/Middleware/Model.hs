@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE ExistentialQuantification  #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE TypeFamilies               #-}
@@ -10,27 +11,26 @@ module Sarah.Middleware.Model
   , Master (..), Slave (..)
   , Config (..)
   , PortManager (..), DeviceController (..)
-  , IsDevice (..)
+  , IsDevice (..), mkCommand
   ) where
 --------------------------------------------------------------------------------
-import Control.Applicative
-import Control.Distributed.Process                (Process, expect, say, spawnLocal)
-import Control.Distributed.Process.Internal.Types (LocalNode, ProcessId)
+import Control.Applicative                               (Applicative)
+import Control.Distributed.Process                       (Process)
+import Control.Distributed.Process.Internal.Types        (LocalNode, ProcessId)
 import Control.Lens                               hiding ((.=))
-import Control.Monad.Reader                       (MonadIO, MonadReader, ReaderT, runReaderT, runReader)
-import Control.Monad.Except                       (MonadError, ExceptT, runExceptT, liftIO)
-import Data.ByteString.Lazy                       (ByteString)
-import Data.Typeable
-import Import.DeriveJSON
-import Import.MkBinary
-import Network.HTTP.Client                        (Manager)
-import Sarah.Middleware.Types                     (DeviceName, NodeName)
-import Servant                                    (FromHttpApiData (..), ToHttpApiData (..), ServantErr)
-import Servant.Common.BaseUrl                     (BaseUrl)
-import Text.Read                                  (readEither)
+import Control.Monad.Reader                              (MonadIO, MonadReader, ReaderT, runReaderT, runReader)
+import Control.Monad.Except                              (MonadError, ExceptT, runExceptT, liftIO)
+import Data.Aeson                                        (ToJSON, FromJSON, encode)
+import Data.Text.Encoding                                (decodeUtf8)
+import Data.Typeable                                     (Typeable)
+import GHC.Generics                                      (Generic)
+import Network.HTTP.Client                               (Manager)
+import Sarah.Middleware.Types                            (Command (..), DeviceName, NodeName)
+import Servant                                           (ServantErr)
+import Servant.Common.BaseUrl                            (BaseUrl)
 --------------------------------------------------------------------------------
 import qualified Data.HashMap.Strict  as HM
-import qualified Data.ByteString.Lazy as BS (fromStrict)
+import qualified Data.ByteString.Lazy as BS (toStrict)
 --------------------------------------------------------------------------------
 
 newtype MiddlewareApp a = MiddlewareApp { unMiddlewareApp :: ReaderT Config (ExceptT ServantErr IO) a }
@@ -58,7 +58,7 @@ newtype PortManager      = PortManager ProcessId
 newtype DeviceController = DeviceController { unDeviceController :: ProcessId }
 
 -- models can be devices
-class IsDevice model where
+class (ToJSON model, FromJSON model, ToJSON (DeviceCommand model), FromJSON (DeviceCommand model)) => IsDevice (model :: *) where
   -- the state of a device
   type DeviceState model :: *
 
@@ -67,3 +67,6 @@ class IsDevice model where
 
   -- a device controller runs a process for a device, takes commands and executes them
   startDeviceController :: model -> PortManager -> Process DeviceController
+
+mkCommand :: IsDevice model => DeviceCommand model -> Command
+mkCommand = Command . decodeUtf8 . BS.toStrict . encode

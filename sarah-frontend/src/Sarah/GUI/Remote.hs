@@ -8,34 +8,48 @@ import Data.Aeson                     (FromJSON (..), eitherDecode)
 import Data.Aeson.Types               (Parser)
 import Data.Text.Encoding             (encodeUtf8)
 import Graphics.UI.Threepenny  hiding (map)
+import Network.HTTP.Client            (Manager)
 import Prelude                 hiding (div, span)
-import Sarah.Middleware               (runEIO)
+import Sarah.Middleware               (Command, DeviceAddress, Query (..), runEIO, mkCommand)
 import Sarah.Middleware.Device
 import Sarah.GUI.Model                (AppEnv, manager, middleware)
 --------------------------------------------------------------------------------
-import qualified Data.ByteString.Lazy   as BS
+import qualified Sarah.Middleware.Device.Sensor.DHT22 as DHT22
+import qualified Data.ByteString.Lazy as BS
 --------------------------------------------------------------------------------
 
+-- models which have an instance of IsDevice can be extended with HasRemote.
 class IsDevice model => HasRemote model where
-  renderRemote :: AppEnv -> model -> UI Element
+  -- For generating a "widget" that can be used as a remote to control a device.
+  -- We need some context though:
+  --  - The AppEnv, so we know how to talk to the device
+  --  - A DeviceAddress, so we know where the device is. Potentially, there can be
+  --    many devices of the same kind available, even at the same node.
+  renderRemote :: AppEnv -> DeviceAddress -> model -> UI Element
+
+-- construct a command, build a query, and send it
+sendCommand :: Manager -> DeviceAddress -> Command -> UI ()
+sendCommand manager deviceAddress command =
+  let query = Query deviceAddress command
+  in undefined
 
 instance HasRemote DHT22 where
-  renderRemote appEnv _ = do
+  renderRemote appEnv deviceAddress _ = do
     readTemperatureButton <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "fa fa-thermometer-full" ]
     readHumidityButton    <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-tint" ]
 
-    on click readTemperatureButton $ \_ -> GetTemperature >> undefined 
-    on click readHumidityButton    $ \_ -> undefined
+    on click readTemperatureButton $ \_ -> sendCommand (appEnv^.manager) deviceAddress (mkCommand DHT22.GetTemperature)
+    on click readHumidityButton    $ \_ -> sendCommand (appEnv^.manager) deviceAddress (mkCommand DHT22.GetHumidity)
 
     div #+ [ p # set class_ "text-center"
                #+ map element [ readTemperatureButton, readHumidityButton ]
            ]
 
 instance HasRemote HS110 where
-  renderRemote appEnv _ = string "renderRemote.HS110"
+  renderRemote appEnv deviceAddress _ = string "renderRemote.HS110"
 
 instance HasRemote ToshibaAC where
-  renderRemote _ appEnv = do
+  renderRemote appEnv deviceAddress _ = do
     onButton   <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-flash" ]
     offButton  <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-off" ]
     coolButton <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "fa fa-snowflake-o" ]
@@ -61,13 +75,21 @@ instance HasRemote ToshibaAC where
                #+ map element [ ecoButton, hiButton ]
            ]
 
-data Remote = forall model. HasRemote model => Remote model
+-- A Remote works similar to a Device: it stores a value that has an instance of Remote.
+-- We don't need to require that models have an instance of IsDevice, that's in
+-- the class definition for Remote.
+data Remote = forall model. (HasRemote model)
+            => Remote model
 
+-- This is the second end of the evil way of representing devices. We have to
+-- enumerate all the devices we want to be able to parse into a Remote. If a
+-- parse succeeds, we wrap the device into a Remote.
 instance FromJSON Remote where
   parseJSON v = Remote <$> (parseJSON v :: Parser DHT22)
             <|> Remote <$> (parseJSON v :: Parser HS110)
             <|> Remote <$> (parseJSON v :: Parser ToshibaAC)
             <|> fail ("Can't parse Remote from JSON: " ++ show v)
 
+-- For turning DeviceReps into Remotes. However, this will only work
 fromDeviceRep :: DeviceRep -> Either String Remote
 fromDeviceRep = eitherDecode . BS.fromStrict . encodeUtf8 . unDeviceRep

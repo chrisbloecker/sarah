@@ -13,11 +13,15 @@ import Sarah.Middleware.Distributed as Sarah.Middleware
   )
 
 import Sarah.Middleware.Model as Sarah.Middleware
-  ( IsDevice (..)
+  ( IsDevice (..), mkCommand
   , runEIO
   )
 
 import Sarah.Middleware.Types as Sarah.Middleware
   ( DeviceName
   , NodeName
+  , DeviceAddress (..)
+  , Command (..), getCommand
+  , Query (..)
+  , QueryResult (..)
   )
