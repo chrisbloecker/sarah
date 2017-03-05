@@ -20,6 +20,7 @@ import Raspberry.Hardware
 import Sarah.Middleware.Distributed
 import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model           hiding (manager)
+import Sarah.Middleware.Types           (Query (..))
 import Sarah.Middleware.Util
 import Servant.Common.BaseUrl           (BaseUrl)
 --------------------------------------------------------------------------------
@@ -33,9 +34,9 @@ data MasterSettings = MasterSettings { masterNode :: WebAddress
                                      }
 deriveJSON jsonOptions ''MasterSettings
 
-data State = State { _nodes   :: Map ProcessId NodeInfo
-                   , _manager :: Manager
-                   , _persist :: BaseUrl
+data State = State { _nodes         :: Map ProcessId NodeInfo
+                   , manager        :: Manager
+                   , persistBackend :: BaseUrl
                    }
 makeLenses ''State
 
@@ -58,6 +59,12 @@ loop state =
                   send pid status
                   loop state
 
+              , match $ \(FromPid pid Query{..}) -> do
+                  say "Received Query"
+                  spawnLocal $ do
+
+                  loop state
+
               , match $ \(Log nodeName message logLevel) -> do
                   say "Received Log message"
                   -- ToDo: pass the result back to the master instead of just printing something
@@ -70,12 +77,9 @@ loop state =
                       Right _  -> return ()
                   loop state
 
-              , match $ \(NodeUp pid nodeInfo) -> do
-                  say . unwords $ [ nodeInfo^.nodeName & unpack
-                                  , "connected"
-                                  , show pid
-                                  ]
+              , match $ \(NodeUp pid NodeInfo{..}) -> do
                   mon <- monitor pid
+                  say $ "[master] " ++ (unpack $ nodeInfo^.nodeName) ++ " connected at " ++ show pid
                   loop $ state & nodes.at pid .~ Just nodeInfo
 
               , match $ \(SensorReading room sensor value) -> do

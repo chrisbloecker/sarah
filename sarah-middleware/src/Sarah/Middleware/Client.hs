@@ -1,5 +1,7 @@
 module Sarah.Middleware.Client
-  where
+  ( runDeviceCommand
+  , getStatus
+  ) where
 --------------------------------------------------------------------------------
 import           Servant
 import           Servant.Client
@@ -8,5 +10,5 @@ import qualified Sarah.Middleware.Api.Device as Device
 import qualified Sarah.Middleware.Api.Status as Status
 --------------------------------------------------------------------------------
 
-runAcServer = client (Proxy :: Proxy Device.DeviceApi)
-getStatus   = client (Proxy :: Proxy Status.StatusApi)
+runDeviceCommand = client (Proxy :: Proxy Device.DeviceApi)
+getStatus        = client (Proxy :: Proxy Status.StatusApi)

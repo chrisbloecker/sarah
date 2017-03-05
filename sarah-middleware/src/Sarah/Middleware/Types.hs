@@ -23,14 +23,14 @@ type DeviceName = Text
 data DeviceAddress = DeviceAddress { deviceNode :: NodeName
                                    , deviceName :: DeviceName
                                    }
-  deriving (Binary, Generic, Typeable, ToJSON, FromJSON, Eq)
+  deriving (Binary, Generic, Typeable, ToJSON, FromJSON, Eq, Show)
 
 
 -- A Command is sent to devices in order to tell them what to do.
 -- The Text inside the command is a JSON representation of the command, which
 -- of course is device-sepcific. If a device receives a command that is intended
 -- for a different device type, it should just be ignored.
-newtype Command = Command { unCommand :: Text } deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+newtype Command = Command { unCommand :: Text } deriving (Binary, Generic, Typeable, ToJSON, FromJSON, Show)
 
 -- Turn the representation of a command into an actual command for a specific device.
 getCommand :: FromJSON a => Command -> Either String a
@@ -39,7 +39,7 @@ getCommand = eitherDecode' . BS.fromStrict . encodeUtf8 . unCommand
 data Query = Query { queryTarget  :: DeviceAddress
                    , queryCommand :: Command
                    }
-  deriving (Generic, Binary, Typeable, ToJSON, FromJSON)
+  deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
 
 data QueryResult = QueryResult
-  deriving (Generic, Binary, Typeable, ToJSON, FromJSON)
+  deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)

@@ -2,6 +2,11 @@ module Sarah.Middleware
   ( module Sarah.Middleware
   ) where
 
+import Sarah.Middleware.Client as Sarah.Middleware
+  ( runDeviceCommand
+  , getStatus
+  )
+
 import Sarah.Middleware.Device as Sarah.Middleware
   ( Device (..)
   , DeviceRep

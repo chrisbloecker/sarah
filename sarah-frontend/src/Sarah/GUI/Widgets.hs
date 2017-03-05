@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Widgets
@@ -96,7 +97,14 @@ renderRemotes :: AppEnv -> [NodeInfo] -> [UI Element]
 renderRemotes appEnv = concatMap (renderNodeRemotes appEnv)
   where
     renderNodeRemotes :: AppEnv -> NodeInfo -> [UI Element]
-    renderNodeRemotes appEnv node = map (mkTile "remote" . \(Remote model) -> renderRemote appEnv model) . catRight . map (fromDeviceRep . snd) $ (node^.nodeDevices)
+    renderNodeRemotes appEnv node = catRight . flip map (node^.nodeDevices) $ \(deviceName, deviceRep) ->
+      -- because of the existential, we have to pattern match here in order to get the model
+      case fromDeviceRep deviceRep of
+        Left err             -> Left err
+        Right (Remote model) -> let widget = renderRemote appEnv (DeviceAddress (node^.nodeName) deviceName) model
+                                in Right $ mkTile (unpack deviceName) widget
 
     catRight :: [Either l r] -> [r]
-    catRight = map (fromRight undefined) . filter isRight
+    catRight = let cat = \case Left  l -> error "catRight" -- this is really not supposed to happen
+                               Right r -> r
+               in map cat . filter isRight

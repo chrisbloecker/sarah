@@ -1,26 +1,31 @@
-{-# LANGUAGE DeriveAnyClass  #-}
-{-# LANGUAGE DeriveGeneric   #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE DeriveAnyClass            #-}
+{-# LANGUAGE DeriveGeneric             #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Distributed
   where
 --------------------------------------------------------------------------------
-import Control.Lens
-import Data.Aeson              (ToJSON, FromJSON)
-import Data.Binary             (Binary)
-import Data.Typeable           (Typeable)
-import GHC.Generics            (Generic)
-import Sarah.Middleware.Device (DeviceRep)
-import Sarah.Middleware.Types  (DeviceName, NodeName)
+import Control.Distributed.Process (Process, ProcessId, getSelfPid, send)
+import Data.Aeson                  (ToJSON, FromJSON)
+import Data.Binary                 (Binary)
+import Data.Typeable               (Typeable)
+import GHC.Generics                (Generic)
+import Sarah.Middleware.Device     (DeviceRep)
+import Sarah.Middleware.Types      (DeviceName, NodeName)
 --------------------------------------------------------------------------------
 
-data NodeInfo = NodeInfo { _nodeName    :: NodeName
-                         , _nodeDevices :: [(DeviceName, DeviceRep)]
+-- a wrapper that is intended to be used to add the pid of a sending process
+data FromPid message = FromPid ProcessId message deriving (Generic, Binary)
+
+-- like send, but wraps the message with the pid of the sending process
+sendWithPid :: (Binary message, Typeable message) => ProcessId -> message -> Process ()
+sendWithPid to message = getSelfPid >>= \self -> send to (FromPid self message)
+
+
+data NodeInfo = NodeInfo { nodeName    :: NodeName
+                         , nodeDevices :: [(DeviceName, DeviceRep)]
                          }
   deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
-makeLenses ''NodeInfo
 
-data Status = Status { _connectedNodes :: [NodeInfo]
+data Status = Status { connectedNodes :: [NodeInfo]
                      }
   deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
-makeLenses ''Status

@@ -4,13 +4,14 @@ module Sarah.GUI.Remote
   where
 --------------------------------------------------------------------------------
 import Control.Lens                   ((^.))
-import Data.Aeson                     (FromJSON (..), eitherDecode)
+import Control.Monad                  (void)
+import Data.Aeson                     (FromJSON (..), eitherDecode')
 import Data.Aeson.Types               (Parser)
 import Data.Text.Encoding             (encodeUtf8)
 import Graphics.UI.Threepenny  hiding (map)
 import Network.HTTP.Client            (Manager)
 import Prelude                 hiding (div, span)
-import Sarah.Middleware               (Command, DeviceAddress, Query (..), runEIO, mkCommand)
+import Sarah.Middleware               (Command, DeviceAddress, Query (..), QueryResult, runEIO, mkCommand, runDeviceCommand, getStatus)
 import Sarah.Middleware.Device
 import Sarah.GUI.Model                (AppEnv, manager, middleware)
 --------------------------------------------------------------------------------
@@ -27,26 +28,46 @@ class IsDevice model => HasRemote model where
   --    many devices of the same kind available, even at the same node.
   renderRemote :: AppEnv -> DeviceAddress -> model -> UI Element
 
+
 -- construct a command, build a query, and send it
-sendCommand :: Manager -> DeviceAddress -> Command -> UI ()
-sendCommand manager deviceAddress command =
+sendCommand :: AppEnv -> DeviceAddress -> Command -> IO (Maybe QueryResult)
+sendCommand appEnv deviceAddress command = do
   let query = Query deviceAddress command
-  in undefined
+  mres <- runEIO $ runDeviceCommand query (appEnv^.manager) (appEnv^.middleware)
+  case mres of
+    Left  err -> putStrLn ("[sendCommand] " ++ show err) >> return Nothing
+    Right res -> return (Just res)
+
+-- just a liftIO for UI
+embedUI :: IO a -> b -> UI a
+embedUI = const . liftIO
+
 
 instance HasRemote DHT22 where
   renderRemote appEnv deviceAddress _ = do
     readTemperatureButton <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "fa fa-thermometer-full" ]
     readHumidityButton    <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-tint" ]
 
-    on click readTemperatureButton $ \_ -> sendCommand (appEnv^.manager) deviceAddress (mkCommand DHT22.GetTemperature)
-    on click readHumidityButton    $ \_ -> sendCommand (appEnv^.manager) deviceAddress (mkCommand DHT22.GetHumidity)
+    on click readTemperatureButton $ embedUI $ do
+      mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetTemperature)
+      case mres of
+        Nothing  -> putStrLn   "[DHT22.readTemperatureButton.click] No response"
+        Just res -> putStrLn $ "[DHT22.readTemperatureButton.click] Got response: " ++ show res
+
+    on click readHumidityButton $ embedUI $ do
+      mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetHumidity)
+      case mres of
+        Nothing  -> putStrLn   "[DHT22.readHumidityButton.click] No response"
+        Just res -> putStrLn $ "[DHT22.readHumidityButton.click] Got response: " ++ show res
 
     div #+ [ p # set class_ "text-center"
                #+ map element [ readTemperatureButton, readHumidityButton ]
            ]
 
+
 instance HasRemote HS110 where
   renderRemote appEnv deviceAddress _ = string "renderRemote.HS110"
+
 
 instance HasRemote ToshibaAC where
   renderRemote appEnv deviceAddress _ = do
@@ -59,13 +80,13 @@ instance HasRemote ToshibaAC where
     hiButton   <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-fire" ]
 
     -- ToDo: get the state of the device and modify it, don't just overwrite the state
-    on click onButton   $ \_ -> undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool Nothing)             (appEnv^.manager) (appEnv^.middleware)
-    on click offButton  $ \_ -> undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeOff  Nothing)             (appEnv^.manager) (appEnv^.middleware)
-    on click coolButton $ \_ -> undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool Nothing)             (appEnv^.manager) (appEnv^.middleware)
-    on click dryButton  $ \_ -> undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeDry  Nothing)             (appEnv^.manager) (appEnv^.middleware)
-    on click fanButton  $ \_ -> undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeFan  Nothing)             (appEnv^.manager) (appEnv^.middleware)
-    on click ecoButton  $ \_ -> undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeAuto (Just AC.PowerEco))  (appEnv^.manager) (appEnv^.middleware)
-    on click hiButton   $ \_ -> undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool (Just AC.PowerHigh)) (appEnv^.manager) (appEnv^.middleware)
+    on click onButton   $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool Nothing)             (appEnv^.manager) (appEnv^.middleware)
+    on click offButton  $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeOff  Nothing)             (appEnv^.manager) (appEnv^.middleware)
+    on click coolButton $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool Nothing)             (appEnv^.manager) (appEnv^.middleware)
+    on click dryButton  $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeDry  Nothing)             (appEnv^.manager) (appEnv^.middleware)
+    on click fanButton  $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeFan  Nothing)             (appEnv^.manager) (appEnv^.middleware)
+    on click ecoButton  $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeAuto (Just AC.PowerEco))  (appEnv^.manager) (appEnv^.middleware)
+    on click hiButton   $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool (Just AC.PowerHigh)) (appEnv^.manager) (appEnv^.middleware)
 
     div #+ [ p # set class_ "text-center"
                #+ map element [ onButton, offButton ]
@@ -92,4 +113,4 @@ instance FromJSON Remote where
 
 -- For turning DeviceReps into Remotes. However, this will only work
 fromDeviceRep :: DeviceRep -> Either String Remote
-fromDeviceRep = eitherDecode . BS.fromStrict . encodeUtf8 . unDeviceRep
+fromDeviceRep = eitherDecode' . BS.fromStrict . encodeUtf8 . unDeviceRep

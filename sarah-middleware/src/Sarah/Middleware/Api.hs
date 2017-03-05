@@ -1,6 +1,5 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE RecordWildCards            #-}
-{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE DataKinds     #-}
+{-# LANGUAGE TypeOperators #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Api
   ( app
@@ -28,17 +27,7 @@ type MiddlewareApi = DeviceApi
                 :<|> StatusApi
 
 --------------------------------------------------------------------------------
-{-
-runAppProcess :: Process a -> MiddlewareApp a
-runAppProcess p = do
-  Config{..} <- ask
-  liftIO $ do
-    mvar <- newEmptyMVar
-    runProcess localNode $ do
-      res <- p
-      liftIO $ putMVar mvar res
-    takeMVar mvar
--}
+
 apiServer :: ServerT MiddlewareApi MiddlewareApp
 apiServer = deviceServer
        :<|> sensorServer
