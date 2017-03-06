@@ -1,3 +1,5 @@
+{-# LANGUAGE RecordWildCards #-}
+--------------------------------------------------------------------------------
 module Sarah.GUI
   ( setup
   ) where
@@ -11,7 +13,7 @@ import           Prelude                            hiding (div)
 import           Sarah.GUI.Model
 import           Sarah.GUI.Widgets
 import           Sarah.Middleware.Device.AC.Toshiba as AC
-import           Sarah.Middleware                          (connectedNodes, runEIO)
+import           Sarah.Middleware                          (Status (..), runEIO)
 --------------------------------------------------------------------------------
 import qualified Sarah.Middleware.Client as Middleware
 --------------------------------------------------------------------------------
@@ -25,7 +27,7 @@ setup appEnv window = void $ do
     devices <- runEIO $ Middleware.getStatus (appEnv^.manager) (appEnv^.middleware)
     getBody window #+ [ div # set id_ "content"
                             # set class_ "container"
-                            #+ either (const []) (renderRemotes appEnv . view connectedNodes) devices
+                            #+ either (const []) (\Status{..} -> renderRemotes appEnv connectedNodes) devices
                       ]
 
   on click devicesLink $ \_ -> do

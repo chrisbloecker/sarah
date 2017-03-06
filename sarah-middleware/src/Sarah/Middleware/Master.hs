@@ -1,5 +1,6 @@
+{-# LANGUAGE DeriveAnyClass  #-}
+{-# LANGUAGE DeriveGeneric   #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Master
   ( MasterSettings (..)
@@ -8,22 +9,24 @@ module Sarah.Middleware.Master
   ) where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Control.Lens
-import Data.Map
+import Control.Monad                    (void)
+import Data.Map.Strict                  (Map, empty, elems, insert, delete)
 import Data.Text                        (unpack)
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
+import GHC.Generics                     (Generic)
 import Import.DeriveJSON
 import Network.HTTP.Client              (Manager)
 import Raspberry.Hardware
-import Sarah.Middleware.Distributed
+import Sarah.Middleware.Distributed     (NodeInfo (..), Status (..), sendWithPid)
 import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model           hiding (manager)
-import Sarah.Middleware.Types           (Query (..))
+import Sarah.Middleware.Types           (FromPid (..), Query (..), QueryResult (..), NodeName, deviceNode)
 import Sarah.Middleware.Util
 import Servant.Common.BaseUrl           (BaseUrl)
 --------------------------------------------------------------------------------
+import qualified Data.Map.Strict      as M
 import qualified Sarah.Persist.Model  as Persist
 import qualified Sarah.Persist.Client as Persist
 --------------------------------------------------------------------------------
@@ -32,13 +35,13 @@ data MasterSettings = MasterSettings { masterNode :: WebAddress
                                      , backend    :: WebAddress
                                      , webPort    :: Port
                                      }
-deriveJSON jsonOptions ''MasterSettings
+  deriving (Generic, FromJSON)
 
-data State = State { _nodes         :: Map ProcessId NodeInfo
+data State = State { nodes          :: Map ProcessId NodeInfo
+                   , nodeNames      :: Map NodeName  ProcessId
                    , manager        :: Manager
                    , persistBackend :: BaseUrl
                    }
-makeLenses ''State
 
 --------------------------------------------------------------------------------
 
@@ -47,22 +50,27 @@ runMaster manager persist = do
   self <- getSelfPid
   register masterName self
   say "Master up"
-  loop $ State empty manager persist
+  loop $ State empty empty manager persist
 
 
 loop :: State -> Process ()
-loop state =
+loop state@State{..} =
   receiveWait [ match $ \(GetStatus pid) -> do
-                  say "Received GetStatus message"
-                  let status = Status $ state^.nodes^..folded
-                  say . show $ status
-                  send pid status
+                  send pid (Status $ elems nodes)
                   loop state
 
-              , match $ \(FromPid pid Query{..}) -> do
+              , match $ \(FromPid src query@Query{..}) -> do
                   say "Received Query"
-                  spawnLocal $ do
-
+                  let nodeName = deviceNode queryTarget
+                  case M.lookup nodeName nodeNames of
+                    Nothing   -> say $ "[master] Unknown node name " ++ unpack nodeName
+                    -- ToDo: is it safe to spawn a process and continue there?
+                    --       could some data change or a process die?
+                    Just dest -> void $ spawnLocal $ do
+                      sendWithPid dest query
+                      receiveWait [ match    $ \result@QueryResult{..} -> send src result
+                                  , matchAny $ \m                      -> say $ "[master] Unexpected message: " ++ show m
+                                  ]
                   loop state
 
               , match $ \(Log nodeName message logLevel) -> do
@@ -71,16 +79,18 @@ loop state =
                   spawnLocal $ do
                     now <- liftIO getCurrentTime
                     let logEntry = Persist.Log (utctDay now) (timeToTimeOfDay . utctDayTime $ now) nodeName message logLevel
-                    mRes <- runEIO $ Persist.putLog logEntry (state^.manager) (state^.persist)
+                    mRes <- runEIO $ Persist.putLog logEntry manager persistBackend
                     case mRes of
                       Left err -> say (show err)
                       Right _  -> return ()
                   loop state
 
-              , match $ \(NodeUp pid NodeInfo{..}) -> do
+              , match $ \(NodeUp pid nodeInfo@NodeInfo{..}) -> do
                   mon <- monitor pid
-                  say $ "[master] " ++ (unpack $ nodeInfo^.nodeName) ++ " connected at " ++ show pid
-                  loop $ state & nodes.at pid .~ Just nodeInfo
+                  say $ "[master] " ++ unpack nodeName ++ " connected at " ++ show pid
+                  loop $ state { nodes     = insert pid      nodeInfo nodes
+                               , nodeNames = insert nodeName pid      nodeNames
+                               }
 
               , match $ \(SensorReading room sensor value) -> do
                   say "Received SensorReading message"
@@ -88,16 +98,20 @@ loop state =
                   spawnLocal $ do
                     now <- liftIO getCurrentTime
                     let sensorReading = Persist.SensorReading (utctDay now) (timeToTimeOfDay . utctDayTime $ now) room sensor value
-                    mRes <- runEIO $ Persist.putSensorReading sensorReading (state^.manager) (state^.persist)
+                    mRes <- runEIO $ Persist.putSensorReading sensorReading manager persistBackend
                     case mRes of
                       Left err -> say (show err)
                       Right _  -> return ()
                   loop state
 
-              , match $ \(ProcessMonitorNotification monRef pid reason) -> do
-                  say . unwords $ [ state^.nodes.at pid._Just.nodeName & unpack
-                                  , show reason
-                                  , show pid
-                                  ]
-                  loop $ state & nodes.at pid .~ Nothing
+              , match $ \(ProcessMonitorNotification monRef pid reason) ->
+                  case M.lookup pid nodes of
+                    Nothing -> do
+                      say $ "Received unexpected monitor notification from " ++ show reason ++ show pid
+                      loop state
+                    Just NodeInfo{..} -> do
+                      say $ "Received monitor notification from " ++ unpack nodeName ++ ": " ++ show reason ++ " " ++ show pid
+                      loop $ state { nodes     = pid      `delete` nodes
+                                   , nodeNames = nodeName `delete` nodeNames
+                                   }
               ]

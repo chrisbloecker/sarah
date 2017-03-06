@@ -4,12 +4,13 @@
 module Sarah.Middleware.Types
   where
 --------------------------------------------------------------------------------
-import Data.Aeson         (ToJSON, FromJSON, eitherDecode')
-import Data.Binary        (Binary)
-import Data.Text          (Text)
-import Data.Text.Encoding (encodeUtf8)
-import Data.Typeable      (Typeable)
-import GHC.Generics       (Generic)
+import Control.Distributed.Process (ProcessId)
+import Data.Aeson                  (ToJSON, FromJSON, eitherDecode')
+import Data.Binary                 (Binary)
+import Data.Text                   (Text)
+import Data.Text.Encoding          (encodeUtf8)
+import Data.Typeable               (Typeable)
+import GHC.Generics                (Generic)
 --------------------------------------------------------------------------------
 import qualified Data.ByteString.Lazy as BS (fromStrict)
 
@@ -25,12 +26,14 @@ data DeviceAddress = DeviceAddress { deviceNode :: NodeName
                                    }
   deriving (Binary, Generic, Typeable, ToJSON, FromJSON, Eq, Show)
 
+-- a wrapper that is intended to be used to add the pid of a sending process
+data FromPid message = FromPid ProcessId message deriving (Generic, Binary)
 
 -- A Command is sent to devices in order to tell them what to do.
 -- The Text inside the command is a JSON representation of the command, which
 -- of course is device-sepcific. If a device receives a command that is intended
 -- for a different device type, it should just be ignored.
-newtype Command = Command { unCommand :: Text } deriving (Binary, Generic, Typeable, ToJSON, FromJSON, Show)
+newtype Command = Command { unCommand :: Text } deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
 
 -- Turn the representation of a command into an actual command for a specific device.
 getCommand :: FromJSON a => Command -> Either String a
@@ -41,5 +44,4 @@ data Query = Query { queryTarget  :: DeviceAddress
                    }
   deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
 
-data QueryResult = QueryResult
-  deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
+newtype QueryResult = QueryResult { unQueryResult :: Text } deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)

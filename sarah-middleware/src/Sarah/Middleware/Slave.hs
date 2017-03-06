@@ -14,25 +14,25 @@ module Sarah.Middleware.Slave
 --------------------------------------------------------------------------------
 import Control.Concurrent                       (threadDelay)
 import Control.Distributed.Process
-import Control.Monad
-import Control.Lens                      hiding ((.=))
+import Control.Monad                            (forM, void)
 import Data.Aeson.Types                         (Value (..))
 import Data.List                                ((\\), elem, notElem)
-import Data.Map                                 (Map, (!), fromList)
+import Data.Map.Strict                          (Map)
 import Data.Monoid                              ((<>))
+import Data.Text                                (unpack)
 import Import.DeriveJSON
 import Raspberry.Hardware
-import Sarah.Middleware.Device           hiding (State)
-import Sarah.Middleware.Distributed
+import Sarah.Middleware.Device
+import Sarah.Middleware.Distributed             (NodeInfo (..), sendWithPid)
 import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model            hiding (master, nodeName)
 import Sarah.Middleware.Model.Interface
 import Sarah.Middleware.Slave.Messages
 import Sarah.Middleware.Util
-import Sarah.Middleware.Types                   (DeviceName)
+import Sarah.Middleware.Types                   (FromPid (..), DeviceName, Query (..), QueryResult (..), deviceName)
 import Sarah.Persist.Model
 --------------------------------------------------------------------------------
-import qualified Data.Map          as M  (fromList)
+import qualified Data.Map.Strict   as M  (fromList, lookup)
 import qualified Data.HashMap.Lazy as HM (fromList)
 --------------------------------------------------------------------------------
 
@@ -60,9 +60,8 @@ data SlaveSettings = SlaveSettings { nodeName      :: Text
   deriving (Show)
 deriveJSON jsonOptions ''SlaveSettings
 
-data State = State { _deviceControllers :: Map Text DeviceController
+data State = State { deviceControllers :: Map DeviceName DeviceController
                    }
-makeLenses ''State
 
 --------------------------------------------------------------------------------
 
@@ -97,7 +96,19 @@ runSlave SlaveSettings{..} = do
       loop $ State deviceControllers
 
 loop :: State -> Process ()
-loop state =
-  receiveWait [ match $ \Terminate ->
+loop state@State{..} =
+  receiveWait [ match $ \(FromPid src query@Query{..}) -> do
+                  -- ToDo: should we check if the query was intended for this node?
+                  let deviceName' = deviceName queryTarget
+                  case M.lookup deviceName' deviceControllers of
+                    Nothing                      -> say $ "[slave] Unknown device: " ++ unpack deviceName'
+                    Just (DeviceController dest) -> void $ spawnLocal $ do
+                      sendWithPid dest query
+                      receiveWait [ match    $ \result@QueryResult{..} -> send src result
+                                  , matchAny $ \m                      -> say $ "[slave] Unexpected message: " ++ show m
+                                  ]
+                  loop state
+
+              , match $ \Terminate ->
                   return ()
               ]

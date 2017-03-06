@@ -1,10 +1,10 @@
 {-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE OverloadedStrings #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Widgets
   where
 --------------------------------------------------------------------------------
-import Control.Lens                 hiding ((#), element, set)
 import Control.Monad                       (forM)
 import Control.Monad.Reader                (ask)
 import Data.Either                         (isRight)
@@ -84,10 +84,10 @@ listGroupItem es = li # set class_ "list-group-item"
 
 
 renderStatus :: Status -> [UI Element]
-renderStatus status = map renderNodeInfo (status^.connectedNodes) -- $ \nodeInfo -> mkTile (nodeInfo^.nodeName & unpack) (nodeInfo^.nodeDevices & map )
+renderStatus Status{..} = map renderNodeInfo connectedNodes -- $ \nodeInfo -> mkTile (nodeInfo^.nodeName & unpack) (nodeInfo^.nodeDevices & map )
   where
     renderNodeInfo :: NodeInfo -> UI Element
-    renderNodeInfo nodeInfo = mkTile (nodeInfo^.nodeName & unpack) (listGroup "Devices" $ map (uncurry showDevice) (nodeInfo^.nodeDevices))
+    renderNodeInfo NodeInfo{..} = mkTile (unpack nodeName) (listGroup "Devices" $ map (uncurry showDevice) nodeDevices)
 
     showDevice :: DeviceName -> DeviceRep -> UI Element
     showDevice deviceName deviceRep = listGroupItem [ string ("a device: " ++ unpack deviceName) ]
@@ -97,11 +97,11 @@ renderRemotes :: AppEnv -> [NodeInfo] -> [UI Element]
 renderRemotes appEnv = concatMap (renderNodeRemotes appEnv)
   where
     renderNodeRemotes :: AppEnv -> NodeInfo -> [UI Element]
-    renderNodeRemotes appEnv node = catRight . flip map (node^.nodeDevices) $ \(deviceName, deviceRep) ->
+    renderNodeRemotes appEnv NodeInfo{..} = catRight . flip map nodeDevices $ \(deviceName, deviceRep) ->
       -- because of the existential, we have to pattern match here in order to get the model
       case fromDeviceRep deviceRep of
         Left err             -> Left err
-        Right (Remote model) -> let widget = renderRemote appEnv (DeviceAddress (node^.nodeName) deviceName) model
+        Right (Remote model) -> let widget = renderRemote appEnv (DeviceAddress nodeName deviceName) model
                                 in Right $ mkTile (unpack deviceName) widget
 
     catRight :: [Either l r] -> [r]
