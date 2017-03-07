@@ -12,26 +12,27 @@ module Sarah.Middleware.Device.Sensor.DHT22
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Data.Text                    (pack, unpack)
-import Data.Aeson                   (Value (..), withText)
-import Data.Typeable                (Typeable)
+import Data.Text                    (Text, pack, unpack)
+import Data.Aeson                   (ToJSON (..), FromJSON (..), encode)
+import Data.Aeson.Types             (Parser, Value (..), (.=), (.:), withObject, object)
 import GHC.Generics                 (Generic)
-import Import.DeriveJSON
 import Physics
 import Raspberry.GPIO
 import Sarah.Middleware.Model
-import Sarah.Middleware.Types       (FromPid (..), Command, getCommand, Query (..), QueryResult (..))
+import Sarah.Middleware.Types
 --------------------------------------------------------------------------------
 import qualified Language.C.Inline            as C
 import qualified Data.Vector.Storable.Mutable as V
 --------------------------------------------------------------------------------
 
+-- Haskell representation of the error codes listed in dht22.h
 data Error = InitFailed
            | Timeout
            | Parameter
            | Unknown
   deriving (Show)
 
+-- Conversion from C error codes to Haskell representation
 toError :: C.CInt -> Error
 toError 1 = InitFailed
 toError 2 = Timeout
@@ -75,8 +76,10 @@ unCDouble (C.CDouble d) = d
 newtype DHT22 = DHT22 Pin deriving (Show)
 
 instance IsDevice DHT22 where
+  -- The DHT22 does not have a state
   type DeviceState DHT22 = ()
 
+  -- The DHT22 can be used to read the temperature, the humidity, or both
   data DeviceCommand DHT22 = GetTemperature
                            | GetHumidity
                            | GetTemperatureAndHumidity
@@ -88,26 +91,28 @@ instance IsDevice DHT22 where
 
       where
         controller :: PortManager -> Pin -> Process ()
-        controller portManager pin = receiveWait [ match $ \(FromPid src Query{..}) -> do
-                                                    case (getCommand queryCommand :: Either String (DeviceCommand DHT22)) of
-                                                      Left err -> say $ "[DHT22.controller] Can't decode command: " ++ err
-                                                      Right command -> case command of
-                                                        GetTemperature -> do
-                                                          say "[DHT22.controller] GetTemperature"
-                                                          -- ToDo: reserve the port
-                                                          mres <- liftIO $ readDHT22 pin
-                                                          case mres of
-                                                            Left error -> do
-                                                              say $ "[DHT22.controller] Error reading temperature: " ++ show error
-                                                              send src (QueryResult (pack . show $ error))
-                                                            Right (t, _) -> send src (QueryResult (pack . show $ t))
-                                                        GetHumidity               -> say "[DHT22.controller] GetHumidity"
-                                                        GetTemperatureAndHumidity -> say "[DHT22.controller] GetTemperatureAndHumidity"
-                                                    controller portManager pin
-                                                 , matchAny $ \m -> do
-                                                     say $ "[DHT22.controller] Received unexpected message" ++ show m
-                                                     controller portManager pin
-                                                 ]
+        controller portManager pin =
+          receiveWait [ match $ \(FromPid src Query{..}) -> do
+                          case (getCommand queryCommand :: Either String (DeviceCommand DHT22)) of
+                            Left err -> say $ "[DHT22.controller] Can't decode command: " ++ err
+                            -- Ok we have a command, so we can get the readings and decide what to do with them later
+                            Right command -> do
+                              -- ToDo: reserve the port
+                              mreadings <- liftIO $ readDHT22 pin
+                              case mreadings of
+                                Left dht22Error -> do
+                                  say $ "[DHT22.controller] Error reading temperature: " ++ show dht22Error
+                                  send src $ mkError (pack . show $ dht22Error)
+                                Right readings@(t, h) -> case command of
+                                  GetTemperature            -> send src $ mkSuccess t
+                                  GetHumidity               -> send src $ mkSuccess h
+                                  GetTemperatureAndHumidity -> send src $ mkSuccess readings
+                          controller portManager pin
+
+                       , matchAny $ \m -> do
+                           say $ "[DHT22.controller] Received unexpected message" ++ show m
+                           controller portManager pin
+                       ]
 
 instance ToJSON DHT22 where
   toJSON (DHT22 (Pin pin)) = object [ "model" .= String "DHT22"

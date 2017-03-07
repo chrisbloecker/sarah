@@ -33,7 +33,6 @@ setup appEnv window = void $ do
   on click devicesLink $ \_ -> do
     mapM_ delete =<< getElementById window "content"
     status <- runEIO $ Middleware.getStatus (appEnv^.manager) (appEnv^.middleware)
-    liftIO $ print status
     getBody window #+ [ div # set id_ "content"
                             # set class_ "container"
                             #+ either (const []) renderStatus status

@@ -1,36 +1,31 @@
 {-# LANGUAGE ExistentialQuantification  #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE TemplateHaskell            #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device
   ( IsDevice (..)
   , Device (..)
   , DeviceRep (..), toDeviceRep
-  , DHT22     -- temperature and humidity sensor
-  , HS110     -- TPLink smart plug
-  , ToshibaAC -- well, guess...
+  , DHT22         -- temperature and humidity sensor
+  , ExampleDevice -- the example device
+  , HS110         -- TPLink smart plug
+  , ToshibaAC     -- well, guess...
   ) where
 --------------------------------------------------------------------------------
-import Control.Applicative              ((<|>))
-import Control.Concurrent               (threadDelay)
-import Control.Distributed.Process      (Process, ProcessId, say, spawnLocal, matchAny, receiveWait, liftIO)
-import Data.Aeson                       (encode, decode')
-import Data.Aeson.Types                 (Parser, Value (..), typeMismatch)
-import Data.Maybe                       (fromJust)
-import Data.Text                        (Text, unpack)
-import Data.Text.Encoding               (encodeUtf8, decodeUtf8)
-import Import.DeriveJSON
-import Import.MkBinary
-import Raspberry.Hardware
+import Control.Applicative                  ((<|>))
+import Data.Aeson                           (ToJSON (..), FromJSON (..), encode, decode')
+import Data.Aeson.Types                     (Parser)
+import Data.Binary                          (Binary)
+import Data.Maybe                           (fromJust)
+import Data.Text                            (Text)
 import Sarah.Middleware.Model               (IsDevice)
-import Sarah.Middleware.Model.Interface
+import Sarah.Middleware.Types               (encodeAsText, decodeFromText)
+--------------------------------------------------------------------------------
+-- The devices
 import Sarah.Middleware.Device.AC.Toshiba   (ToshibaAC)
+import Sarah.Middleware.Device.Example      (ExampleDevice)
 import Sarah.Middleware.Device.Power.HS110  (HS110)
 import Sarah.Middleware.Device.Sensor.DHT22 (DHT22)
---------------------------------------------------------------------------------
-import qualified Data.ByteString.Lazy as BS
-import qualified Sarah.Persist.Types  as T
 --------------------------------------------------------------------------------
 
 -- A Device is a wrapper around something that is an instance of IsDevice. We're
@@ -56,50 +51,17 @@ instance FromJSON Device where
   parseJSON v = Device <$> (parseJSON v :: Parser DHT22)
             <|> Device <$> (parseJSON v :: Parser HS110)
             <|> Device <$> (parseJSON v :: Parser ToshibaAC)
+            <|> Device <$> (parseJSON v :: Parser ExampleDevice)
             <|> fail ("Can't parse Device from JSON: " ++ show v)
 
 -- We're representing devices using JSON. DeviceReps can be serialised and sent
 -- over the network.
-newtype DeviceRep = DeviceRep { unDeviceRep :: Text } deriving (Show, Binary)
-deriveJSON jsonOptions ''DeviceRep
+newtype DeviceRep = DeviceRep { unDeviceRep :: Text } deriving (Show, Binary, ToJSON, FromJSON)
 
 toDeviceRep :: Device -> DeviceRep
-toDeviceRep = DeviceRep . decodeUtf8 . BS.toStrict . encode
+toDeviceRep = DeviceRep . encodeAsText
 
 -- This is not supposed to go wrong because DeviceReps *should only* be created
 -- from valid Devices, so we will be able to decode them again
 fromDeviceRep :: DeviceRep -> Device
-fromDeviceRep = fromJust . decode' . BS.fromStrict . encodeUtf8 . unDeviceRep
-
---------------------------------------------------------------------------------
-{-
-(+++) = append
-
--- ToDo: carry around the current state somewhere
-toshibaServer :: NodeName -> Master -> Device -> Process ()
-toshibaServer nodeName master device = case device^.deviceInterface of
-  GPIO pin -> do
-    _config <- expect
-    liftIO $ Toshiba.send pin _config
-    toshibaServer nodeName master device
-
-
-dht22Server :: NodeName -> Master -> Device -> T.Room -> Process ()
-dht22Server nodeName master device room = case device^.deviceInterface of
-  GPIO pin -> do
-    mReadings <- liftIO $ do secs <- flip mod 60 . fromIntegral . sec <$> getTime Realtime
-                             threadDelay (1000000 * (60 - secs))
-                             DHT22.get pin
-    case mReadings of
-      Left err -> do
-        -- ToDo: fiddle the node name in
-        let message = "Reading " +++ (pack .show $ device^.deviceName) +++ " failed: " +++ (pack . show $ err)
-        say $ unpack message
-        sendMaster master $ Log nodeName message T.Error
-
-      Right (Temperature t, Humidity h) -> do
-        sendMaster master $ SensorReading room T.Temperature t
-        sendMaster master $ SensorReading room T.Humidity    h
-
-    dht22Server nodeName master device room
--}
+fromDeviceRep = fromJust . decodeFromText . unDeviceRep

@@ -16,6 +16,7 @@ import Sarah.Middleware.Device
 import Sarah.GUI.Model                (AppEnv, manager, middleware)
 --------------------------------------------------------------------------------
 import qualified Sarah.Middleware.Device.Sensor.DHT22 as DHT22
+import qualified Sarah.Middleware.Device.Example      as ExampleDevice
 import qualified Data.ByteString.Lazy as BS
 --------------------------------------------------------------------------------
 
@@ -51,17 +52,38 @@ instance HasRemote DHT22 where
     on click readTemperatureButton $ embedUI $ do
       mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetTemperature)
       case mres of
-        Nothing  -> putStrLn   "[DHT22.readTemperatureButton.click] No response"
-        Just res -> putStrLn $ "[DHT22.readTemperatureButton.click] Got response: " ++ show res
+        Nothing  -> putStrLn "[DHT22.readTemperatureButton.click] No response"
+        Just res -> putStrLn "[DHT22.readTemperatureButton.click] Got response"
 
     on click readHumidityButton $ embedUI $ do
       mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetHumidity)
       case mres of
-        Nothing  -> putStrLn   "[DHT22.readHumidityButton.click] No response"
-        Just res -> putStrLn $ "[DHT22.readHumidityButton.click] Got response: " ++ show res
+        Nothing  -> putStrLn "[DHT22.readHumidityButton.click] No response"
+        Just res -> putStrLn "[DHT22.readHumidityButton.click] Got response"
 
     div #+ [ p # set class_ "text-center"
                #+ map element [ readTemperatureButton, readHumidityButton ]
+           ]
+
+instance HasRemote ExampleDevice where
+  renderRemote appEnv deviceAddress _ = do
+    getRandomNumberButton <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-random" ]
+    alwaysFailingButton   <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-flash" ]
+
+    on click getRandomNumberButton $ embedUI $ do
+      mres <- sendCommand appEnv deviceAddress (mkCommand ExampleDevice.GetRandomNumber)
+      case mres of
+        Nothing  -> putStrLn "[ExampleDevice.getRandomNumberButton.click] No response"
+        Just res -> putStrLn "[ExampleDevice.getRandomNumberButton.click] Got response"
+
+    on click alwaysFailingButton $ embedUI $ do
+      mres <- sendCommand appEnv deviceAddress (mkCommand ExampleDevice.GetRandomNumber)
+      case mres of
+        Nothing  -> putStrLn "[ExampleDevice.alwaysFailingButton.click] No response"
+        Just res -> putStrLn "[ExampleDevice.alwaysFailingButton.click] Got response"
+
+    div #+ [ p # set class_ "text-center"
+               #+ map element [getRandomNumberButton, alwaysFailingButton ]
            ]
 
 
@@ -109,6 +131,7 @@ instance FromJSON Remote where
   parseJSON v = Remote <$> (parseJSON v :: Parser DHT22)
             <|> Remote <$> (parseJSON v :: Parser HS110)
             <|> Remote <$> (parseJSON v :: Parser ToshibaAC)
+            <|> Remote <$> (parseJSON v :: Parser ExampleDevice)
             <|> fail ("Can't parse Remote from JSON: " ++ show v)
 
 -- For turning DeviceReps into Remotes. However, this will only work
