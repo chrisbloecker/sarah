@@ -28,5 +28,5 @@ import Sarah.Middleware.Types as Sarah.Middleware
   , DeviceAddress (..)
   , Command (..), getCommand
   , Query (..)
-  , QueryResult (..)
+  , QueryResult (..), Result (..)
   )

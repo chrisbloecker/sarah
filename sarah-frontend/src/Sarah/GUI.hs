@@ -19,12 +19,12 @@ import qualified Sarah.Middleware.Client as Middleware
 --------------------------------------------------------------------------------
 
 setup :: AppEnv -> Window -> UI ()
-setup appEnv window = void $ do
+setup appEnv@AppEnv{..} window = void $ do
   (remotesLink, devicesLink, navbar)  <- mkNavbar
 
   on click remotesLink $ \_ -> do
     mapM_ delete =<< getElementById window "content"
-    devices <- runEIO $ Middleware.getStatus (appEnv^.manager) (appEnv^.middleware)
+    devices <- runEIO $ Middleware.getStatus manager middleware
     getBody window #+ [ div # set id_ "content"
                             # set class_ "container"
                             #+ either (const []) (\Status{..} -> renderRemotes appEnv connectedNodes) devices
@@ -32,7 +32,7 @@ setup appEnv window = void $ do
 
   on click devicesLink $ \_ -> do
     mapM_ delete =<< getElementById window "content"
-    status <- runEIO $ Middleware.getStatus (appEnv^.manager) (appEnv^.middleware)
+    status <- runEIO $ Middleware.getStatus manager middleware
     getBody window #+ [ div # set id_ "content"
                             # set class_ "container"
                             #+ either (const []) renderStatus status

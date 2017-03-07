@@ -18,7 +18,6 @@ import Sarah.Middleware.Model       hiding (manager)
 import Sarah.Middleware
 import Sarah.GUI.Remote
 --------------------------------------------------------------------------------
-import           Sarah.Middleware.Device.AC.Toshiba as AC
 import qualified Sarah.Middleware.Client as Middleware
 --------------------------------------------------------------------------------
 

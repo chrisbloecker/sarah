@@ -19,6 +19,10 @@ executable sarah-frontend
                      , Sarah.GUI
                      , Sarah.GUI.Model
                      , Sarah.GUI.Remote
+                     , Sarah.GUI.Remote.AC.Toshiba
+                     , Sarah.GUI.Remote.Example
+                     , Sarah.GUI.Remote.Power.HS110
+                     , Sarah.GUI.Remote.Sensor.DHT22
                      , Sarah.GUI.Widgets
   default-language:    Haskell2010
   build-depends:       aeson

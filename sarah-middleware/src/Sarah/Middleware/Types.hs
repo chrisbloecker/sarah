@@ -18,6 +18,7 @@ import qualified Data.ByteString.Lazy as BS (toStrict, fromStrict)
 type NodeName   = Text
 type DeviceName = Text
 
+
 -- A device can be uniquely identified by a pair of NodeName and DeviceName.
 -- This implied that every node must have a unique name. Similarly, every device
 -- that is connected to a node has to have a unique name.
@@ -27,12 +28,15 @@ data DeviceAddress = DeviceAddress { deviceNode :: NodeName
                                    }
   deriving (Binary, Generic, Typeable, ToJSON, FromJSON, Eq, Show)
 
+
 -- A wrapper that is intended to be used to add the pid of a sending process
 data FromPid message = FromPid ProcessId message deriving (Generic, Binary)
+
 
 -- Text that is tagged as encoded JSON.
 -- ToDo: Probably we should store the type of the original value somewhere using Typeable?
 newtype EncodedJSON = EncodedJSON { getEncoded :: Text } deriving (Generic, Binary, ToJSON, FromJSON)
+
 
 -- A Command is sent to devices in order to tell them what to do.
 -- The Text inside the command is a JSON representation of the command, which
@@ -40,9 +44,11 @@ newtype EncodedJSON = EncodedJSON { getEncoded :: Text } deriving (Generic, Bina
 -- for a different device type, it should just be ignored.
 newtype Command = Command { unCommand :: Text } deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
 
+
 -- Turn the representation of a command into an actual command for a specific device.
 getCommand :: FromJSON a => Command -> Either String a
 getCommand = eitherDecode' . BS.fromStrict . encodeUtf8 . unCommand
+
 
 -- A Query is intended for a specific device and carries a command. This command
 -- must be of appropriate "type" in order for the device to be able to understand it.
@@ -51,14 +57,17 @@ data Query = Query { queryTarget  :: DeviceAddress
                    }
   deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
 
+
 -- ToDo: Is this extra layer of wrapping necessary for CloudHaskell to handle this as a message correctly?
 newtype QueryResult = QueryResult { unQueryResult :: Result } deriving (Generic, Binary, Typeable, ToJSON, FromJSON)
+
 
 -- A Result (carried by a QueryResult) can either be an Error or a Success.
 -- The actual result value is a JSON value encoded to a text.
 data Result = Error   { unError   :: Text        }
             | Success { unSuccess :: EncodedJSON }
   deriving (Generic, Binary, Typeable, ToJSON, FromJSON)
+
 
 mkError :: Text -> QueryResult
 mkError message = QueryResult (Error message)
