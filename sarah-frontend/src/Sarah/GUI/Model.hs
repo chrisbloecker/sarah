@@ -1,13 +1,16 @@
+{-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE RecordWildCards #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Model
   where
 --------------------------------------------------------------------------------
 import Control.Monad.Reader        (ReaderT)
+import Data.Aeson                  (ToJSON, FromJSON)
+import Data.Text                   (unpack)
 import Graphics.UI.Threepenny.Core
 import Network.HTTP.Client         (Manager)
 import Servant.Common.BaseUrl      (BaseUrl)
-import Sarah.Middleware            (IsDevice, DeviceAddress, Command, Query (..), QueryResult, runEIO, runDeviceCommand)
+import Sarah.Middleware
 --------------------------------------------------------------------------------
 
 data AppEnv = AppEnv { manager    :: Manager
@@ -16,6 +19,9 @@ data AppEnv = AppEnv { manager    :: Manager
 
 type AppT  m = ReaderT AppEnv m
 type AppIO   = AppT IO
+
+type ErrorHandler     = AppIO ()
+type SuccessHandler a = a -> AppIO a
 
 --------------------------------------------------------------------------------
 
@@ -36,6 +42,15 @@ sendCommand AppEnv{..} deviceAddress command = do
   case mres of
     Left  err -> putStrLn ("[sendCommand] " ++ show err) >> return Nothing
     Right res -> return (Just res)
+
+handleResponse :: (ToJSON a, FromJSON a) => String -> Maybe QueryResult -> ErrorHandler -> SuccessHandler a -> AppIO ()
+handleResponse handlerName response errorHandler successHandler = case response of
+  Nothing -> putStrLn $ handlerName ++ " No response"
+  Just (QueryResult result) -> case result of
+    Error   message -> putStrLn (handlerName ++ " Error: " ++ unpack message) >> errorHandler
+    Success result  -> case decodeWrapped result of
+      Nothing -> putStrLn $ handlerName ++ " Error decoding result"
+      Just result -> successHandler result
 
 -- just a liftIO for UI
 embedUI :: IO a -> b -> UI a

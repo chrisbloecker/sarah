@@ -75,14 +75,14 @@ mkError message = QueryResult (Error message)
 mkSuccess :: (Typeable a, ToJSON a, FromJSON a) => a -> QueryResult
 mkSuccess result = QueryResult (Success $ encodeAndWrap result)
 
-encodeAsText :: (Typeable a, ToJSON a) => a -> Text
+encodeAsText :: (ToJSON a) => a -> Text
 encodeAsText = decodeUtf8 . BS.toStrict . encode
 
-decodeFromText :: (Typeable a, FromJSON a) => Text -> Maybe a
+decodeFromText :: (FromJSON a) => Text -> Maybe a
 decodeFromText = decode' . BS.fromStrict . encodeUtf8
 
-encodeAndWrap :: (Typeable a, ToJSON a, FromJSON a) => a -> EncodedJSON
+encodeAndWrap :: (ToJSON a, FromJSON a) => a -> EncodedJSON
 encodeAndWrap = EncodedJSON . encodeAsText
 
-decodeWrapped :: (Typeable a, ToJSON a, FromJSON a) => EncodedJSON -> Maybe a
+decodeWrapped :: (ToJSON a, FromJSON a) => EncodedJSON -> Maybe a
 decodeWrapped = decodeFromText . getEncoded

@@ -4,7 +4,7 @@ module Sarah.GUI.Remote.Example
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
 import Sarah.GUI.Model                (HasRemote (..), sendCommand, embedUI)
-import Sarah.Middleware               (QueryResult (..), Result (..), mkCommand)
+import Sarah.Middleware               (QueryResult (..), Result (..), mkCommand, decodeWrapped)
 import Sarah.Middleware.Device        (ExampleDevice)
 import qualified Sarah.Middleware.Device.Example as ExampleDevice
 
@@ -20,7 +20,7 @@ instance HasRemote ExampleDevice where
         Nothing -> putStrLn "[ExampleDevice.getRandomNumberButton.click] No response"
         Just (QueryResult result) -> case result of
           Error   message -> putStrLn $ "[ExampleDevice.getRandomNumberButton.click] Error: " ++ show message
-          Success result  -> putStrLn $ "[ExampleDevice.getRandomNumberButton.click] Success: " ++ decodeWrapped result
+          Success result  -> putStrLn $ "[ExampleDevice.getRandomNumberButton.click] Success: " ++ show (decodeWrapped result :: Maybe Integer)
 
     on click alwaysFailingButton $ embedUI $ do
       mres <- sendCommand appEnv deviceAddress (mkCommand ExampleDevice.GetRandomNumber)

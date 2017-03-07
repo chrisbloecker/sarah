@@ -4,7 +4,7 @@ module Sarah.GUI.Remote.AC.Toshiba
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
 import Sarah.GUI.Model                (HasRemote (..), sendCommand, embedUI)
-import Sarah.Middleware               (mkCommand)
+import Sarah.Middleware               (QueryResult (..), Result (..), mkCommand)
 import Sarah.Middleware.Device        (ToshibaAC)
 import qualified Sarah.Middleware.Device.AC.Toshiba as Toshiba
 
@@ -20,8 +20,16 @@ instance HasRemote ToshibaAC where
     hiButton   <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-fire" ]
 
     -- ToDo: get the state of the device and modify it, don't just overwrite the state
-    on click onButton   $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool Nothing)             (appEnv^.manager) (appEnv^.middleware)
-    on click offButton  $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeOff  Nothing)             (appEnv^.manager) (appEnv^.middleware)
+    on click onButton $ embedUI $ do
+      mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.PowerOn)
+      case mres of
+        Nothing -> putStrLn "[ToshibaAC.onButton.click] No response"
+        Just (QueryResult result) -> case result of
+          Error   message -> putStrLn $ "[ToshibaAC.onButton.click] Error: " ++ show message
+          Success result  -> putStrLn   "[ToshibaAC.onButton.click] Success"
+
+    on click offButton $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeOff  Nothing)             (appEnv^.manager) (appEnv^.middleware)
+
     on click coolButton $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool Nothing)             (appEnv^.manager) (appEnv^.middleware)
     on click dryButton  $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeDry  Nothing)             (appEnv^.manager) (appEnv^.middleware)
     on click fanButton  $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeFan  Nothing)             (appEnv^.manager) (appEnv^.middleware)

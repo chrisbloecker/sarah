@@ -29,4 +29,5 @@ import Sarah.Middleware.Types as Sarah.Middleware
   , Command (..), getCommand
   , Query (..)
   , QueryResult (..), Result (..)
+  , decodeWrapped
   )
