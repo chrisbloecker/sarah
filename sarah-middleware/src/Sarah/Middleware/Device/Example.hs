@@ -46,13 +46,11 @@ instance IsDevice ExampleDevice where
         -- the controller listens for requests and replies to them
         controller :: PortManager -> Pin -> Process ()
         controller portManager pin = do
-          receiveWait [ match $ \(FromPid src Query{..}) ->
-                          case (getCommand queryCommand :: Either String (DeviceCommand ExampleDevice)) of
-                            Left err -> say $ "[ExampleDevice.controller] Can't decode command: " ++ err
-                            Right command ->
-                              case command of
-                                GetRandomNumber -> send src $ mkSuccess (42 :: Integer)
-                                AlwaysFailing   -> send src $ mkError "This command always fails"
+          receiveWait [ match $ \(FromPid src Query{..}) -> case getCommand queryCommand of
+                          Left err -> say $ "[ExampleDevice.controller] Can't decode command: " ++ err
+                          Right command -> case command of
+                            GetRandomNumber -> send src $ mkSuccess (42 :: Integer)
+                            AlwaysFailing   -> send src $ mkError "This command always fails"
                       ]
           controller portManager pin
 

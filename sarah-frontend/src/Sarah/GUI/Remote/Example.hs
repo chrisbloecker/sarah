@@ -1,24 +1,26 @@
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-
+--------------------------------------------------------------------------------
 module Sarah.GUI.Remote.Example
   where
-
+--------------------------------------------------------------------------------
 import Data.Text                      (Text)
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
 import Sarah.GUI.Model                (HasRemote (..), sendCommand, embedUI, handleResponse, doNothing)
+import Sarah.GUI.Widgets              (reactiveLabel)
 import Sarah.Middleware               (QueryResult (..), Result (..), mkCommand, decodeWrapped)
 import Sarah.Middleware.Device        (ExampleDevice)
+--------------------------------------------------------------------------------
 import qualified Sarah.Middleware.Device.Example as ExampleDevice
-
+--------------------------------------------------------------------------------
 
 instance HasRemote ExampleDevice where
   renderRemote appEnv deviceAddress _ = do
     (eventDisplay, handlerDisplay) <- liftIO newEvent
     behaviourDisplay <- stepper "foo" eventDisplay
 
-    display <- entry behaviourDisplay
+    display <- reactiveLabel behaviourDisplay
 
     getRandomNumberButton <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-random" ]
     alwaysFailingButton   <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-flash" ]

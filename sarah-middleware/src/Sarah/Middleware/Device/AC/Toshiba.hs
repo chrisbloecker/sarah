@@ -9,63 +9,23 @@
 module Sarah.Middleware.Device.AC.Toshiba
   where
 --------------------------------------------------------------------------------
-import Control.Concurrent          (forkIO)
 import Control.Distributed.Process
-import Data.Aeson
-import Data.Aeson.Types            (typeMismatch)
+import Data.Aeson                  (ToJSON (..), FromJSON (..), (.=), (.:))
+import Data.Aeson.Types            (Parser, Value (..), typeMismatch, object, withObject)
 import Data.Bits                   (Bits, testBit, xor, zeroBits)
+import Data.Binary                 (Binary)
 import Data.ByteString             (ByteString)
 import Data.Monoid                 ((<>))
-import Data.Text                   (unpack)
-import Import.DeriveJSON
-import Import.MkBinary
+import Data.Text                   (Text, unpack)
+import Data.Typeable               (Typeable)
+import GHC.Generics                (Generic)
 import Raspberry.GPIO
 import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..))
+import Sarah.Middleware.Types      (FromPid (..), Query (..), getCommand, mkSuccess)
 --------------------------------------------------------------------------------
 import qualified Data.ByteString   as BS
 import qualified Language.C.Inline as C
 --------------------------------------------------------------------------------
-
-newtype ToshibaAC = ToshibaAC Pin deriving (Show)
-
-instance IsDevice ToshibaAC where
-  type DeviceState ToshibaAC = Config
-
-  data DeviceCommand ToshibaAC = SetTemperature Temperature
-                               | GetTemperature
-                               | SetFanMode     Fan
-                               | GetFanMode
-                               | SetMode        Mode
-                               | GetMode
-                               | SetPowerMode   (Maybe Power)
-                               | GetPowerMode
-                               | PowerOn
-                               | PowerOff
-    deriving (Generic, ToJSON, FromJSON)
-
-  startDeviceController (ToshibaAC pin) portManager = do
-    say "[ToshibaAC.startDeviceController]"
-    DeviceController <$> spawnLocal (controller portManager pin defaultConfig)
-
-      where
-        controller :: PortManager -> Pin -> Config -> Process ()
-        controller portManager pin config = receiveWait [ matchAny $ \m -> do
-                                                            say $ "[ToshibaAC] Received unexpected message " ++ show m
-                                                            controller portManager pin config
-                                                        ]
-
-instance ToJSON ToshibaAC where
-  toJSON (ToshibaAC (Pin pin)) = object [ "model" .= String "ToshibaAC"
-                                        , "gpio"  .= toJSON pin
-                                        ]
-
-instance FromJSON ToshibaAC where
-  parseJSON = withObject "ToshibaAC" $ \o -> do
-    model <- o .: "model" :: Parser Text
-    case model of
-      "ToshibaAC" -> ToshibaAC <$> (Pin <$> o .: "gpio")
-      model       -> fail $ "Invalid model identifier: " ++ unpack model
-
 
 data Temperature = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30 deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
 data Fan         = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
@@ -150,8 +110,8 @@ convert Config{..} =
   in BS.concat . map bitsToNibble $ bits
 
 
-send :: Pin -> Config -> IO ()
-send (Pin pin) config = do
+setAC :: Pin -> Config -> IO ()
+setAC (Pin pin) config = do
   let bs = convert config
   res <- [C.block| int
            {
@@ -228,3 +188,101 @@ send (Pin pin) config = do
   return ()
 
 --------------------------------------------------------------------------------
+
+newtype ToshibaAC = ToshibaAC Pin deriving (Show)
+
+instance IsDevice ToshibaAC where
+  type DeviceState ToshibaAC = Config
+
+  data DeviceCommand ToshibaAC = SetTemperature Temperature
+                               | GetTemperature
+                               | SetFanMode     Fan
+                               | GetFanMode
+                               | SetMode        Mode
+                               | GetMode
+                               | SetPowerMode   (Maybe Power)
+                               | GetPowerMode
+                               | PowerOn
+                               | PowerOff
+    deriving (Generic, ToJSON, FromJSON)
+
+  startDeviceController (ToshibaAC pin) portManager = do
+    say "[ToshibaAC.startDeviceController]"
+    DeviceController <$> spawnLocal (controller defaultConfig portManager pin)
+
+      where
+        controller :: Config -> PortManager -> Pin -> Process ()
+        controller config@Config{..} portManager pin =
+          receiveWait [ match $ \(FromPid src Query{..}) -> case getCommand queryCommand of
+                          Left err -> say $ "[ToshibaAC.controller] Can't decode command: " ++ err
+                          Right command -> case command of
+                            SetTemperature t -> do
+                              let config' = config { temperature = t }
+                              liftIO $ setAC pin config'
+                              emptyReply src
+                              controller config' portManager pin
+
+                            GetTemperature -> do
+                              send src (mkSuccess temperature)
+                              controller config portManager pin
+
+                            SetFanMode f -> do
+                              let config' = config { fan = f }
+                              liftIO $ setAC pin config'
+                              emptyReply src
+                              controller config' portManager pin
+
+                            GetFanMode -> do
+                              send src (mkSuccess fan)
+                              controller config portManager pin
+
+                            SetMode m -> do
+                              let config' = config { mode = m }
+                              liftIO $ setAC pin config'
+                              emptyReply src
+                              controller config' portManager pin
+
+                            GetMode -> do
+                              send src (mkSuccess mode)
+                              controller config portManager pin
+
+                            SetPowerMode mp -> do
+                              let config' = config { mpower = mp }
+                              liftIO $ setAC pin config'
+                              emptyReply src
+                              controller config' portManager pin
+
+                            GetPowerMode -> do
+                              send src (mkSuccess mpower)
+                              controller config portManager pin
+
+                            PowerOn -> do
+                              liftIO $ setAC pin defaultConfig
+                              emptyReply src
+                              controller defaultConfig portManager pin
+
+                            PowerOff -> do
+                              let config' = config { mode = ModeOff }
+                              liftIO $ setAC pin config'
+                              emptyReply src
+                              controller config' portManager pin
+
+                      , matchAny $ \m -> do
+                          say $ "[ToshibaAC] Received unexpected message " ++ show m
+                          controller config portManager pin
+                      ]
+
+emptyReply :: ProcessId -> Process ()
+emptyReply dest = send dest (mkSuccess ())
+
+instance ToJSON ToshibaAC where
+  toJSON (ToshibaAC (Pin pin)) = object [ "model" .= String "ToshibaAC"
+                                        , "gpio"  .= toJSON pin
+                                        ]
+
+instance FromJSON ToshibaAC where
+  parseJSON = withObject "ToshibaAC" $ \o -> do
+    model <- o .: "model" :: Parser Text
+    case model of
+      "ToshibaAC" -> ToshibaAC <$> (Pin <$> o .: "gpio")
+      model       -> fail $ "Invalid model identifier: " ++ unpack model

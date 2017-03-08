@@ -1,9 +1,11 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+
 module Sarah.GUI.Remote.AC.Toshiba
   where
 
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
-import Sarah.GUI.Model                (HasRemote (..), sendCommand, embedUI)
+import Sarah.GUI.Model
 import Sarah.Middleware               (QueryResult (..), Result (..), mkCommand)
 import Sarah.Middleware.Device        (ToshibaAC)
 import qualified Sarah.Middleware.Device.AC.Toshiba as Toshiba
@@ -22,19 +24,17 @@ instance HasRemote ToshibaAC where
     -- ToDo: get the state of the device and modify it, don't just overwrite the state
     on click onButton $ embedUI $ do
       mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.PowerOn)
-      case mres of
-        Nothing -> putStrLn "[ToshibaAC.onButton.click] No response"
-        Just (QueryResult result) -> case result of
-          Error   message -> putStrLn $ "[ToshibaAC.onButton.click] Error: " ++ show message
-          Success result  -> putStrLn   "[ToshibaAC.onButton.click] Success"
+      handleResponse "[ToshibaAC.onButton.click]" mres doNothing (\(_ :: ()) -> doNothing)
 
-    on click offButton $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeOff  Nothing)             (appEnv^.manager) (appEnv^.middleware)
+    on click offButton $ embedUI $ do
+      mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.PowerOff)
+      handleResponse "[ToshibaAC.offButton.click]" mres doNothing (\(_ :: ()) -> doNothing)
 
-    on click coolButton $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool Nothing)             (appEnv^.manager) (appEnv^.middleware)
-    on click dryButton  $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeDry  Nothing)             (appEnv^.manager) (appEnv^.middleware)
-    on click fanButton  $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeFan  Nothing)             (appEnv^.manager) (appEnv^.middleware)
-    on click ecoButton  $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeAuto (Just AC.PowerEco))  (appEnv^.manager) (appEnv^.middleware)
-    on click hiButton   $ const undefined -- runEIO $ Middleware.runAcServer (AC.Config AC.T22 AC.FanAuto AC.ModeCool (Just AC.PowerHigh)) (appEnv^.manager) (appEnv^.middleware)
+    on click coolButton $ const undefined
+    on click dryButton $ const undefined
+    on click fanButton $ const undefined
+    on click ecoButton $ const undefined
+    on click hiButton $ const undefined
 
     div #+ [ p # set class_ "text-center"
                #+ map element [ onButton, offButton ]
