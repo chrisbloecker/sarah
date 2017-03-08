@@ -20,8 +20,8 @@ data AppEnv = AppEnv { manager    :: Manager
 type AppT  m = ReaderT AppEnv m
 type AppIO   = AppT IO
 
-type ErrorHandler     = AppIO ()
-type SuccessHandler a = a -> AppIO a
+type ErrorHandler     = IO ()
+type SuccessHandler a = a -> IO ()
 
 --------------------------------------------------------------------------------
 
@@ -43,14 +43,21 @@ sendCommand AppEnv{..} deviceAddress command = do
     Left  err -> putStrLn ("[sendCommand] " ++ show err) >> return Nothing
     Right res -> return (Just res)
 
-handleResponse :: (ToJSON a, FromJSON a) => String -> Maybe QueryResult -> ErrorHandler -> SuccessHandler a -> AppIO ()
+handleResponse :: (ToJSON a, FromJSON a) => String -> Maybe QueryResult -> ErrorHandler -> SuccessHandler a -> IO ()
 handleResponse handlerName response errorHandler successHandler = case response of
-  Nothing -> putStrLn $ handlerName ++ " No response"
+  Nothing -> liftIO $ putStrLn $ handlerName ++ " No response"
   Just (QueryResult result) -> case result of
-    Error   message -> putStrLn (handlerName ++ " Error: " ++ unpack message) >> errorHandler
-    Success result  -> case decodeWrapped result of
+    Error message -> do
+      putStrLn (handlerName ++ " Error: " ++ unpack message)
+      errorHandler
+    Success result -> case decodeWrapped result of
       Nothing -> putStrLn $ handlerName ++ " Error decoding result"
-      Just result -> successHandler result
+      Just result -> do
+        putStrLn $ handlerName ++ " Success"
+        successHandler result
+
+doNothing :: IO ()
+doNothing = return ()
 
 -- just a liftIO for UI
 embedUI :: IO a -> b -> UI a

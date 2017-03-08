@@ -18,7 +18,8 @@ import Sarah.Middleware.Model       hiding (manager)
 import Sarah.Middleware
 import Sarah.GUI.Remote
 --------------------------------------------------------------------------------
-import qualified Sarah.Middleware.Client as Middleware
+import qualified Graphics.UI.Threepenny.Elements as UI
+import qualified Sarah.Middleware.Client         as Middleware
 --------------------------------------------------------------------------------
 
 pam = flip map
@@ -107,3 +108,14 @@ renderRemotes appEnv = concatMap (renderNodeRemotes appEnv)
     catRight = let cat = \case Left  l -> error "catRight" -- this is really not supposed to happen
                                Right r -> r
                in map cat . filter isRight
+
+data ReactiveLabel = ReactiveLabel { _elementRL :: Element }
+
+reactiveLabel :: Behavior String -> IO ReactiveLabel
+reactiveLabel behaviour = do
+  label <- UI.label
+
+  liftIOLater $ onChange
+
+instance Widget ReactiveLabel where
+  getElement = reactiveLabelView

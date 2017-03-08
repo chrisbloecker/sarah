@@ -35,7 +35,7 @@ data FromPid message = FromPid ProcessId message deriving (Generic, Binary)
 
 -- Text that is tagged as encoded JSON.
 -- ToDo: Probably we should store the type of the original value somewhere using Typeable?
-newtype EncodedJSON = EncodedJSON { getEncoded :: Text } deriving (Generic, Binary, ToJSON, FromJSON)
+newtype EncodedJSON = EncodedJSON { getEncoded :: Text } deriving (Generic, Binary, ToJSON, FromJSON, Show)
 
 
 -- A Command is sent to devices in order to tell them what to do.
@@ -66,7 +66,7 @@ newtype QueryResult = QueryResult { unQueryResult :: Result } deriving (Generic,
 -- The actual result value is a JSON value encoded to a text.
 data Result = Error   { unError   :: Text        }
             | Success { unSuccess :: EncodedJSON }
-  deriving (Generic, Binary, Typeable, ToJSON, FromJSON)
+  deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
 
 
 mkError :: Text -> QueryResult
@@ -75,10 +75,10 @@ mkError message = QueryResult (Error message)
 mkSuccess :: (Typeable a, ToJSON a, FromJSON a) => a -> QueryResult
 mkSuccess result = QueryResult (Success $ encodeAndWrap result)
 
-encodeAsText :: (ToJSON a) => a -> Text
+encodeAsText :: (ToJSON a, FromJSON a) => a -> Text
 encodeAsText = decodeUtf8 . BS.toStrict . encode
 
-decodeFromText :: (FromJSON a) => Text -> Maybe a
+decodeFromText :: (ToJSON a, FromJSON a) => Text -> Maybe a
 decodeFromText = decode' . BS.fromStrict . encodeUtf8
 
 encodeAndWrap :: (ToJSON a, FromJSON a) => a -> EncodedJSON
