@@ -21,7 +21,7 @@ import Data.Typeable               (Typeable)
 import GHC.Generics                (Generic)
 import Raspberry.GPIO
 import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..))
-import Sarah.Middleware.Types      (FromPid (..), Query (..), getCommand, mkSuccess)
+import Sarah.Middleware.Types      (FromPid (..), Query (..), getCommand, mkSuccess, mkError)
 --------------------------------------------------------------------------------
 import qualified Data.ByteString   as BS
 import qualified Language.C.Inline as C
@@ -110,82 +110,87 @@ convert Config{..} =
   in BS.concat . map bitsToNibble $ bits
 
 
-setAC :: Pin -> Config -> IO ()
+data ErrorCode = Ok | Error
+
+-- ToDo: use an enum in C for better error reporting
+setAC :: Pin -> Config -> IO ErrorCode
 setAC (Pin pin) config = do
   let bs = convert config
   res <- [C.block| int
-           {
-             int frequency = 38000;          // The frequency of the IR signal in Hz
-             double dutyCycle = 0.5;         // The duty cycle of the IR signal. 0.5 means for every cycle,
-                                             // the LED will turn on for half the cycle time, and off the other half
+  {
+    int frequency = 38000;          // The frequency of the IR signal in Hz
+    double dutyCycle = 0.5;         // The duty cycle of the IR signal. 0.5 means for every cycle,
+                                    // the LED will turn on for half the cycle time, and off the other half
 
-             int* codes = (int*) calloc(4 * $bs-len:bs + 7, sizeof(int));
+    int* codes = (int*) calloc(4 * $bs-len:bs + 7, sizeof(int));
 
-             if (!codes)
-             {
-               printf("Memory allocation for sending IR signals failed!");
-               return -1;
-             }
+    if (!codes)
+    {
+      printf("Memory allocation for sending IR signals failed!");
+      return -1;
+    }
 
-             char c = '_';
-             int i
-               , bsIdx = 0
-               ;
+    char c = '_';
+    int i
+      , bsIdx = 0
+      ;
 
-             codes[bsIdx++] = 4380;
-             codes[bsIdx++] = 4360;
+    codes[bsIdx++] = 4380;
+    codes[bsIdx++] = 4360;
 
-             for (i = 0; i < $bs-len:bs; ++i)
-               switch ($bs-ptr:bs[i])
-               {
-                  case '0':
-                    codes[bsIdx++] = 550;
-                    codes[bsIdx++] = 530;
-                    break;
-                  case '1':
-                    codes[bsIdx++] = 550;
-                    codes[bsIdx++] = 1600;
-                    break;
-                  default:
-                    printf("Invalid character in bitstring: %c", $bs-ptr:bs[i]);
-               }
+    for (i = 0; i < $bs-len:bs; ++i)
+      switch ($bs-ptr:bs[i])
+      {
+         case '0':
+           codes[bsIdx++] = 550;
+           codes[bsIdx++] = 530;
+           break;
+         case '1':
+           codes[bsIdx++] = 550;
+           codes[bsIdx++] = 1600;
+           break;
+         default:
+           printf("Invalid character in bitstring: %c", $bs-ptr:bs[i]);
+      }
 
-             codes[bsIdx++] =  550;
-             codes[bsIdx++] = 5470;
-             codes[bsIdx++] = 4380;
-             codes[bsIdx++] = 4360;
+    codes[bsIdx++] =  550;
+    codes[bsIdx++] = 5470;
+    codes[bsIdx++] = 4380;
+    codes[bsIdx++] = 4360;
 
-             for (i = 0; i < $bs-len:bs; ++i)
-               switch ($bs-ptr:bs[i])
-               {
-                 case '0':
-                   codes[bsIdx++] = 550;
-                   codes[bsIdx++] = 530;
-                   break;
-                 case '1':
-                   codes[bsIdx++] = 550;
-                   codes[bsIdx++] = 1600;
-                   break;
-                 default:
-                   printf("Invalid character in bitstring: %c", c);
-               }
+    for (i = 0; i < $bs-len:bs; ++i)
+      switch ($bs-ptr:bs[i])
+      {
+        case '0':
+          codes[bsIdx++] = 550;
+          codes[bsIdx++] = 530;
+          break;
+        case '1':
+          codes[bsIdx++] = 550;
+          codes[bsIdx++] = 1600;
+          break;
+        default:
+          printf("Invalid character in bitstring: %c", c);
+      }
 
-             codes[bsIdx++] = 550;
+    codes[bsIdx++] = 550;
 
-             int result = irSlingRaw( $(int pin)
-                                    , frequency
-                                    , dutyCycle
-                                    , codes
-                                    , bsIdx
-                                    );
+    int result = irSlingRaw( $(int pin)
+                           , frequency
+                           , dutyCycle
+                           , codes
+                           , bsIdx
+                           );
 
-             if (codes)
-               free(codes);
+    if (codes)
+      free(codes);
 
-             return result;
-           }
-         |]
-  return ()
+    return result;
+  }
+  |]
+  return $ case res of
+    0 -> Ok
+    _ -> Error
 
 --------------------------------------------------------------------------------
 
@@ -218,8 +223,10 @@ instance IsDevice ToshibaAC where
                           Right command -> case command of
                             SetTemperature t -> do
                               let config' = config { temperature = t }
-                              liftIO $ setAC pin config'
-                              emptyReply src
+                              res <- liftIO $ setAC pin config'
+                              case res of
+                                Ok    -> emptyReply src
+                                Error -> send src (mkError "")
                               controller config' portManager pin
 
                             GetTemperature -> do
@@ -228,8 +235,10 @@ instance IsDevice ToshibaAC where
 
                             SetFanMode f -> do
                               let config' = config { fan = f }
-                              liftIO $ setAC pin config'
-                              emptyReply src
+                              res <- liftIO $ setAC pin config'
+                              case res of
+                                Ok    -> emptyReply src
+                                Error -> send src (mkError "")
                               controller config' portManager pin
 
                             GetFanMode -> do
@@ -238,8 +247,10 @@ instance IsDevice ToshibaAC where
 
                             SetMode m -> do
                               let config' = config { mode = m }
-                              liftIO $ setAC pin config'
-                              emptyReply src
+                              res <- liftIO $ setAC pin config'
+                              case res of
+                                Ok    -> emptyReply src
+                                Error -> send src (mkError "")
                               controller config' portManager pin
 
                             GetMode -> do
@@ -248,8 +259,10 @@ instance IsDevice ToshibaAC where
 
                             SetPowerMode mp -> do
                               let config' = config { mpower = mp }
-                              liftIO $ setAC pin config'
-                              emptyReply src
+                              res <- liftIO $ setAC pin config'
+                              case res of
+                                Ok    -> emptyReply src
+                                Error -> send src (mkError "")
                               controller config' portManager pin
 
                             GetPowerMode -> do
@@ -257,14 +270,18 @@ instance IsDevice ToshibaAC where
                               controller config portManager pin
 
                             PowerOn -> do
-                              liftIO $ setAC pin defaultConfig
-                              emptyReply src
+                              res <- liftIO $ setAC pin defaultConfig
+                              case res of
+                                Ok    -> emptyReply src
+                                Error -> send src (mkError "")
                               controller defaultConfig portManager pin
 
                             PowerOff -> do
                               let config' = config { mode = ModeOff }
-                              liftIO $ setAC pin config'
-                              emptyReply src
+                              res <- liftIO $ setAC pin config'
+                              case res of
+                                Ok    -> emptyReply src
+                                Error -> send src (mkError "")
                               controller config' portManager pin
 
                       , matchAny $ \m -> do

@@ -33,7 +33,11 @@ instance HasRemote ToshibaAC where
     on click coolButton $ const undefined
     on click dryButton $ const undefined
     on click fanButton $ const undefined
-    on click ecoButton $ const undefined
+
+    on click ecoButton $ embedUI $ do
+      mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetPowerMode (Just Toshiba.PowerEco))
+      handleResponse "[ToshibaAC.ecoButton.click]" mres doNothing (\(_ :: ()) -> doNothing)
+
     on click hiButton $ const undefined
 
     div #+ [ p # set class_ "text-center"
