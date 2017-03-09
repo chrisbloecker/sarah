@@ -28,8 +28,10 @@ instance HasRemote ExampleDevice where
 
       display <- reactiveLabel behaviourDisplay
 
-      getRandomNumberButton <- bootstrapButton (buildClass [btn, btn_sm, btn_default, btn_circle]) Glyph.random
-      alwaysFailingButton   <- bootstrapButton (buildClass [btn, btn_sm, btn_default, btn_circle]) Glyph.flash
+      let buttonClass = buildClass [ btn, btn_sm, btn_default, btn_circle, btn_no_background ]
+
+      getRandomNumberButton <- bootstrapButton buttonClass Glyph.random
+      alwaysFailingButton   <- bootstrapButton buttonClass Glyph.flash
 
       on click getRandomNumberButton $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand ExampleDevice.GetRandomNumber)
@@ -44,7 +46,7 @@ instance HasRemote ExampleDevice where
       (eventStarButton,  handlerStarButton)  <- liftIO newEvent
       (eventHeartButton, handlerHeartButton) <- liftIO newEvent
 
-      let greyButton   = buildClass [ btn, btn_sm, btn_default, btn_circle ]
+      let greyButton   = buildClass [ btn, btn_sm, btn_default, btn_circle, btn_no_background ]
           yellowButton = buildClass [ btn, btn_sm, btn_warning, btn_circle ]
           redButton    = buildClass [ btn, btn_sm, btn_danger,  btn_circle ]
 

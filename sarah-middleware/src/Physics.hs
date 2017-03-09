@@ -7,5 +7,5 @@ module Physics
 import Data.Aeson   (ToJSON, FromJSON)
 import GHC.Generics (Generic)
 
-newtype Temperature = Temperature { unTemperature :: Double } deriving (Generic, ToJSON, FromJSON, Show)
-newtype Humidity    = Humidity    { unHumidity    :: Double } deriving (Generic, ToJSON, FromJSON, Show)
+newtype Temperature = Temperature { getTemperature :: Double } deriving (Generic, ToJSON, FromJSON, Show, Eq, Ord)
+newtype Humidity    = Humidity    { getHumidity    :: Double } deriving (Generic, ToJSON, FromJSON, Show, Eq, Ord)

@@ -4,6 +4,7 @@ module Sarah.GUI.Remote.Sensor.DHT22
   where
 --------------------------------------------------------------------------------
 import Control.Monad.Reader           (lift, ask)
+import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
 import Physics
@@ -12,6 +13,7 @@ import Sarah.GUI.Widgets
 import Sarah.Middleware               (mkCommand)
 import Sarah.Middleware.Device        (DHT22)
 --------------------------------------------------------------------------------
+import qualified Graphics.UI.Bootstrap.Glyphicon      as Glyph
 import qualified Sarah.Middleware.Device.Sensor.DHT22 as DHT22
 --------------------------------------------------------------------------------
 
@@ -28,8 +30,10 @@ instance HasRemote DHT22 where
       temperatureDisplay <- reactiveLabel behaviourTemperature
       humidityDisplay    <- reactiveLabel behaviourHumidity
 
-      getTemperatureButton <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "fa fa-thermometer-full" ]
-      getHumidityButton    <- button # set class_ "btn btn-sm btn-default" #+ [ span # set class_ "glyphicon glyphicon-tint" ]
+      let buttonClass = buildClass [ btn, btn_sm, btn_default, btn_circle, btn_no_background ]
+
+      getTemperatureButton <- bootstrapButton buttonClass (Glyphicon "fa fa-thermometer-full")
+      getHumidityButton    <- bootstrapButton buttonClass Glyph.tint
 
       on click getTemperatureButton $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetTemperature)

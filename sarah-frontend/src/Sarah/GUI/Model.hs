@@ -57,7 +57,7 @@ handleResponse handlerName response errorHandler successHandler = case response 
       putStrLn (handlerName ++ " Error: " ++ unpack message)
       errorHandler
     Success result -> case decodeWrapped result of
-      Nothing -> putStrLn $ handlerName ++ " Error decoding result"
+      Nothing -> putStrLn $ handlerName ++ " Error decoding result: " ++ show result
       Just result -> do
         putStrLn $ handlerName ++ " Success"
         successHandler result

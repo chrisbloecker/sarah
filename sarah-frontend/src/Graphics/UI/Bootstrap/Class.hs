@@ -26,3 +26,6 @@ btn_link = Class "btn-link"
 
 -- button shapes
 btn_circle = Class "btn-circle"
+
+-- additional styles
+btn_no_background = Class "btn-no-background"

@@ -13,12 +13,12 @@ import Control.Distributed.Process
 import Data.Aeson                  (ToJSON (..), FromJSON (..), (.=), (.:))
 import Data.Aeson.Types            (Parser, Value (..), typeMismatch, object, withObject)
 import Data.Bits                   (Bits, testBit, xor, zeroBits)
-import Data.Binary                 (Binary)
 import Data.ByteString             (ByteString)
 import Data.Monoid                 ((<>))
 import Data.Text                   (Text, unpack)
 import Data.Typeable               (Typeable)
 import GHC.Generics                (Generic)
+import Physics
 import Raspberry.GPIO
 import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..))
 import Sarah.Middleware.Types      (FromPid (..), Query (..), getCommand, mkSuccess, mkError)
@@ -27,25 +27,26 @@ import qualified Data.ByteString   as BS
 import qualified Language.C.Inline as C
 --------------------------------------------------------------------------------
 
-data Temperature = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30 deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
-data Fan         = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
-data Mode        = ModeAuto | ModeCool | ModeDry | ModeFan | ModeOff                                 deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
-data Power       = PowerHigh | PowerEco                                                              deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+data Temp  = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30 deriving (Generic, Typeable, ToJSON, FromJSON, Eq, Ord, Enum, Bounded)
+data Fan   = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Generic, Typeable, ToJSON, FromJSON)
+data Mode  = ModeAuto | ModeCool | ModeDry | ModeFan | ModeOff                                 deriving (Generic, Typeable, ToJSON, FromJSON)
+data Power = PowerHigh | PowerEco                                                              deriving (Generic, Typeable, ToJSON, FromJSON)
 
 data Config = Config { temperature :: Temperature
                      , fan         :: Fan
                      , mode        :: Mode
                      , mpower      :: Maybe Power
                      }
+  deriving (Generic, ToJSON, FromJSON)
 
 defaultConfig :: Config
-defaultConfig = Config { temperature = T22
+defaultConfig = Config { temperature = Temperature 22
                        , fan         = FanAuto
                        , mode        = ModeAuto
                        , mpower      = Nothing
                        }
 
-instance ToBits Temperature where
+instance ToBits Temp where
   toBits T17 = 0x0
   toBits T18 = 0x1
   toBits T19 = 0x2
@@ -98,9 +99,9 @@ bitsToNibble b = BS.concat [ if testBit b 3 then "1" else "0"
 
 convert :: Config -> ByteString
 convert Config{..} =
-  let t = toBits temperature :: Int
-      f = toBits fan         :: Int
-      m = toBits mode        :: Int
+  let t = toBits . fromTemperature $ temperature :: Int
+      f = toBits                     fan         :: Int
+      m = toBits                     mode        :: Int
       bits = case mpower of
                Nothing    -> let checksum = map (foldr xor zeroBits) [[t, f], [0x1, m   ]]
                              in [0xF, 0x2, 0x0, 0xD, 0x0, 0x3, 0xF, 0xC, 0x0, 0x1, t, 0x0, f, m, 0x0, 0x0        ] ++ checksum
@@ -108,6 +109,40 @@ convert Config{..} =
                                  checksum = map (foldr xor zeroBits) [[t, f], [0x9, m, p]]
                              in [0xF, 0x2, 0x0, 0xD, 0x0, 0x4, 0xF, 0xB, 0x0, 0x9, t, 0x0, f, m, 0x0, 0x0, 0x0, p] ++ checksum
   in BS.concat . map bitsToNibble $ bits
+
+
+toTemperature :: Temp -> Temperature
+toTemperature T17 = Temperature 17
+toTemperature T18 = Temperature 18
+toTemperature T19 = Temperature 19
+toTemperature T20 = Temperature 20
+toTemperature T21 = Temperature 21
+toTemperature T22 = Temperature 22
+toTemperature T23 = Temperature 23
+toTemperature T24 = Temperature 24
+toTemperature T25 = Temperature 25
+toTemperature T26 = Temperature 26
+toTemperature T27 = Temperature 27
+toTemperature T28 = Temperature 28
+toTemperature T29 = Temperature 29
+toTemperature T30 = Temperature 30
+
+
+fromTemperature :: Temperature -> Temp
+fromTemperature (Temperature t) | t < 17.5  = T17
+                                | t < 18.5  = T18
+                                | t < 19.5  = T19
+                                | t < 20.5  = T20
+                                | t < 21.5  = T21
+                                | t < 22.5  = T22
+                                | t < 23.5  = T23
+                                | t < 24.5  = T24
+                                | t < 25.5  = T25
+                                | t < 26.5  = T26
+                                | t < 27.5  = T27
+                                | t < 28.5  = T28
+                                | t < 29.5  = T29
+                                | otherwise = T30
 
 
 data ErrorCode = Ok | Error
@@ -200,15 +235,14 @@ instance IsDevice ToshibaAC where
   type DeviceState ToshibaAC = Config
 
   data DeviceCommand ToshibaAC = SetTemperature Temperature
-                               | GetTemperature
                                | SetFanMode     Fan
-                               | GetFanMode
                                | SetMode        Mode
-                               | GetMode
                                | SetPowerMode   (Maybe Power)
-                               | GetPowerMode
+                               | GetConfig
                                | PowerOn
                                | PowerOff
+                               | UpTemperature
+                               | DownTemperature
     deriving (Generic, ToJSON, FromJSON)
 
   startDeviceController (ToshibaAC pin) portManager = do
@@ -229,10 +263,6 @@ instance IsDevice ToshibaAC where
                                 Error -> send src (mkError "")
                               controller config' portManager pin
 
-                            GetTemperature -> do
-                              send src (mkSuccess temperature)
-                              controller config portManager pin
-
                             SetFanMode f -> do
                               let config' = config { fan = f }
                               res <- liftIO $ setAC pin config'
@@ -240,10 +270,6 @@ instance IsDevice ToshibaAC where
                                 Ok    -> emptyReply src
                                 Error -> send src (mkError "")
                               controller config' portManager pin
-
-                            GetFanMode -> do
-                              send src (mkSuccess fan)
-                              controller config portManager pin
 
                             SetMode m -> do
                               let config' = config { mode = m }
@@ -253,10 +279,6 @@ instance IsDevice ToshibaAC where
                                 Error -> send src (mkError "")
                               controller config' portManager pin
 
-                            GetMode -> do
-                              send src (mkSuccess mode)
-                              controller config portManager pin
-
                             SetPowerMode mp -> do
                               let config' = config { mpower = mp }
                               res <- liftIO $ setAC pin config'
@@ -265,14 +287,14 @@ instance IsDevice ToshibaAC where
                                 Error -> send src (mkError "")
                               controller config' portManager pin
 
-                            GetPowerMode -> do
-                              send src (mkSuccess mpower)
+                            GetConfig -> do
+                              send src (mkSuccess config)
                               controller config portManager pin
 
                             PowerOn -> do
                               res <- liftIO $ setAC pin defaultConfig
                               case res of
-                                Ok    -> emptyReply src
+                                Ok    -> send src (mkSuccess config)
                                 Error -> send src (mkError "")
                               controller defaultConfig portManager pin
 
@@ -283,6 +305,32 @@ instance IsDevice ToshibaAC where
                                 Ok    -> emptyReply src
                                 Error -> send src (mkError "")
                               controller config' portManager pin
+
+                            UpTemperature -> if temperature >= toTemperature maxBound
+                              then do
+                                send src (mkSuccess temperature)
+                                controller config portManager pin
+                              else do
+                                let temperature' = Temperature (getTemperature temperature + 1)
+                                    config' = config { temperature = temperature' }
+                                res <- liftIO $ setAC pin config'
+                                case res of
+                                  Ok    -> emptyReply src
+                                  Error -> send src (mkSuccess temperature')
+                                controller config' portManager pin
+
+                            DownTemperature -> if temperature <= toTemperature minBound
+                              then do
+                                send src (mkSuccess temperature)
+                                controller config portManager pin
+                              else do
+                                let temperature' = Temperature (getTemperature temperature - 1)
+                                    config' = config { temperature = temperature' }
+                                res <- liftIO $ setAC pin config'
+                                case res of
+                                  Ok    -> emptyReply src
+                                  Error -> send src (mkSuccess temperature')
+                                controller config' portManager pin
 
                       , matchAny $ \m -> do
                           say $ "[ToshibaAC] Received unexpected message " ++ show m
