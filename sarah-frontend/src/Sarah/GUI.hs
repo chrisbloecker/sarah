@@ -6,6 +6,7 @@ module Sarah.GUI
   ) where
 --------------------------------------------------------------------------------
 import Control.Monad                             (void)
+import Control.Monad.Reader                      (runReaderT)
 import Data.Text                                 (unpack)
 import Data.Either                               (isRight)
 import Graphics.UI.Threepenny             hiding (map)
@@ -120,7 +121,8 @@ renderRemotes appEnv = concatMap (renderNodeRemotes appEnv)
       -- because of the existential, we have to pattern match here in order to get the model
       case fromDeviceRep deviceRep of
         Left err             -> Left err
-        Right (Remote model) -> let widget = renderRemote appEnv (DeviceAddress nodeName deviceName) model
+        Right (Remote model) -> let deviceAddress = DeviceAddress nodeName deviceName
+                                    widget = runReaderT (buildRemote model) RemoteBuilderEnv{..}
                                 in Right $ mkTile (unpack deviceName) widget
 
     catRight :: [Either l r] -> [r]
