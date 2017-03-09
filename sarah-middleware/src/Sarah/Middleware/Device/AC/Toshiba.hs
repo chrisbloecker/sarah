@@ -315,8 +315,8 @@ instance IsDevice ToshibaAC where
                                     config' = config { temperature = temperature' }
                                 res <- liftIO $ setAC pin config'
                                 case res of
-                                  Ok    -> emptyReply src
-                                  Error -> send src (mkSuccess temperature')
+                                  Ok    -> send src (mkSuccess temperature')
+                                  Error -> emptyReply src
                                 controller config' portManager pin
 
                             DownTemperature -> if temperature <= toTemperature minBound
@@ -328,8 +328,8 @@ instance IsDevice ToshibaAC where
                                     config' = config { temperature = temperature' }
                                 res <- liftIO $ setAC pin config'
                                 case res of
-                                  Ok    -> emptyReply src
-                                  Error -> send src (mkSuccess temperature')
+                                  Ok    -> send src (mkSuccess temperature')
+                                  Error -> emptyReply src
                                 controller config' portManager pin
 
                       , matchAny $ \m -> do
