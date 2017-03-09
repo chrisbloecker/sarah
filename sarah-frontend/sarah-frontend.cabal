@@ -15,7 +15,12 @@ cabal-version:       >=1.10
 executable sarah-frontend
   hs-source-dirs:      src
   main-is:             Main.hs
-  other-modules:       Graphics.UI.Threepenny.Extra
+  other-modules:       Graphics.UI.Bootstrap
+                     , Graphics.UI.Bootstrap.Builder
+                     , Graphics.UI.Bootstrap.Class
+                     , Graphics.UI.Bootstrap.Glyphicon
+                     , Graphics.UI.Bootstrap.Style
+                     , Graphics.UI.Threepenny.Extra
                      , Sarah.GUI
                      , Sarah.GUI.Model
                      , Sarah.GUI.Remote

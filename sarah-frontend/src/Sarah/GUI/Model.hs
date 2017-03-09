@@ -25,6 +25,12 @@ type SuccessHandler a = a -> IO ()
 
 --------------------------------------------------------------------------------
 
+data RemoteBuilderEnv = RemoteBuilderEnv { appEnv        :: AppEnv
+                                         , deviceAddress :: DeviceAddress
+                                         }
+
+type RemoteBuilder a = ReaderT RemoteBuilderEnv UI a
+
 -- models which have an instance of IsDevice can be extended with HasRemote.
 class IsDevice model => HasRemote model where
   -- For generating a "widget" that can be used as a remote to control a device.
@@ -32,7 +38,7 @@ class IsDevice model => HasRemote model where
   --  - The AppEnv, so we know how to talk to the device
   --  - A DeviceAddress, so we know where the device is. Potentially, there can be
   --    many devices of the same kind available, even at the same node.
-  renderRemote :: AppEnv -> DeviceAddress -> model -> UI Element
+  buildRemote :: model -> RemoteBuilder Element
 
 -- construct a command, build a query, and send it
 sendCommand :: AppEnv -> DeviceAddress -> Command -> IO (Maybe QueryResult)
