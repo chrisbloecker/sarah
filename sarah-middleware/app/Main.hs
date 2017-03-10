@@ -4,26 +4,27 @@
 module Main
   where
 --------------------------------------------------------------------------------
-import           Control.Concurrent.MVar
-import           Control.Distributed.Process
-import           Control.Distributed.Process.Node     (initRemoteTable, forkProcess, runProcess, newLocalNode)
-import           Control.Exception                    (throw)
-import           Data.Maybe                           (fromMaybe)
-import           Network.HTTP.Client                  (newManager, defaultManagerSettings)
-import           Network.Transport                    (EndPointAddress (..), newEndPoint)
-import           Network.Transport.TCP                (createTransport, defaultTCPParameters)
-import           Network.Wai                          (Application, Middleware)
-import           Network.Wai.Handler.Warp             (run)
-import           Network.Wai.Middleware.RequestLogger (logStdoutDev)
-import           Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
-import           Options.Applicative
-import           Servant.Client                       (BaseUrl (..), Scheme (Http))
+import Control.Concurrent.MVar
+import Control.Distributed.Process
+import Control.Distributed.Process.Node     (initRemoteTable, forkProcess, runProcess, newLocalNode)
+import Control.Exception                    (throw)
+import Data.Maybe                           (fromMaybe)
+import Data.Monoid                          ((<>))
+import Network.HTTP.Client                  (newManager, defaultManagerSettings)
+import Network.Transport                    (EndPointAddress (..), newEndPoint)
+import Network.Transport.TCP                (createTransport, defaultTCPParameters)
+import Network.Wai                          (Application, Middleware)
+import Network.Wai.Handler.Warp             (run)
+import Network.Wai.Middleware.RequestLogger (logStdoutDev)
+import Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
+import Options.Applicative
+import Servant.Client
 --------------------------------------------------------------------------------
-import           Raspberry.Hardware
-import           Sarah.Middleware.Api
-import           Sarah.Middleware.Master
-import           Sarah.Middleware.Model
-import           Sarah.Middleware.Slave
+import Raspberry.Hardware
+import Sarah.Middleware.Api
+import Sarah.Middleware.Master
+import Sarah.Middleware.Model
+import Sarah.Middleware.Slave
 --------------------------------------------------------------------------------
 import qualified Data.ByteString as BS
 import qualified Data.Yaml       as Y
@@ -67,9 +68,9 @@ go Options{..} = case nodeRole of
             throw err
           Right transport -> do
             manager   <- newManager defaultManagerSettings
-            let persist = BaseUrl Http (host backend) (port backend) ""
+            let database = BaseUrl Http (host backend) (port backend) ""
             node      <- newLocalNode transport initRemoteTable
-            masterPid <- forkProcess node (runMaster manager persist)
+            masterPid <- forkProcess node (runMaster $ ClientEnv manager database)
 
             let config = Config { master     = Master masterPid
                                 , localNode  = node
@@ -77,7 +78,7 @@ go Options{..} = case nodeRole of
                                                                  runProcess node $ do r <- p
                                                                                       liftIO $ putMVar m r
                                                                  takeMVar m
-                                , backend    = persist
+                                , backend    = database
                                 , manager    = manager
                                 }
 

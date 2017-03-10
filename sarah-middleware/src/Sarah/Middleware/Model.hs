@@ -14,20 +14,19 @@ module Sarah.Middleware.Model
   , IsDevice (..), mkCommand
   ) where
 --------------------------------------------------------------------------------
-import Control.Applicative                               (Applicative)
-import Control.Distributed.Process                       (Process)
-import Control.Distributed.Process.Internal.Types        (LocalNode, ProcessId)
-import Control.Lens                               hiding ((.=))
-import Control.Monad.Reader                              (MonadIO, MonadReader, ReaderT, runReaderT, runReader)
-import Control.Monad.Except                              (MonadError, ExceptT, runExceptT, liftIO)
-import Data.Aeson                                        (ToJSON, FromJSON, encode)
-import Data.Text.Encoding                                (decodeUtf8)
-import Data.Typeable                                     (Typeable)
-import GHC.Generics                                      (Generic)
-import Network.HTTP.Client                               (Manager)
-import Sarah.Middleware.Types                            (Command (..), DeviceName, NodeName)
-import Servant                                           (ServantErr)
-import Servant.Common.BaseUrl                            (BaseUrl)
+import Control.Applicative                        (Applicative)
+import Control.Distributed.Process                (Process)
+import Control.Distributed.Process.Internal.Types (LocalNode, ProcessId)
+import Control.Monad.Reader                       (MonadIO, MonadReader, ReaderT, runReaderT, runReader)
+import Control.Monad.Except                       (MonadError, ExceptT, runExceptT, liftIO)
+import Data.Aeson                                 (ToJSON, FromJSON, encode)
+import Data.Text.Encoding                         (decodeUtf8)
+import Data.Typeable                              (Typeable)
+import GHC.Generics                               (Generic)
+import Network.HTTP.Client                        (Manager)
+import Sarah.Middleware.Types                     (Command (..), DeviceName, NodeName)
+import Servant                                    (ServantErr)
+import Servant.Common.BaseUrl                     (BaseUrl)
 --------------------------------------------------------------------------------
 import qualified Data.HashMap.Strict  as HM
 import qualified Data.ByteString.Lazy as BS (toStrict)

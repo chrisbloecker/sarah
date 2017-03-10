@@ -7,12 +7,13 @@ module Sarah.Middleware.Api.Sensor
   , sensorServer
   ) where
 --------------------------------------------------------------------------------
-import           Control.Monad.Reader     (ask, lift)
-import           Control.Monad.Except     (runExceptT, liftIO)
-import           Data.Time.Calendar       (Day)
-import           Sarah.Middleware.Model
-import           Sarah.Persist.Model      (Room, Sensor, SensorReading)
-import           Servant
+import Control.Monad.Reader     (ask, lift)
+import Control.Monad.Except     (runExceptT, liftIO)
+import Data.Time.Calendar       (Day)
+import Sarah.Middleware.Model
+import Sarah.Persist.Model      (Room, Sensor, SensorReading)
+import Servant
+import Servant.Client
 --------------------------------------------------------------------------------
 import qualified Sarah.Persist.Client as Persist
 --------------------------------------------------------------------------------
@@ -20,7 +21,7 @@ import qualified Sarah.Persist.Client as Persist
 type SensorApi = "sensor-readings" :> "date"   :> Capture "date"   Day
                                    :> "room"   :> Capture "room"   Room
                                    :> "sensor" :> Capture "sensor" Sensor
-                                   :> Get     '[JSON] [SensorReading]
+                                   :> Get '[JSON] [SensorReading]
 
 --------------------------------------------------------------------------------
 
@@ -30,7 +31,7 @@ sensorServer = getSensorReadings
 getSensorReadings :: Day -> Room -> Sensor -> MiddlewareApp [SensorReading]
 getSensorReadings day room sensor = do
   Config{..} <- ask
-  mreadings <- runEIO $ Persist.getSensorReadings day room sensor manager backend
+  mreadings <- liftIO $ runClientM (Persist.getSensorReadings day room sensor) (ClientEnv manager backend)
   case mreadings of
     Left err -> return []
     Right readings -> return readings

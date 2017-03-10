@@ -7,6 +7,7 @@ module Sarah.Middleware.Types
 import Control.Distributed.Process (ProcessId)
 import Data.Aeson                  (ToJSON, FromJSON, encode, decode', eitherDecode')
 import Data.Binary                 (Binary)
+import Data.Hashable               (Hashable)
 import Data.Text                   (Text)
 import Data.Text.Encoding          (encodeUtf8, decodeUtf8)
 import Data.Typeable               (Typeable)
@@ -26,7 +27,7 @@ type DeviceName = Text
 data DeviceAddress = DeviceAddress { deviceNode :: NodeName
                                    , deviceName :: DeviceName
                                    }
-  deriving (Binary, Generic, Typeable, ToJSON, FromJSON, Eq, Show)
+  deriving (Binary, Generic, Typeable, ToJSON, FromJSON, Hashable, Eq, Show)
 
 
 -- A wrapper that is intended to be used to add the pid of a sending process

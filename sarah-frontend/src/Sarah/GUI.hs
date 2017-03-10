@@ -5,11 +5,11 @@ module Sarah.GUI
   ( setup
   ) where
 --------------------------------------------------------------------------------
-import Control.Concurrent.STM              (atomically, readTVar, writeTVar)
+import Control.Concurrent.STM              (atomically, readTVar, modifyTVar)
 import Control.Monad                       (forM_, unless, void)
 import Control.Monad.Reader                (runReaderT, ask)
 import Data.Either                         (isRight)
-import Data.Map.Strict                     (member, insert)
+import Data.HashMap.Strict                 (elems, insert, member)
 import Data.Text                           (unpack)
 import Graphics.UI.Threepenny       hiding (map)
 import Graphics.UI.Threepenny.Extra
@@ -17,7 +17,8 @@ import Prelude                      hiding (div, span)
 import Sarah.GUI.Model
 import Sarah.GUI.Remote                    (Remote (..), fromDeviceRep)
 import Sarah.GUI.Widgets
-import Sarah.Middleware                    (DeviceAddress (..), DeviceName, DeviceRep, Status (..), NodeInfo (..), runEIO)
+import Sarah.Middleware                    (DeviceAddress (..), DeviceName, DeviceRep, Status (..), NodeInfo (..))
+import Servant.Client
 --------------------------------------------------------------------------------
 import qualified Sarah.Middleware.Client as Middleware
 --------------------------------------------------------------------------------
@@ -28,33 +29,31 @@ setup appEnv@AppEnv{..} window = void $ do
 
   on click remotesLink $ \_ -> do
     mapM_ delete =<< getElementById window "content"
-    mStatus <- runEIO $ Middleware.getStatus manager middleware
+    mStatus <- liftIO $ runClientM Middleware.getStatus middlewareClient
     case mStatus of
-      Nothing -> return ()
-      Just Status{..} ->
+      Left err -> void . liftIO . print $ err
+      Right Status{..} ->
         forM_ connectedNodes $ \NodeInfo{..} ->
           forM_ nodeDevices $ \(deviceName, deviceRep) ->
             case fromDeviceRep deviceRep of
               Left err -> return ()
               Right (Remote model) -> do
                 let deviceAddress = DeviceAddress nodeName deviceName
-                atomically $ do
-                  remoteMap <- readTVar remotes
-                  unless (deviceAddress `member` remoteMap) $ do
-                    let widget = runReaderT (buildRemote model) RemoteBuilderEnv{..}
-                        remote = mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget
-                    writeTVar (insert deviceAddress remote remoteMap)
+                remoteMap <- liftIO $ atomically $ readTVar remotes
+                liftIO $ unless (deviceAddress `member` remoteMap) $ do
+                  let widget = runReaderT (buildRemote model) RemoteBuilderEnv{..}
+                  remote <- runUI window $ mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget
+                  atomically $ modifyTVar remotes (insert deviceAddress remote)
 
-    atomically $ do
-      remoteMap <- readTVar remotes
+    remoteMap <- liftIO $ atomically $ readTVar remotes
     getBody window #+ [ div # set id_ "content"
                             # set class_ "container"
-                            #+
+                            #+ map element (elems remoteMap) --either (const []) (\Status{..} -> renderRemotes appEnv connectedNodes) devices
                       ]
 
   on click devicesLink $ \_ -> do
     mapM_ delete =<< getElementById window "content"
-    status <- runEIO $ Middleware.getStatus manager middleware
+    status <- liftIO $ runClientM Middleware.getStatus middlewareClient
     getBody window #+ [ div # set id_ "content"
                             # set class_ "container"
                             #+ either (const []) renderStatus status

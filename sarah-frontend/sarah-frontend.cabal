@@ -39,7 +39,6 @@ executable sarah-frontend
                      , containers
                      , either
                      , http-client
-                     , lens
                      , mtl
                      , optparse-applicative
                      , sarah-middleware
@@ -47,3 +46,4 @@ executable sarah-frontend
                      , stm
                      , text
                      , threepenny-gui
+                     , unordered-containers

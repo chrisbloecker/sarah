@@ -1,4 +1,3 @@
-{-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE RecordWildCards #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Model
@@ -7,17 +6,16 @@ module Sarah.GUI.Model
 import Control.Concurrent.STM      (TVar)
 import Control.Monad.Reader        (ReaderT)
 import Data.Aeson                  (ToJSON, FromJSON)
-import Data.Map.Strict             (Map)
+import Data.HashMap.Strict         (HashMap)
 import Data.Text                   (unpack)
 import Graphics.UI.Threepenny.Core
 import Network.HTTP.Client         (Manager)
-import Servant.Common.BaseUrl      (BaseUrl)
+import Servant.Client
 import Sarah.Middleware
 --------------------------------------------------------------------------------
 
-data AppEnv = AppEnv { manager    :: Manager
-                     , middleware :: BaseUrl
-                     , remotes    :: TVar (Map DeviceAddress Element)
+data AppEnv = AppEnv { middlewareClient :: ClientEnv
+                     , remotes          :: TVar (HashMap DeviceAddress Element)
                      }
 
 type App = ReaderT AppEnv UI
@@ -46,7 +44,7 @@ class IsDevice model => HasRemote model where
 sendCommand :: AppEnv -> DeviceAddress -> Command -> IO (Maybe QueryResult)
 sendCommand AppEnv{..} deviceAddress command = do
   let query = Query deviceAddress command
-  mres <- runEIO $ runDeviceCommand query manager middleware
+  mres <- runClientM (runDeviceCommand query) middlewareClient
   case mres of
     Left  err -> putStrLn ("[sendCommand] " ++ show err) >> return Nothing
     Right res -> return (Just res)

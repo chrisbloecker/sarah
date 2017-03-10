@@ -14,10 +14,9 @@ import Network.HTTP.Client         (newManager, defaultManagerSettings)
 import Options.Applicative
 import Sarah.GUI
 import Sarah.GUI.Model
-import Servant.Client              (Scheme (Http))
-import Servant.Common.BaseUrl      (BaseUrl (BaseUrl))
+import Servant.Client
 --------------------------------------------------------------------------------
-import qualified Data.Map.Strict as M
+import qualified Data.HashMap.Strict as M
 --------------------------------------------------------------------------------
 
 data Options = Options { appHost :: Maybe String
@@ -49,10 +48,11 @@ run Options{..} = do
                              , jsStatic     = Just "static"
                              , jsCustomHTML = Just "sarah.html"
                              }
-      middlewareHost = fromMaybe "localhost" midHost
-      middlewarePort = fromMaybe 8090        midPort
-      middleware     = BaseUrl Http middlewareHost middlewarePort ""
+      middlewareHost   = fromMaybe "localhost" midHost
+      middlewarePort   = fromMaybe 8090        midPort
+      middleware       = BaseUrl Http middlewareHost middlewarePort ""
   manager <- newManager defaultManagerSettings
+  let middlewareClient = ClientEnv manager middleware
   remotes <- atomically $ newTVar M.empty
   let appEnv = AppEnv {..}
   startGUI config (setup appEnv)

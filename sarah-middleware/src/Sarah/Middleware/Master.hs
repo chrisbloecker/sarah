@@ -24,7 +24,8 @@ import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model           hiding (manager)
 import Sarah.Middleware.Types           (FromPid (..), Query (..), QueryResult (..), NodeName, deviceNode)
 import Sarah.Middleware.Util
-import Servant.Common.BaseUrl           (BaseUrl)
+--import Servant.Common.BaseUrl           (BaseUrl)
+import Servant.Client
 --------------------------------------------------------------------------------
 import qualified Data.Map.Strict      as M
 import qualified Sarah.Persist.Model  as Persist
@@ -39,18 +40,22 @@ data MasterSettings = MasterSettings { masterNode :: WebAddress
 
 data State = State { nodes          :: Map ProcessId NodeInfo
                    , nodeNames      :: Map NodeName  ProcessId
-                   , manager        :: Manager
-                   , persistBackend :: BaseUrl
+                   , backendClient  :: ClientEnv
+--                   , manager        :: Manager
+--                   , persistBackend :: BaseUrl
                    }
 
 --------------------------------------------------------------------------------
 
-runMaster :: Manager -> BaseUrl -> Process ()
-runMaster manager persist = do
+runMaster :: ClientEnv -> Process ()
+runMaster backendClient = do
   self <- getSelfPid
   register masterName self
   say "Master up"
-  loop $ State empty empty manager persist
+  loop State { nodes         = empty
+             , nodeNames     = empty
+             , backendClient = backendClient
+             }
 
 
 loop :: State -> Process ()
@@ -79,7 +84,7 @@ loop state@State{..} =
                   spawnLocal $ do
                     now <- liftIO getCurrentTime
                     let logEntry = Persist.Log (utctDay now) (timeToTimeOfDay . utctDayTime $ now) nodeName message logLevel
-                    mRes <- runEIO $ Persist.putLog logEntry manager persistBackend
+                    mRes <- liftIO $ runClientM (Persist.putLog logEntry) backendClient
                     case mRes of
                       Left err -> say (show err)
                       Right _  -> return ()
@@ -98,7 +103,7 @@ loop state@State{..} =
                   spawnLocal $ do
                     now <- liftIO getCurrentTime
                     let sensorReading = Persist.SensorReading (utctDay now) (timeToTimeOfDay . utctDayTime $ now) room sensor value
-                    mRes <- runEIO $ Persist.putSensorReading sensorReading manager persistBackend
+                    mRes <- liftIO $ runClientM (Persist.putSensorReading sensorReading) backendClient
                     case mRes of
                       Left err -> say (show err)
                       Right _  -> return ()
