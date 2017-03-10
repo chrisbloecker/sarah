@@ -5,17 +5,19 @@ module Sarah.GUI
   ( setup
   ) where
 --------------------------------------------------------------------------------
-import Control.Monad                             (void)
-import Control.Monad.Reader                      (runReaderT)
-import Data.Text                                 (unpack)
-import Data.Either                               (isRight)
-import Graphics.UI.Threepenny             hiding (map)
+import Control.Concurrent.STM              (atomically, readTVar, writeTVar)
+import Control.Monad                       (forM_, unless, void)
+import Control.Monad.Reader                (runReaderT, ask)
+import Data.Either                         (isRight)
+import Data.Map.Strict                     (member, insert)
+import Data.Text                           (unpack)
+import Graphics.UI.Threepenny       hiding (map)
 import Graphics.UI.Threepenny.Extra
-import Prelude                            hiding (div, span)
+import Prelude                      hiding (div, span)
 import Sarah.GUI.Model
-import Sarah.GUI.Remote                          (Remote (..), fromDeviceRep)
+import Sarah.GUI.Remote                    (Remote (..), fromDeviceRep)
 import Sarah.GUI.Widgets
-import Sarah.Middleware                          (DeviceAddress (..), DeviceName, DeviceRep, Status (..), NodeInfo (..), runEIO)
+import Sarah.Middleware                    (DeviceAddress (..), DeviceName, DeviceRep, Status (..), NodeInfo (..), runEIO)
 --------------------------------------------------------------------------------
 import qualified Sarah.Middleware.Client as Middleware
 --------------------------------------------------------------------------------
@@ -26,10 +28,28 @@ setup appEnv@AppEnv{..} window = void $ do
 
   on click remotesLink $ \_ -> do
     mapM_ delete =<< getElementById window "content"
-    devices <- runEIO $ Middleware.getStatus manager middleware
+    mStatus <- runEIO $ Middleware.getStatus manager middleware
+    case mStatus of
+      Nothing -> return ()
+      Just Status{..} ->
+        forM_ connectedNodes $ \NodeInfo{..} ->
+          forM_ nodeDevices $ \(deviceName, deviceRep) ->
+            case fromDeviceRep deviceRep of
+              Left err -> return ()
+              Right (Remote model) -> do
+                let deviceAddress = DeviceAddress nodeName deviceName
+                atomically $ do
+                  remoteMap <- readTVar remotes
+                  unless (deviceAddress `member` remoteMap) $ do
+                    let widget = runReaderT (buildRemote model) RemoteBuilderEnv{..}
+                        remote = mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget
+                    writeTVar (insert deviceAddress remote remoteMap)
+
+    atomically $ do
+      remoteMap <- readTVar remotes
     getBody window #+ [ div # set id_ "content"
                             # set class_ "container"
-                            #+ either (const []) (\Status{..} -> renderRemotes appEnv connectedNodes) devices
+                            #+
                       ]
 
   on click devicesLink $ \_ -> do
@@ -123,7 +143,7 @@ renderRemotes appEnv = concatMap (renderNodeRemotes appEnv)
         Left err             -> Left err
         Right (Remote model) -> let deviceAddress = DeviceAddress nodeName deviceName
                                     widget = runReaderT (buildRemote model) RemoteBuilderEnv{..}
-                                in Right $ mkTile (unpack deviceName) widget
+                                in Right $ mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget
 
     catRight :: [Either l r] -> [r]
     catRight = let cat = \case Left  l -> error "catRight" -- this is really not supposed to happen

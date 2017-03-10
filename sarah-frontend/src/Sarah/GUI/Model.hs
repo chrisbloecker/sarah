@@ -4,8 +4,10 @@
 module Sarah.GUI.Model
   where
 --------------------------------------------------------------------------------
+import Control.Concurrent.STM      (TVar)
 import Control.Monad.Reader        (ReaderT)
 import Data.Aeson                  (ToJSON, FromJSON)
+import Data.Map.Strict             (Map)
 import Data.Text                   (unpack)
 import Graphics.UI.Threepenny.Core
 import Network.HTTP.Client         (Manager)
@@ -15,10 +17,10 @@ import Sarah.Middleware
 
 data AppEnv = AppEnv { manager    :: Manager
                      , middleware :: BaseUrl
+                     , remotes    :: TVar (Map DeviceAddress Element)
                      }
 
-type AppT  m = ReaderT AppEnv m
-type AppIO   = AppT IO
+type App = ReaderT AppEnv UI
 
 type ErrorHandler     = IO ()
 type SuccessHandler a = a -> IO ()

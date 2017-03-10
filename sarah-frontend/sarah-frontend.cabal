@@ -15,6 +15,7 @@ cabal-version:       >=1.10
 executable sarah-frontend
   hs-source-dirs:      src
   main-is:             Main.hs
+  ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N
   other-modules:       Graphics.UI.Bootstrap
                      , Graphics.UI.Bootstrap.Builder
                      , Graphics.UI.Bootstrap.Class
@@ -35,6 +36,7 @@ executable sarah-frontend
                      , blaze-html
                      , blaze-markup
                      , bytestring
+                     , containers
                      , either
                      , http-client
                      , lens
@@ -42,5 +44,6 @@ executable sarah-frontend
                      , optparse-applicative
                      , sarah-middleware
                      , servant-client
+                     , stm
                      , text
                      , threepenny-gui

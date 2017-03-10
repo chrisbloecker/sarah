@@ -4,16 +4,20 @@
 module Main
   where
 --------------------------------------------------------------------------------
-import           Data.Maybe                  (fromMaybe)
-import           Data.ByteString             (ByteString)
-import           Data.ByteString.Char8       (pack)
-import           Graphics.UI.Threepenny.Core
-import           Network.HTTP.Client         (newManager, defaultManagerSettings)
-import           Options.Applicative
-import           Sarah.GUI
-import           Sarah.GUI.Model
-import           Servant.Client              (Scheme (Http))
-import           Servant.Common.BaseUrl      (BaseUrl (BaseUrl))
+import Control.Concurrent.STM      (atomically, newTVar)
+import Control.Monad.Reader        (runReaderT)
+import Data.Maybe                  (fromMaybe)
+import Data.ByteString             (ByteString)
+import Data.ByteString.Char8       (pack)
+import Graphics.UI.Threepenny.Core
+import Network.HTTP.Client         (newManager, defaultManagerSettings)
+import Options.Applicative
+import Sarah.GUI
+import Sarah.GUI.Model
+import Servant.Client              (Scheme (Http))
+import Servant.Common.BaseUrl      (BaseUrl (BaseUrl))
+--------------------------------------------------------------------------------
+import qualified Data.Map.Strict as M
 --------------------------------------------------------------------------------
 
 data Options = Options { appHost :: Maybe String
@@ -49,7 +53,9 @@ run Options{..} = do
       middlewarePort = fromMaybe 8090        midPort
       middleware     = BaseUrl Http middlewareHost middlewarePort ""
   manager <- newManager defaultManagerSettings
-  startGUI config (setup $ AppEnv manager middleware)
+  remotes <- atomically $ newTVar M.empty
+  let appEnv = AppEnv {..}
+  startGUI config (setup appEnv)
 
 
 main :: IO ()
