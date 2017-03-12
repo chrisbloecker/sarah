@@ -25,14 +25,18 @@ import Sarah.Middleware.Types      (FromPid (..), Query (..), getCommand, mkSucc
 -- Define the device, let's say it uses a GPIO pin.
 newtype ExampleDevice = ExampleDevice Pin deriving (Show)
 
+data ExampleState = Normal | Star | Heart  deriving (Generic, ToJSON, FromJSON)
+
 -- Implement an instance for IsDevice
 instance IsDevice ExampleDevice where
   -- Define the device state
-  type DeviceState ExampleDevice = ()
+  type DeviceState ExampleDevice = ExampleState
 
   -- List all the possible commands the device should support
   -- DeviceCommand needs to have instances for ToJSON and FromJSON
   data DeviceCommand ExampleDevice = GetRandomNumber
+                                   | SetState ExampleState
+                                   | GetState
                                    | AlwaysFailing
     deriving (Generic, ToJSON, FromJSON)
 
@@ -40,19 +44,23 @@ instance IsDevice ExampleDevice where
   startDeviceController (ExampleDevice pin) portManager = do
     say "[ExampleDevice.startDeviceController]"
     -- start the server and wrap its pid into a DeviceController
-    DeviceController <$> spawnLocal (controller portManager pin)
+    DeviceController <$> spawnLocal (controller Normal portManager pin)
 
       where
         -- the controller listens for requests and replies to them
-        controller :: PortManager -> Pin -> Process ()
-        controller portManager pin = do
+        controller :: DeviceState ExampleDevice -> PortManager -> Pin -> Process ()
+        controller state portManager pin =
           receiveWait [ match $ \(FromPid src Query{..}) -> case getCommand queryCommand of
                           Left err -> say $ "[ExampleDevice.controller] Can't decode command: " ++ err
                           Right command -> case command of
-                            GetRandomNumber -> send src $ mkSuccess (42 :: Integer)
-                            AlwaysFailing   -> send src $ mkError "This command always fails"
+                            GetRandomNumber -> send src (mkSuccess (42 :: Integer))           >> controller state  portManager pin
+                            SetState state' -> send src (mkSuccess ())                        >> controller state' portManager pin
+                            GetState        -> send src (mkSuccess state)                     >> controller state  portManager pin
+                            AlwaysFailing   -> send src (mkError "This command always fails") >> controller state  portManager pin
+                      , matchAny $ \m -> do
+                          say $ "[ExampleDevice.controller] Received unexpected message: " ++ show m
+                          controller state portManager pin
                       ]
-          controller portManager pin
 
 
 instance ToJSON ExampleDevice where

@@ -1,15 +1,14 @@
-{-# LANGUAGE LambdaCase      #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI
   ( setup
   ) where
 --------------------------------------------------------------------------------
-import Control.Concurrent.STM              (atomically, readTVar, modifyTVar)
+import Control.Concurrent.STM              (atomically, newTVar, readTVar, modifyTVar)
 import Control.Monad                       (forM_, unless, void)
 import Control.Monad.Reader                (runReaderT, ask)
-import Data.Either                         (isRight)
-import Data.HashMap.Strict                 (elems, insert, member)
+import Data.Maybe                          (fromJust)
 import Data.Text                           (unpack)
 import Graphics.UI.Threepenny       hiding (map)
 import Graphics.UI.Threepenny.Extra
@@ -20,38 +19,64 @@ import Sarah.GUI.Widgets
 import Sarah.Middleware                    (DeviceAddress (..), DeviceName, DeviceRep, Status (..), NodeInfo (..))
 import Servant.Client
 --------------------------------------------------------------------------------
+import qualified Data.HashMap.Strict     as HM
 import qualified Sarah.Middleware.Client as Middleware
 --------------------------------------------------------------------------------
 
+data Navbar = Navbar { remotesButton :: Element
+                     , devicesButton :: Element
+                     , navbar        :: Element
+                     }
+
 setup :: AppEnv -> Window -> UI ()
 setup appEnv@AppEnv{..} window = void $ do
-  (remotesLink, devicesLink, navbar)  <- mkNavbar
+  Navbar{..} <- mkNavbar
 
-  on click remotesLink $ \_ -> do
+  remotes <- liftIO $ atomically $ newTVar HM.empty
+
+  -- a place to store the remotes
+  liftIO $ do
+    knownEventsFor <- atomically $ readTVar remoteEvents
+    putStrLn "Known events:"
+    forM_ (HM.keys knownEventsFor) $ \DeviceAddress{..} -> putStrLn $ "  " ++ unpack deviceNode ++ ":" ++ unpack deviceName
+
+  -- get the status of the middleware, i.e. the connected nodes and their info
+  mStatus <- liftIO $ runClientM Middleware.getStatus middlewareClient
+  liftIO $ case mStatus of
+    Left err -> void . print $ err
+    Right Status{..} ->
+      forM_ connectedNodes $ \NodeInfo{..} ->
+        forM_ nodeDevices $ \(deviceName, deviceRep) ->
+          case fromDeviceRep deviceRep of
+            Left err -> return ()
+            Right (Remote model) -> do
+              let deviceAddress = DeviceAddress nodeName deviceName
+              -- create new gui update event for the device or reuse an existing one
+              (eventStateChanged, notifyStateChanged) <- do
+                behaviour <- newEvent
+                liftIO $ atomically $ do
+                  events <- readTVar remoteEvents
+                  unless (deviceAddress `HM.member` events) $
+                    modifyTVar remoteEvents (HM.insert deviceAddress behaviour)
+                  -- fromJust should really not fail now...
+                  fromJust . HM.lookup deviceAddress <$> readTVar remoteEvents
+
+              let widget = runReaderT (buildRemote model) RemoteBuilderEnv{..}
+              remote <- runUI window $ mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget
+              liftIO . atomically $ modifyTVar remotes (HM.insert deviceAddress remote)
+
+  -- ToDo: where and when should we clean up events for devices that don't exist
+  --       or are not connected anymore?
+
+  on click remotesButton $ \_ -> do
+    remoteWidgets <- liftIO . atomically $ readTVar remotes
     mapM_ delete =<< getElementById window "content"
-    mStatus <- liftIO $ runClientM Middleware.getStatus middlewareClient
-    case mStatus of
-      Left err -> void . liftIO . print $ err
-      Right Status{..} ->
-        forM_ connectedNodes $ \NodeInfo{..} ->
-          forM_ nodeDevices $ \(deviceName, deviceRep) ->
-            case fromDeviceRep deviceRep of
-              Left err -> return ()
-              Right (Remote model) -> do
-                let deviceAddress = DeviceAddress nodeName deviceName
-                remoteMap <- liftIO $ atomically $ readTVar remotes
-                liftIO $ unless (deviceAddress `member` remoteMap) $ do
-                  let widget = runReaderT (buildRemote model) RemoteBuilderEnv{..}
-                  remote <- runUI window $ mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget
-                  atomically $ modifyTVar remotes (insert deviceAddress remote)
-
-    remoteMap <- liftIO $ atomically $ readTVar remotes
     getBody window #+ [ div # set id_ "content"
                             # set class_ "container"
-                            #+ map element (elems remoteMap) --either (const []) (\Status{..} -> renderRemotes appEnv connectedNodes) devices
+                            #+ map element (HM.elems remoteWidgets)
                       ]
 
-  on click devicesLink $ \_ -> do
+  on click devicesButton $ \_ -> do
     mapM_ delete =<< getElementById window "content"
     status <- liftIO $ runClientM Middleware.getStatus middlewareClient
     getBody window #+ [ div # set id_ "content"
@@ -59,16 +84,19 @@ setup appEnv@AppEnv{..} window = void $ do
                             #+ either (const []) renderStatus status
                       ]
 
+  -- add the navbar and render the remotes by default
+  remoteWidgets <- liftIO . atomically $ readTVar remotes
   getBody window #+ [ element navbar
                     , div # set id_ "content"
+                          # set class_ "container"
+                          #+ map element (HM.elems remoteWidgets)
                     ]
 
-mkNavbar :: UI (Element, Element, Element)
+
+mkNavbar :: UI Navbar
 mkNavbar = do
-  remotesLink <- a # set href "#"
-                   # set text "Remotes"
-  devicesLink <- a # set href "#"
-                   # set text "Devices"
+  remotesButton <- a # set text "Remotes"
+  devicesButton <- a # set text "Devices"
   navbar <- nav # set class_ "navbar navbar-default"
                 #+ [ div # set class_ "container"
                          #+ [ div # set class_ "navbar-header"
@@ -85,15 +113,13 @@ mkNavbar = do
                             , div # set class_ "collapse navbar-collapse"
                                   # set id_ "the-navbar"
                                   #+ [ ul # set class_ "nav navbar-nav"
-                                          #+ [ li #+ [ element remotesLink
-                                                     ]
-                                             , li #+ [ element devicesLink
-                                                     ]
+                                          #+ [ li #+ [ element remotesButton ]
+                                             , li #+ [ element devicesButton ]
                                              ]
                                      ]
                             ]
                    ]
-  return (remotesLink, devicesLink, navbar)
+  return Navbar{..}
 
 
 mkTile :: String -> UI Element -> UI Element
@@ -130,21 +156,3 @@ renderStatus Status{..} = map renderNodeInfo connectedNodes -- $ \nodeInfo -> mk
 
     showDevice :: DeviceName -> DeviceRep -> UI Element
     showDevice deviceName deviceRep = listGroupItem [ string ("a device: " ++ unpack deviceName) ]
-
-
-renderRemotes :: AppEnv -> [NodeInfo] -> [UI Element]
-renderRemotes appEnv = concatMap (renderNodeRemotes appEnv)
-  where
-    renderNodeRemotes :: AppEnv -> NodeInfo -> [UI Element]
-    renderNodeRemotes appEnv NodeInfo{..} = catRight . flip map nodeDevices $ \(deviceName, deviceRep) ->
-      -- because of the existential, we have to pattern match here in order to get the model
-      case fromDeviceRep deviceRep of
-        Left err             -> Left err
-        Right (Remote model) -> let deviceAddress = DeviceAddress nodeName deviceName
-                                    widget = runReaderT (buildRemote model) RemoteBuilderEnv{..}
-                                in Right $ mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget
-
-    catRight :: [Either l r] -> [r]
-    catRight = let cat = \case Left  l -> error "catRight" -- this is really not supposed to happen
-                               Right r -> r
-               in map cat . filter isRight

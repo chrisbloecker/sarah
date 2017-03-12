@@ -35,16 +35,28 @@ instance HasRemote DHT22 where
       getTemperatureButton <- bootstrapButton buttonClass (Glyphicon "fa fa-thermometer-full")
       getHumidityButton    <- bootstrapButton buttonClass Glyph.tint
 
+      let eventStateChangedHandler _ = do
+            mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetTemperatureAndHumidity)
+            handleResponse "[DHT22.eventStateChanged]" mres doNothing $ \(Temperature t, Humidity h) -> do
+              handlerTemperature $ show t ++ "°C"
+              handlerHumidity    $ show h ++ "%"
+
+      unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
+
       on click getTemperatureButton $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetTemperature)
-        handleResponse "[DHT22.getTemperatureButton.click]" mres doNothing (\(Temperature t) -> handlerTemperature $ show t ++ "°C")
+        handleResponse "[DHT22.getTemperatureButton.click]" mres doNothing $ \(Temperature t) -> do
+          handlerTemperature $ show t ++ "°C"
+          notifyStateChanged ()
 
       on click getHumidityButton $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetHumidity)
-        handleResponse "[DHT22.getHumidityButton.click]" mres doNothing (\(Humidity h) -> handlerHumidity $ show h ++ "%")
+        handleResponse "[DHT22.getHumidityButton.click]" mres doNothing $ \(Humidity h) -> do
+          handlerHumidity $ show h ++ "%"
+          notifyStateChanged ()
 
       div #+ [ p # set class_ "text-center"
-                 #+ [ element temperatureDisplay, element getTemperatureButton ]
+                 #+ [ string "Temperature: ", element temperatureDisplay, element getTemperatureButton ]
              , p # set class_ "text-center"
-                 #+ [ element humidityDisplay, element getHumidityButton ]
+                 #+ [ string "Humidity: ", element humidityDisplay, element getHumidityButton ]
              ]

@@ -15,13 +15,15 @@
 }
 
 .btn-circle {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   text-align: center;
   padding: 6px 0;
   font-size: 12px;
   line-height: 1.428571429;
-  border-radius: 15px;
+  border-radius: 16px;
+  box-shadow: none;
+  margin: 2px;
 }
 
 .btn-circle.btn-lg {

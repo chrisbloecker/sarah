@@ -53,7 +53,8 @@ run Options{..} = do
       middleware       = BaseUrl Http middlewareHost middlewarePort ""
   manager <- newManager defaultManagerSettings
   let middlewareClient = ClientEnv manager middleware
-  remotes <- atomically $ newTVar M.empty
+  remoteEvents <- atomically $ newTVar M.empty
+  counter      <- atomically $ newTVar 0
   let appEnv = AppEnv {..}
   startGUI config (setup appEnv)
 

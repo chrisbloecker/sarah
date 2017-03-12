@@ -14,8 +14,11 @@ import Servant.Client
 import Sarah.Middleware
 --------------------------------------------------------------------------------
 
+type RemoteEvent = (Event (), Handler ())
+
 data AppEnv = AppEnv { middlewareClient :: ClientEnv
-                     , remotes          :: TVar (HashMap DeviceAddress Element)
+                     , remoteEvents     :: TVar (HashMap DeviceAddress RemoteEvent)
+                     , counter          :: TVar Integer
                      }
 
 type App = ReaderT AppEnv UI
@@ -25,8 +28,10 @@ type SuccessHandler a = a -> IO ()
 
 --------------------------------------------------------------------------------
 
-data RemoteBuilderEnv = RemoteBuilderEnv { appEnv        :: AppEnv
-                                         , deviceAddress :: DeviceAddress
+data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
+                                         , deviceAddress      :: DeviceAddress
+                                         , eventStateChanged  :: Event ()
+                                         , notifyStateChanged :: Handler ()
                                          }
 
 type RemoteBuilder a = ReaderT RemoteBuilderEnv UI a

@@ -62,17 +62,34 @@ instance HasRemote ExampleDevice where
       element (getElement starButton)  #+ [ span # set class_ (unGlyphicon Glyph.star)  ]
       element (getElement heartButton) #+ [ span # set class_ (unGlyphicon Glyph.heart) ]
 
+      let eventStateChangedHandler _ = do
+            mres <- sendCommand appEnv deviceAddress (mkCommand ExampleDevice.GetState)
+            handleResponse "[ExampleDevice.eventStateChangedHandler]" mres doNothing $ \case
+              ExampleDevice.Normal -> handlerStarButton greyButton   >> handlerHeartButton greyButton
+              ExampleDevice.Star   -> handlerStarButton yellowButton >> handlerHeartButton greyButton
+              ExampleDevice.Heart  -> handlerStarButton greyButton   >> handlerHeartButton redButton
+
+      unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
+
+
       on click (getElement minusButton) $ embedUI $ do
-        handlerStarButton  greyButton
-        handlerHeartButton greyButton
+        mres <- sendCommand appEnv deviceAddress (mkCommand $ ExampleDevice.SetState ExampleDevice.Normal)
+        handleResponse "[ExampleDevice.minusButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement starButton) $ embedUI $ do
-        handlerStarButton  yellowButton
-        handlerHeartButton greyButton
+        mres <- sendCommand appEnv deviceAddress (mkCommand $ ExampleDevice.SetState ExampleDevice.Star)
+        handleResponse "[ExampleDevice.starButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement heartButton) $ embedUI $ do
-        handlerStarButton  greyButton
-        handlerHeartButton redButton
+        mres <- sendCommand appEnv deviceAddress (mkCommand $ ExampleDevice.SetState ExampleDevice.Heart)
+        handleResponse "[ExampleDevice.heartButton.click]" mres doNothing $ \() -> notifyStateChanged ()
+
+      liftIO $ do
+        mres <- sendCommand appEnv deviceAddress (mkCommand ExampleDevice.GetState)
+        handleResponse "[ExampleDevice.eventStateChangedHandler]" mres doNothing $ \case
+          ExampleDevice.Normal -> handlerStarButton greyButton   >> handlerHeartButton greyButton
+          ExampleDevice.Star   -> handlerStarButton yellowButton >> handlerHeartButton greyButton
+          ExampleDevice.Heart  -> handlerStarButton greyButton   >> handlerHeartButton redButton
 
       div #+ [ p # set class_ "text-center"
                  #+ [ element display ]
