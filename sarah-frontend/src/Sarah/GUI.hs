@@ -68,6 +68,7 @@ setup appEnv@AppEnv{..} window = void $ do
   -- ToDo: where and when should we clean up events for devices that don't exist
   --       or are not connected anymore?
 
+  -- ToDo: don't remove the content, just replace its children
   on click remotesButton $ \_ -> do
     remoteWidgets <- liftIO . atomically $ readTVar remotes
     mapM_ delete =<< getElementById window "content"

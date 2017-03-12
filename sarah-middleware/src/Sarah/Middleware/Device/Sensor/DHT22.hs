@@ -75,9 +75,13 @@ unCDouble (C.CDouble d) = d
 -- DHT22 sensors are connected through a GPIO pin.
 newtype DHT22 = DHT22 Pin deriving (Show)
 
+data DHT22State = DHT22State { dht22Temperature :: Temperature
+                             , dht22Humidity    :: Humidity
+                             }
+
 instance IsDevice DHT22 where
   -- The DHT22 does not have a state
-  type DeviceState DHT22 = ()
+  type DeviceState DHT22 = DHT22State
 
   -- The DHT22 can be used to read the temperature, the humidity, or both
   data DeviceCommand DHT22 = GetTemperature
@@ -90,6 +94,7 @@ instance IsDevice DHT22 where
     DeviceController <$> spawnLocal (controller portManager pin)
 
       where
+        -- ToDo: "cache" the state so we don't read it too often, maybe like every 10 seconds maximum
         controller :: PortManager -> Pin -> Process ()
         controller portManager pin =
           receiveWait [ match $ \(FromPid src Query{..}) -> do
