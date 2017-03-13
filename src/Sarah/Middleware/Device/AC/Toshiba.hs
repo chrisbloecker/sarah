@@ -28,7 +28,7 @@ import qualified Language.C.Inline as C
 --------------------------------------------------------------------------------
 
 data Temp  = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30 deriving (Generic, Typeable, ToJSON, FromJSON, Eq, Ord, Enum, Bounded)
-data Fan   = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Generic, Typeable, ToJSON, FromJSON, Eq)
+data Fan   = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Generic, Typeable, ToJSON, FromJSON, Eq, Ord, Enum, Bounded)
 data Mode  = ModeAuto | ModeCool | ModeDry | ModeFan | ModeOff                                 deriving (Generic, Typeable, ToJSON, FromJSON, Eq)
 data Power = PowerHigh | PowerEco                                                              deriving (Generic, Typeable, ToJSON, FromJSON, Eq)
 
@@ -261,7 +261,7 @@ instance IsDevice ToshibaAC where
                               let config' = config { temperature = t }
                               res <- liftIO $ setAC pin config'
                               case res of
-                                Ok    -> send src (mkSuccess config')
+                                Ok    -> emptyReply src
                                 Error -> send src (mkError "")
                               controller config' portManager pin
 
@@ -269,7 +269,7 @@ instance IsDevice ToshibaAC where
                               let config' = config { fan = f }
                               res <- liftIO $ setAC pin config'
                               case res of
-                                Ok    -> send src (mkSuccess config')
+                                Ok    -> emptyReply src
                                 Error -> send src (mkError "")
                               controller config' portManager pin
 
@@ -277,7 +277,7 @@ instance IsDevice ToshibaAC where
                               let config' = config { mode = m }
                               res <- liftIO $ setAC pin config'
                               case res of
-                                Ok    -> send src (mkSuccess config')
+                                Ok    -> emptyReply src
                                 Error -> send src (mkError "")
                               controller config' portManager pin
 
@@ -285,7 +285,7 @@ instance IsDevice ToshibaAC where
                               let config' = config { mpower = mp }
                               res <- liftIO $ setAC pin config'
                               case res of
-                                Ok    -> send src (mkSuccess config')
+                                Ok    -> emptyReply src
                                 Error -> send src (mkError "")
                               controller config' portManager pin
 
@@ -296,7 +296,7 @@ instance IsDevice ToshibaAC where
                             PowerOn -> do
                               res <- liftIO $ setAC pin defaultConfig
                               case res of
-                                Ok    -> send src (mkSuccess config)
+                                Ok    -> emptyReply src
                                 Error -> send src (mkError "")
                               controller defaultConfig portManager pin
 
@@ -304,34 +304,58 @@ instance IsDevice ToshibaAC where
                               let config' = config { mode = ModeOff }
                               res <- liftIO $ setAC pin config'
                               case res of
-                                Ok    -> send src (mkSuccess config')
+                                Ok    -> emptyReply src
                                 Error -> send src (mkError "")
                               controller config' portManager pin
 
                             UpTemperature -> if temperature >= toTemperature maxBound
                               then do
-                                send src (mkSuccess config)
+                                emptyReply src
                                 controller config portManager pin
                               else do
                                 let temperature' = Temperature (getTemperature temperature + 1)
                                     config' = config { temperature = temperature' }
                                 res <- liftIO $ setAC pin config'
                                 case res of
-                                  Ok    -> send src (mkSuccess config')
-                                  Error -> emptyReply src
+                                  Ok    -> emptyReply src
+                                  Error -> send src (mkError "")
                                 controller config' portManager pin
 
                             DownTemperature -> if temperature <= toTemperature minBound
                               then do
-                                send src (mkSuccess config)
+                                emptyReply src
                                 controller config portManager pin
                               else do
                                 let temperature' = Temperature (getTemperature temperature - 1)
                                     config' = config { temperature = temperature' }
                                 res <- liftIO $ setAC pin config'
                                 case res of
-                                  Ok    -> send src (mkSuccess config')
-                                  Error -> emptyReply src
+                                  Ok    -> emptyReply src
+                                  Error -> send src (mkError "")
+                                controller config' portManager pin
+
+                            UpFan -> if fan == maxBound
+                              then do
+                                emptyReply src
+                                controller config portManager pin
+                              else do
+                                let config' = config { fan = succ fan }
+                                res <- liftIO $ setAC pin config'
+                                case res of
+                                  Ok    -> emptyReply src
+                                  Error -> send src (mkError "")
+                                controller config' portManager pin
+
+                            DownFan -> if fan == FanQuiet
+                              then do
+                                emptyReply src
+                                controller config portManager pin
+                              else do
+                                let config' = config { fan = pred fan }
+                                res <- liftIO $ setAC pin config'
+                                case res of
+                                  Ok -> emptyReply src
+                                  Error -> send src (mkError "")
                                 controller config' portManager pin
 
                       , matchAny $ \m -> do

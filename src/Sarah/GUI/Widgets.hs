@@ -39,6 +39,9 @@ reactiveButton behaviourClass behaviourStyle = do
 
 data ReactiveProgressBar = ReactiveProgressBar { _elementRPB :: Element }
 
+instance Widget ReactiveProgressBar where
+  getElement = _elementRPB
+
 reactiveProgressBar :: Behavior (Integer, String) -> UI ReactiveProgressBar
 reactiveProgressBar behaviour = do
   display <- string ""

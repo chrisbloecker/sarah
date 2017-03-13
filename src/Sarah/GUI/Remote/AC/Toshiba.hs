@@ -121,55 +121,55 @@ instance HasRemote ToshibaAC where
 
       on click onButton $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.PowerOn)
-        handleResponse "[ToshibaAC.onButton.click]" mres doNothing $ notifyStateChanged ()
+        handleResponse "[ToshibaAC.onButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click offButton $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.PowerOff)
-        handleResponse "[ToshibaAC.offButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[ToshibaAC.offButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement autoButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetMode Toshiba.ModeAuto)
-        handleResponse "[ToshibaAC.autoButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[ToshibaAC.autoButton.click]" mres doNothing $ \() ->notifyStateChanged ()
 
       on click (getElement tempUpButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.UpTemperature)
-        handleResponse "[ToshibaAC.tempUpButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[ToshibaAC.tempUpButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement tempDownButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.DownTemperature)
-        handleResponse "[ToshibaAC.tempDownButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[ToshibaAC.tempDownButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement fanUpButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.UpFan)
-        handleResponse "[ToshibaAC.fanUpButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[ToshibaAC.fanUpButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement fanDownButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.DownFan)
-        handleResponse "[ToshibaAC.fanDownButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[ToshibaAC.fanDownButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement coolButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetMode Toshiba.ModeCool)
-        handleResponse "[ToshibaAC.coolButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[ToshibaAC.coolButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement dryButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetMode Toshiba.ModeDry)
-        handleResponse "[ToshibaAC.dryButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[ToshibaAC.dryButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement fanButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetMode Toshiba.ModeFan)
-        handleResponse "[ToshibaAC.fanButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[ToshibaAC.fanButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement normalButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetPowerMode Nothing)
-        handleResponse "[Toshiba.normalButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[Toshiba.normalButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement ecoButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetPowerMode (Just Toshiba.PowerEco))
-        handleResponse "[ToshibaAC.ecoButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[ToshibaAC.ecoButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       on click (getElement hiButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetPowerMode (Just Toshiba.PowerHigh))
-        handleResponse "[Toshiba.hiButton.click]" mres doNothing notifyStateChanged ()
+        handleResponse "[Toshiba.hiButton.click]" mres doNothing $ \() -> notifyStateChanged ()
 
       div #+ [ p # set class_ "text-center"
                  #+ map element [ onButton, offButton ]
