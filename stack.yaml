@@ -37,14 +37,10 @@ resolver: lts-8.4
 # will not be run. This is useful for tweaking upstream packages.
 packages:
 - '.'
-- '../sarah-persist'
-- '../sarah-middleware'
+
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
-extra-deps: [ sarah-persist-0.1.0.0
-            , sarah-middleware-0.1.0.0
-            , distributed-process-extras-0.3.1
-            ]
+extra-deps: [ distributed-process-extras-0.3.1 ]
 
 # Override default flag values for local packages and extra-deps
 flags: {}

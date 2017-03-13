@@ -1,8 +1,8 @@
-name:                sarah-middleware
+name:                sarah
 version:             0.1.0.0
-synopsis:            Initial project template from stack
+synopsis:            Simple project template from stack
 description:         Please see README.md
-homepage:            https://github.com/chrisbloecker/sarah-middleware
+homepage:            https://github.com/chrisbloecker/sarah
 license:             BSD3
 license-file:        LICENSE
 author:              Christopher Blöcker
@@ -10,18 +10,30 @@ maintainer:          chrisbloecker@googlemail.com
 copyright:           2016-2017 Christopher Blöcker
 category:            Web
 build-type:          Simple
--- extra-source-files:
 cabal-version:       >=1.10
+
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Import.DeriveJSON
-                     , Import.MkBinary
+  exposed-modules:     Graphics.UI.Bootstrap
+                     , Graphics.UI.Bootstrap.Builder
+                     , Graphics.UI.Bootstrap.Class
+                     , Graphics.UI.Bootstrap.Glyphicon
+                     , Graphics.UI.Bootstrap.Style
+                     , Graphics.UI.Threepenny.Extra
                      , Physics
                      , Raspberry.GPIO
                      , Raspberry.Hardware
                      , Raspberry.I2C
                      , Raspberry.IP
+                     , Sarah.GUI
+                     , Sarah.GUI.Model
+                     , Sarah.GUI.Remote
+                     , Sarah.GUI.Remote.AC.Toshiba
+                     , Sarah.GUI.Remote.Example
+                     , Sarah.GUI.Remote.Power.HS110
+                     , Sarah.GUI.Remote.Sensor.DHT22
+                     , Sarah.GUI.Widgets
                      , Sarah.Middleware
                      , Sarah.Middleware.Api
                      , Sarah.Middleware.Api.Device
@@ -42,6 +54,15 @@ library
                      , Sarah.Middleware.Slave.Messages
                      , Sarah.Middleware.Types
                      , Sarah.Middleware.Util
+                     , Sarah.Persist.Api
+                     , Sarah.Persist.Api.Log
+                     , Sarah.Persist.Api.Sensor
+                     , Sarah.Persist.Client
+                     , Sarah.Persist.Model
+                     , Sarah.Persist.Settings
+                     , Sarah.Persist.Types
+  other-modules:       Import.DeriveJSON
+                     , Import.MkBinary
   c-sources:           src/Sarah/Middleware/Device/AC/Toshiba.c
                      , src/Sarah/Middleware/Device/Sensor/DHT22.c
   cc-options:          -Wall -O2
@@ -49,38 +70,60 @@ library
                      , pigpio
                      , pthread
                      , rt
---  extra-lib-dirs:      /usr/local/lib
   include-dirs:        c
-  build-depends:       base >= 4.7 && < 5
-                     , aeson
+  build-depends:       aeson
+                     , base >= 4.7 && < 5
                      , binary
                      , bytestring
-                     , constraints
                      , containers
-                     , clock
                      , distributed-process
                      , distributed-process-extras
+                     , either
+                     , envy
                      , hashable
                      , http-client
                      , inline-c
+                     , monad-logger
                      , mtl
                      , network
                      , network-transport-tcp
-                     , sarah-persist
+                     , persistent
+                     , persistent-template
                      , servant-server
                      , servant-client
+                     , stm
                      , text
+                     , threepenny-gui
                      , time
-                     , transformers
                      , unordered-containers
                      , vector
                      , wai
                      , warp
   default-language:    Haskell2010
 
-executable sarah-middleware-exe
+
+executable backend
   hs-source-dirs:      app
-  main-is:             Main.hs
+  main-is:             Backend.hs
+  ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N
+  build-depends:       base
+                     , bytestring
+                     , monad-logger
+                     , persistent
+                     , persistent-mysql
+                     , sarah
+                     , servant-server
+                     , warp
+                     , wai
+                     , wai-extra
+                     , wai-cors
+                     , yaml
+  default-language:    Haskell2010
+
+
+executable middleware
+  hs-source-dirs:      app
+  main-is:             Middleware.hs
   ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , bytestring
@@ -91,7 +134,7 @@ executable sarah-middleware-exe
                      , network-transport
                      , network-transport-tcp
                      , optparse-applicative
-                     , sarah-middleware
+                     , sarah
                      , servant-client
                      , wai
                      , wai-cors
@@ -100,15 +143,19 @@ executable sarah-middleware-exe
                      , yaml
   default-language:    Haskell2010
 
-test-suite sarah-middleware-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             Spec.hs
-  build-depends:       base
-                     , sarah-middleware
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  default-language:    Haskell2010
 
-source-repository head
-  type:     git
-  location: https://github.com/chrisbloecker/sarah/sarah-middleware
+executable gui
+  hs-source-dirs:      app
+  main-is:             GUI.hs
+  ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010
+  build-depends:       base
+                     , bytestring
+                     , http-client
+                     , mtl
+                     , optparse-applicative
+                     , sarah
+                     , servant-client
+                     , stm
+                     , threepenny-gui
+                     , unordered-containers

@@ -11,5 +11,8 @@ devices:
 - name: DHT22
   model: DHT22
   gpio: 4
+- name: Test
+  model: ExampleDevice
+  gpio: 42
 nodeName: Node One
 room: Livingroom
