@@ -1,10 +1,11 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE RecordWildCards       #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Model
   where
 --------------------------------------------------------------------------------
 import Control.Concurrent.STM      (TVar)
-import Control.Monad.Reader        (ReaderT)
+import Control.Monad.Reader        (ReaderT, ask, lift)
 import Data.Aeson                  (ToJSON, FromJSON)
 import Data.HashMap.Strict         (HashMap)
 import Data.Text                   (unpack)
@@ -34,7 +35,13 @@ data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , notifyStateChanged :: Handler ()
                                          }
 
-type RemoteBuilder a = ReaderT RemoteBuilderEnv UI a
+type RemoteBuilder = ReaderT RemoteBuilderEnv UI
+
+data RemoteRunnerEnv = RemoteRunnerEnv { deviceAddress :: DeviceAddress
+                                       , clientEnv     :: ClientEnv
+                                       }
+
+type RemoteRunner = ReaderT RemoteRunnerEnv IO
 
 -- models which have an instance of IsDevice can be extended with HasRemote.
 class IsDevice model => HasRemote model where
@@ -66,6 +73,21 @@ handleResponse handlerName response errorHandler successHandler = case response 
       Just result -> do
         putStrLn $ handlerName ++ " Success"
         successHandler result
+
+withResponse :: (IsDevice model, ToJSON reply, FromJSON reply)
+             => DeviceCommand model -> ErrorHandler -> SuccessHandler reply -> RemoteRunner ()
+withResponse command errorHandler successHandler = do
+  RemoteRunnerEnv{..} <- ask
+  lift $ do
+    let query = Query deviceAddress (mkCommand command)
+    mresponse <- runClientM (runDeviceCommand query) clientEnv
+    case mresponse of
+      Left error -> return ()
+      Right (QueryResult result) -> case result of
+        Error message -> errorHandler
+        Success encoded -> case decodeWrapped encoded of
+          Nothing -> putStrLn $ "Error decoding result: " ++ show result
+          Just decoded -> successHandler decoded
 
 doNothing :: IO ()
 doNothing = return ()

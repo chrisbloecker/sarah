@@ -161,7 +161,7 @@ instance HasRemote ToshibaAC where
 
       on click (getElement normalButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetPowerMode Nothing)
-        handleResponse "[Toshiba.normalButton.click]" mres doNothing $ \() -> notifyStateChanged ()
+        handleResponse "[Toshiba.normalButton.click]" mres doNothing notifyStateChanged
 
       on click (getElement ecoButton) $ embedUI $ do
         mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetPowerMode (Just Toshiba.PowerEco))

@@ -45,17 +45,8 @@ instance HasRemote DHT22 where
 
       unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
 
-      on click getTemperatureButton $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetReadings)
-        handleResponse "[DHT22.getTemperatureButton.click]" mres doNothing $ \(Temperature t) -> do
-          handlerTemperature $ show t ++ "°C"
-          notifyStateChanged ()
-
-      on click getHumidityButton $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetReadings)
-        handleResponse "[DHT22.getHumidityButton.click]" mres doNothing $ \(Humidity h) -> do
-          handlerHumidity $ show h ++ "%"
-          notifyStateChanged ()
+      on click getTemperatureButton $ embedUI $ notifyStateChanged ()
+      on click getHumidityButton    $ embedUI $ notifyStateChanged ()
 
       div #+ [ p # set class_ "text-center"
                  #+ [ string "Temperature: ", element temperatureDisplay, element getTemperatureButton ]

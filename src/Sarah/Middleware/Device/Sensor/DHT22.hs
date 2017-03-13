@@ -129,7 +129,7 @@ instance IsDevice DHT22 where
                                   then do
                                     say "[DHT22.controller] Using cached readings"
                                     case readings of
-                                      Left dht22Error -> send src $ mkError (pack .show $ dht22Error)
+                                      Left dht22Error -> send src $ mkError (pack . show $ dht22Error)
                                       Right readings  -> send src $ mkSuccess readings
                                     controller env state
 
@@ -144,7 +144,7 @@ instance IsDevice DHT22 where
                                       Right readings ->
                                         send src $ mkSuccess readings
 
-                                    controller env state { readings = readings, readAt = readingCompleted }
+                                    controller env state { readings = ereadings, readAt = readingCompleted }
 
                       , matchAny $ \m -> do
                           say $ "[DHT22.controller] Received unexpected message" ++ show m
