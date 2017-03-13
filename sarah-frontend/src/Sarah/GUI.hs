@@ -30,8 +30,6 @@ data Navbar = Navbar { remotesButton :: Element
 
 setup :: AppEnv -> Window -> UI ()
 setup appEnv@AppEnv{..} window = void $ do
-  Navbar{..} <- mkNavbar
-
   -- a place to store the remotes
   remotes <- liftIO $ atomically $ newTVar HM.empty
 
@@ -63,6 +61,8 @@ setup appEnv@AppEnv{..} window = void $ do
   -- ToDo: where and when should we clean up events for devices that don't exist
   --       or are not connected anymore?
 
+  Navbar{..} <- mkNavbar
+
   content <- div # set id_ "content"
                  # set class_ "container"
 
@@ -70,21 +70,18 @@ setup appEnv@AppEnv{..} window = void $ do
                     , element content
                     ]
 
-  -- ToDo: don't remove the content, just replace its children
+  -- add the navbar and render the remotes by default
+  remoteWidgets <- liftIO . atomically $ readTVar remotes
+  element content # set children (HM.elems remoteWidgets)
+
   on click remotesButton $ \_ -> do
     remoteWidgets <- liftIO . atomically $ readTVar remotes
     element content # set children (HM.elems remoteWidgets)
 
   on click devicesButton $ \_ -> do
-    mapM_ delete =<< getElementById window "content"
     status <- liftIO $ runClientM Middleware.getStatus middlewareClient
-    return ()
-    --elms <- either (const []) renderStatus status
-    --element content # set children elms
-
-  -- add the navbar and render the remotes by default
-  remoteWidgets <- liftIO . atomically $ readTVar remotes
-  element content # set children (HM.elems remoteWidgets)
+    devices <- sequence (either (const []) renderStatus status)
+    element content # set children devices
 
 
 mkNavbar :: UI Navbar
