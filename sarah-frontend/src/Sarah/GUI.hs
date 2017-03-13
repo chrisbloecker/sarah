@@ -32,13 +32,8 @@ setup :: AppEnv -> Window -> UI ()
 setup appEnv@AppEnv{..} window = void $ do
   Navbar{..} <- mkNavbar
 
-  remotes <- liftIO $ atomically $ newTVar HM.empty
-
   -- a place to store the remotes
-  liftIO $ do
-    knownEventsFor <- atomically $ readTVar remoteEvents
-    putStrLn "Known events:"
-    forM_ (HM.keys knownEventsFor) $ \DeviceAddress{..} -> putStrLn $ "  " ++ unpack deviceNode ++ ":" ++ unpack deviceName
+  remotes <- liftIO $ atomically $ newTVar HM.empty
 
   -- get the status of the middleware, i.e. the connected nodes and their info
   mStatus <- liftIO $ runClientM Middleware.getStatus middlewareClient
@@ -68,30 +63,28 @@ setup appEnv@AppEnv{..} window = void $ do
   -- ToDo: where and when should we clean up events for devices that don't exist
   --       or are not connected anymore?
 
+  content <- div # set id_ "content"
+                 # set class_ "container"
+
+  getBody window #+ [ element navbar
+                    , element content
+                    ]
+
   -- ToDo: don't remove the content, just replace its children
   on click remotesButton $ \_ -> do
     remoteWidgets <- liftIO . atomically $ readTVar remotes
-    mapM_ delete =<< getElementById window "content"
-    getBody window #+ [ div # set id_ "content"
-                            # set class_ "container"
-                            #+ map element (HM.elems remoteWidgets)
-                      ]
+    element content # set children (HM.elems remoteWidgets)
 
   on click devicesButton $ \_ -> do
     mapM_ delete =<< getElementById window "content"
     status <- liftIO $ runClientM Middleware.getStatus middlewareClient
-    getBody window #+ [ div # set id_ "content"
-                            # set class_ "container"
-                            #+ either (const []) renderStatus status
-                      ]
+    return ()
+    --elms <- either (const []) renderStatus status
+    --element content # set children elms
 
   -- add the navbar and render the remotes by default
   remoteWidgets <- liftIO . atomically $ readTVar remotes
-  getBody window #+ [ element navbar
-                    , div # set id_ "content"
-                          # set class_ "container"
-                          #+ map element (HM.elems remoteWidgets)
-                    ]
+  element content # set children (HM.elems remoteWidgets)
 
 
 mkNavbar :: UI Navbar
