@@ -3,6 +3,8 @@
 module Sarah.GUI.Remote.Sensor.DHT22
   where
 --------------------------------------------------------------------------------
+import Control.Concurrent             (forkIO, threadDelay)
+import Control.Monad                  (forever)
 import Control.Monad.Reader           (lift, ask)
 import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny  hiding (map)
@@ -36,7 +38,7 @@ instance HasRemote DHT22 where
       getHumidityButton    <- bootstrapButton buttonClass Glyph.tint
 
       let eventStateChangedHandler _ = do
-            mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetTemperatureAndHumidity)
+            mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetReadings)
             handleResponse "[DHT22.eventStateChanged]" mres doNothing $ \(Temperature t, Humidity h) -> do
               handlerTemperature $ show t ++ "°C"
               handlerHumidity    $ show h ++ "%"
@@ -44,13 +46,13 @@ instance HasRemote DHT22 where
       unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
 
       on click getTemperatureButton $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetTemperature)
+        mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetReadings)
         handleResponse "[DHT22.getTemperatureButton.click]" mres doNothing $ \(Temperature t) -> do
           handlerTemperature $ show t ++ "°C"
           notifyStateChanged ()
 
       on click getHumidityButton $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetHumidity)
+        mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetReadings)
         handleResponse "[DHT22.getHumidityButton.click]" mres doNothing $ \(Humidity h) -> do
           handlerHumidity $ show h ++ "%"
           notifyStateChanged ()

@@ -8,11 +8,13 @@ module Raspberry.GPIO
   , Pin (..)
   ) where
 --------------------------------------------------------------------------------
+import Data.Binary       (Binary)
 import Data.Bits         (Bits)
 import Data.ByteString   (ByteString)
+import Data.Typeable     (Typeable)
 import Foreign.C.Types   (CInt (..))
+import GHC.Generics      (Generic)
 import Import.DeriveJSON
-import Import.MkBinary
 --------------------------------------------------------------------------------
 
 class ToBits a where

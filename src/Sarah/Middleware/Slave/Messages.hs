@@ -4,8 +4,10 @@
 module Sarah.Middleware.Slave.Messages
   where
 --------------------------------------------------------------------------------
+import Data.Binary                 (Binary)
+import Data.Typeable               (Typeable)
 import Control.Distributed.Process (Process, ProcessId, send)
-import Import.MkBinary
+import GHC.Generics                (Generic)
 --------------------------------------------------------------------------------
 
 data GetStatus = GetStatus deriving (Binary, Generic, Typeable)

@@ -8,8 +8,10 @@ module Sarah.Middleware.Master.Messages
 --------------------------------------------------------------------------------
 import Control.Distributed.Process              (Process, ProcessId, send)
 import Control.Distributed.Process.Serializable (Serializable)
+import Data.Binary                              (Binary)
 import Data.Text                                (Text)
-import Import.MkBinary
+import Data.Typeable                            (Typeable)
+import GHC.Generics                             (Generic)
 import Sarah.Middleware.Device
 import Sarah.Middleware.Distributed
 import Sarah.Middleware.Model
@@ -19,7 +21,8 @@ import Sarah.Persist.Model
 data GetStatus     = GetStatus ProcessId              deriving (Binary, Generic, Typeable)
 data Log           = Log Text Text LogLevel           deriving (Binary, Generic, Typeable)
 data NodeUp        = NodeUp ProcessId NodeInfo        deriving (Binary, Generic, Typeable)
--- ToDo: some sensors may not read values that can be represented as Double
+-- ToDo: how to sore sensor readings in general? There could be "fuzzy sensors"
+--       that don't return numerical readings, but something weird
 data SensorReading = SensorReading Room Sensor Double deriving (Binary, Generic, Typeable)
 
 deriving instance Binary Room
@@ -34,5 +37,5 @@ nodeUp (Master master) pid nodeInfo = send master (NodeUp pid nodeInfo)
 getStatus :: Master -> ProcessId -> Process ()
 getStatus (Master master) pid = send master (GetStatus pid)
 
-sendMaster :: (Serializable a, Typeable a) => Master -> a -> Process ()
+sendMaster :: Serializable a => Master -> a -> Process ()
 sendMaster (Master master) = send master

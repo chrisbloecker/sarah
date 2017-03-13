@@ -12,6 +12,8 @@ module Sarah.Middleware.Device.Sensor.DHT22
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
+import Control.Monad                (void)
+import Control.Monad.Reader         (ReaderT, runReaderT, ask, lift)
 import Data.Text                    (Text, pack, unpack)
 import Data.Aeson                   (ToJSON (..), FromJSON (..), encode)
 import Data.Aeson.Types             (Parser, Value (..), (.=), (.:), withObject, object)
@@ -20,6 +22,7 @@ import Physics
 import Raspberry.GPIO
 import Sarah.Middleware.Model
 import Sarah.Middleware.Types
+import System.Clock
 --------------------------------------------------------------------------------
 import qualified Language.C.Inline            as C
 import qualified Data.Vector.Storable.Mutable as V
@@ -54,7 +57,7 @@ readDHT22 (Pin pin) = do
       int retry = 0;
       int res   = 0;
 
-      while (retry++ < 10 && (res = readDHT22(4, &$(double * ptr)[0], &$(double * ptr)[1])));
+      while (retry++ < 3 && (res = readDHT22(4, &$(double * ptr)[0], &$(double * ptr)[1])));
 
       return res;
     }
@@ -75,49 +78,78 @@ unCDouble (C.CDouble d) = d
 -- DHT22 sensors are connected through a GPIO pin.
 newtype DHT22 = DHT22 Pin deriving (Show)
 
-data DHT22State = DHT22State { dht22Temperature :: Temperature
-                             , dht22Humidity    :: Humidity
+data DHT22State = DHT22State { readings :: Either Error (Temperature, Humidity)
+                             , readAt   :: TimeSpec
                              }
+
+data ControllerEnv = ControllerEnv { portManager :: PortManager
+                                   , pin         :: Pin
+                                   }
+
+initState :: ControllerEnv -> Process DHT22State
+initState ControllerEnv{..} = do
+  ereadings <- liftIO $ readDHT22 pin
+  readAt    <- liftIO $ getTime Monotonic
+  case ereadings of
+    Left dht22Error -> say $ "[DHT22.initState] Error reading sensor: " ++ show dht22Error
+    Right _         -> return ()
+
+  return $ DHT22State ereadings readAt
+
 
 instance IsDevice DHT22 where
   -- The DHT22 does not have a state
   type DeviceState DHT22 = DHT22State
 
   -- The DHT22 can be used to read the temperature, the humidity, or both
-  data DeviceCommand DHT22 = GetTemperature
-                           | GetHumidity
-                           | GetTemperatureAndHumidity
+  data DeviceCommand DHT22 = GetReadings
     deriving (Generic, ToJSON, FromJSON)
 
   startDeviceController (DHT22 pin) portManager = do
     say "[DHT22.startDeviceController]"
-    DeviceController <$> spawnLocal (controller portManager pin)
+    let env = ControllerEnv { portManager = portManager
+                            , pin         = pin
+                            }
+    DeviceController <$> spawnLocal (initState env >>= controller env)
 
       where
-        -- ToDo: "cache" the state so we don't read it too often, maybe like every 10 seconds maximum
-        controller :: PortManager -> Pin -> Process ()
-        controller portManager pin =
-          receiveWait [ match $ \(FromPid src Query{..}) -> do
+        controller :: ControllerEnv -> DHT22State -> Process ()
+        controller env@ControllerEnv{..} state@DHT22State{..} =
+          receiveWait [ match $ \(FromPid src Query{..}) ->
                           case (getCommand queryCommand :: Either String (DeviceCommand DHT22)) of
                             Left err -> say $ "[DHT22.controller] Can't decode command: " ++ err
-                            -- Ok we have a command, so we can get the readings and decide what to do with them later
-                            Right command -> do
-                              -- ToDo: reserve the port
-                              mreadings <- liftIO $ readDHT22 pin
-                              case mreadings of
-                                Left dht22Error -> do
-                                  say $ "[DHT22.controller] Error reading temperature: " ++ show dht22Error
-                                  send src $ mkError (pack . show $ dht22Error)
-                                Right readings@(t, h) -> case command of
-                                  GetTemperature            -> send src $ mkSuccess t
-                                  GetHumidity               -> send src $ mkSuccess h
-                                  GetTemperatureAndHumidity -> send src $ mkSuccess readings
-                          controller portManager pin
+                            Right command -> case command of
+                              GetReadings -> do
+                                -- ToDo: reserve the port through the port manager
+                                now <- liftIO $ getTime Monotonic
 
-                       , matchAny $ \m -> do
-                           say $ "[DHT22.controller] Received unexpected message" ++ show m
-                           controller portManager pin
-                       ]
+                                -- if it's less than 2 seconds ago that we have read the sensor,
+                                -- use the "cached" value, otherwise get a new reading
+                                if sec (diffTimeSpec readAt now) < 2
+                                  then do
+                                    say "[DHT22.controller] Using cached readings"
+                                    case readings of
+                                      Left dht22Error -> send src $ mkError (pack .show $ dht22Error)
+                                      Right readings  -> send src $ mkSuccess readings
+                                    controller env state
+
+                                  else do
+                                    say "[DHT22.controller] Getting new readings"
+                                    ereadings <- liftIO $ readDHT22 pin
+                                    readingCompleted <- liftIO $ getTime Monotonic
+                                    case ereadings of
+                                      Left dht22Error -> do
+                                        say $ "[DHT22.controller] Error reading sensor: " ++ show dht22Error
+                                        send src $ mkError (pack . show $ dht22Error)
+                                      Right readings ->
+                                        send src $ mkSuccess readings
+
+                                    controller env state { readings = readings, readAt = readingCompleted }
+
+                      , matchAny $ \m -> do
+                          say $ "[DHT22.controller] Received unexpected message" ++ show m
+                          controller env state
+                      ]
 
 instance ToJSON DHT22 where
   toJSON (DHT22 (Pin pin)) = object [ "model" .= String "DHT22"

@@ -3,10 +3,11 @@
 module Sarah.GUI.Widgets
   where
 --------------------------------------------------------------------------------
-import Control.Monad          (when)
-import Data.Maybe             (isJust)
+import Control.Monad                 (when)
+import Data.Maybe                    (isJust)
 import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny
+import Prelude                hiding (div)
 --------------------------------------------------------------------------------
 
 data ReactiveLabel = ReactiveLabel { _elementRL :: Element }
@@ -34,3 +35,23 @@ reactiveButton behaviourClass behaviourStyle = do
   element display # sink style  (unStyle <$> behaviourStyle)
 
   return ReactiveButton { _elementRB = display }
+
+
+data ReactiveProgressBar = ReactiveProgressBar { _elementRPB :: Element }
+
+reactiveProgressBar :: Behavior (Integer, String) -> UI ReactiveProgressBar
+reactiveProgressBar behaviour = do
+  display <- string ""
+  inner   <- div # set class_ "progress-bar"
+                 # set (attr "role") "progressbar"
+                 # set (attr "aria-valuemin") "0"
+                 # set (attr "aria-valuemax") "100"
+                 #+ [ element display ]
+
+  progressBar <- div # set class_ "progress"
+                     #+ [ element inner ]
+
+  element inner   # sink (attr "aria-valuenow") (show . fst <$> behaviour)
+  element display # sink text                   (       snd <$> behaviour)
+
+  return ReactiveProgressBar { _elementRPB = progressBar }

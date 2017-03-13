@@ -62,7 +62,6 @@ library
                      , Sarah.Persist.Settings
                      , Sarah.Persist.Types
   other-modules:       Import.DeriveJSON
-                     , Import.MkBinary
   c-sources:           src/Sarah/Middleware/Device/AC/Toshiba.c
                      , src/Sarah/Middleware/Device/Sensor/DHT22.c
   cc-options:          -Wall -O2
@@ -75,6 +74,7 @@ library
                      , base >= 4.7 && < 5
                      , binary
                      , bytestring
+                     , clock
                      , containers
                      , distributed-process
                      , distributed-process-extras
