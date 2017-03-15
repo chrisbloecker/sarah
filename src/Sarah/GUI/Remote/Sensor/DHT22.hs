@@ -46,10 +46,10 @@ instance HasRemote DHT22 where
       on click getTemperatureButton $ embedUI $ notifyStateChanged ()
       on click getHumidityButton    $ embedUI $ notifyStateChanged ()
 
+      liftIO $ notifyStateChanged ()
+
       div #+ [ p # set class_ "text-center"
                  #+ [ string "Temperature: ", element temperatureDisplay, element getTemperatureButton ]
              , p # set class_ "text-center"
                  #+ [ string "Humidity: ", element humidityDisplay, element getHumidityButton ]
              ]
-
-      notifyStateChanged ()
