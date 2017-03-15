@@ -5,7 +5,7 @@ module Sarah.GUI.Remote.Sensor.DHT22
 --------------------------------------------------------------------------------
 import Control.Concurrent             (forkIO, threadDelay)
 import Control.Monad                  (forever)
-import Control.Monad.Reader           (lift, ask)
+import Control.Monad.Reader           (runReaderT, lift, ask)
 import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
@@ -23,25 +23,23 @@ instance HasRemote DHT22 where
   buildRemote _ = do
     RemoteBuilderEnv{..} <- ask
     lift $ do
-      (eventTemperature, handlerTemperature) <- liftIO newEvent
-      (eventHumidity,    handlerHumidity)    <- liftIO newEvent
+      (eventReadings, handlerReadings) <- liftIO newEvent
+      behaviourReadings                <- stepper ("--°C", "--%") eventReadings
 
-      behaviourTemperature <- stepper "--°C" eventTemperature
-      behaviourHumidity    <- stepper "--%"  eventHumidity
+      temperatureDisplay <- reactiveLabel ((++ "°C") . fst <$> behaviourReadings)
+      humidityDisplay    <- reactiveLabel ((++ "%")  . snd <$> behaviourReadings)
 
-      temperatureDisplay <- reactiveLabel behaviourTemperature
-      humidityDisplay    <- reactiveLabel behaviourHumidity
-
-      let buttonClass = buildClass [ btn, btn_sm, btn_default, btn_circle, btn_no_background ]
+      let buttonClass = buildClass [ btn
+                                   , btn_sm
+                                   , btn_default
+                                   , btn_circle
+                                   , btn_no_background
+                                   ]
 
       getTemperatureButton <- bootstrapButton buttonClass (Glyphicon "fa fa-thermometer-full")
       getHumidityButton    <- bootstrapButton buttonClass Glyph.tint
 
-      let eventStateChangedHandler _ = do
-            mres <- sendCommand appEnv deviceAddress (mkCommand DHT22.GetReadings)
-            handleResponse "[DHT22.eventStateChanged]" mres doNothing $ \(Temperature t, Humidity h) -> do
-              handlerTemperature $ show t ++ "°C"
-              handlerHumidity    $ show h ++ "%"
+      let eventStateChangedHandler _ = flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadings doNothing handlerReadings
 
       unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
 
@@ -53,3 +51,5 @@ instance HasRemote DHT22 where
              , p # set class_ "text-center"
                  #+ [ string "Humidity: ", element humidityDisplay, element getHumidityButton ]
              ]
+
+      notifyStateChanged ()

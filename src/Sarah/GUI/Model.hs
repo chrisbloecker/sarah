@@ -17,9 +17,9 @@ import Sarah.Middleware
 
 type RemoteEvent = (Event (), Handler ())
 
-data AppEnv = AppEnv { middlewareClient :: ClientEnv
-                     , remoteEvents     :: TVar (HashMap DeviceAddress RemoteEvent)
-                     , counter          :: TVar Integer
+data AppEnv = AppEnv { clientEnv    :: ClientEnv
+                     , remoteEvents :: TVar (HashMap DeviceAddress RemoteEvent)
+                     , counter      :: TVar Integer
                      }
 
 type App = ReaderT AppEnv UI
@@ -33,6 +33,7 @@ data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , deviceAddress      :: DeviceAddress
                                          , eventStateChanged  :: Event ()
                                          , notifyStateChanged :: Handler ()
+                                         , remoteRunnerEnv    :: RemoteRunnerEnv
                                          }
 
 type RemoteBuilder = ReaderT RemoteBuilderEnv UI
@@ -56,7 +57,7 @@ class IsDevice model => HasRemote model where
 sendCommand :: AppEnv -> DeviceAddress -> Command -> IO (Maybe QueryResult)
 sendCommand AppEnv{..} deviceAddress command = do
   let query = Query deviceAddress command
-  mres <- runClientM (runDeviceCommand query) middlewareClient
+  mres <- runClientM (runDeviceCommand query) clientEnv
   case mres of
     Left  err -> putStrLn ("[sendCommand] " ++ show err) >> return Nothing
     Right res -> return (Just res)

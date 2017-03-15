@@ -34,7 +34,7 @@ setup appEnv@AppEnv{..} window = void $ do
   remotes <- liftIO $ atomically $ newTVar HM.empty
 
   -- get the status of the middleware, i.e. the connected nodes and their info
-  mStatus <- liftIO $ runClientM Middleware.getStatus middlewareClient
+  mStatus <- liftIO $ runClientM Middleware.getStatus clientEnv
   liftIO $ case mStatus of
     Left err -> void . print $ err
     Right Status{..} ->
@@ -54,7 +54,9 @@ setup appEnv@AppEnv{..} window = void $ do
                   -- fromJust should really not fail now...
                   fromJust . HM.lookup deviceAddress <$> readTVar remoteEvents
 
-              let widget = runReaderT (buildRemote model) RemoteBuilderEnv{..}
+              let remoteRunnerEnv  = RemoteRunnerEnv{..}
+                  remoteBuilderEnv = RemoteBuilderEnv{..}
+                  widget           = runReaderT (buildRemote model) remoteBuilderEnv
               remote <- runUI window $ mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget
               liftIO . atomically $ modifyTVar remotes (HM.insert deviceAddress remote)
 
@@ -79,7 +81,7 @@ setup appEnv@AppEnv{..} window = void $ do
     element content # set children (HM.elems remoteWidgets)
 
   on click devicesButton $ \_ -> do
-    status <- liftIO $ runClientM Middleware.getStatus middlewareClient
+    status <- liftIO $ runClientM Middleware.getStatus clientEnv
     devices <- sequence (either (const []) renderStatus status)
     element content # set children devices
 

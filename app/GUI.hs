@@ -51,11 +51,11 @@ run Options{..} = do
       middlewareHost   = fromMaybe "localhost" midHost
       middlewarePort   = fromMaybe 8090        midPort
       middleware       = BaseUrl Http middlewareHost middlewarePort ""
-  manager <- newManager defaultManagerSettings
-  let middlewareClient = ClientEnv manager middleware
+  manager      <- newManager defaultManagerSettings
   remoteEvents <- atomically $ newTVar M.empty
   counter      <- atomically $ newTVar 0
-  let appEnv = AppEnv {..}
+  let clientEnv = ClientEnv manager middleware -- the client to talk to the middleware
+      appEnv    = AppEnv {..}
   startGUI config (setup appEnv)
 
 
