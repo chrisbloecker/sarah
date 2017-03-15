@@ -4,7 +4,8 @@
 module Sarah.GUI.Remote.AC.Toshiba
   where
 --------------------------------------------------------------------------------
-import Control.Monad.Reader           (lift, ask)
+import Control.Monad                  (unless)
+import Control.Monad.Reader           (runReaderT, lift, ask)
 import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
@@ -36,7 +37,7 @@ instance HasRemote ToshibaAC where
 
       -- styles for differently coloured buttons
       let whiteButton = buildClass [ btn, btn_sm, btn_default, btn_circle, btn_no_background ]
-          blueButton  = buildClass [ btn, btn_sm, btn_info, btn_circle, btn_no_background ]
+          blueButton  = buildClass [ btn, btn_sm, btn_info,    btn_circle, btn_no_background ]
           greenButton = buildClass [ btn, btn_sm, btn_success, btn_circle, btn_no_background ]
           redButton   = buildClass [ btn, btn_sm, btn_danger,  btn_circle, btn_no_background ]
 
@@ -83,93 +84,59 @@ instance HasRemote ToshibaAC where
       element (getElement ecoButton)    #+ [ span # set class_ (unGlyphicon Glyph.leaf)  ]
       element (getElement hiButton)     #+ [ span # set class_ (unGlyphicon Glyph.fire)  ]
 
-      let eventStateChangedHandler _ = do
-            mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.GetConfig)
-            handleResponse "[ToshibaAC.eventStateChangedHandler]" mres doNothing $ \Toshiba.Config{..} ->
-              if mode == Toshiba.ModeOff
-                then do
-                  handlerDisplay emptyDisplay
-                  handlerFanLevel (0, "")
+      let eventStateChangedHandler _ =
+            flip runReaderT remoteRunnerEnv $ withResponse Toshiba.GetConfig doNothing $ \Toshiba.Config{..} -> do
+              handlerDisplay emptyDisplay
+              handlerAuto whiteButton
+              handlerCool whiteButton
+              handlerDry  whiteButton
+              handlerFan  whiteButton
+              handlerFanLevel (0, "")
 
-                else do
-                  handlerDisplay (show temperature ++ "°C")
-                  handlerFanLevel $ case fan of
-                    Toshiba.FanQuiet    -> ( 17, "Quiet")
-                    Toshiba.FanVeryLow  -> ( 33, "Very Low")
-                    Toshiba.FanLow      -> ( 50, "Low")
-                    Toshiba.FanNormal   -> ( 66, "Normal")
-                    Toshiba.FanHigh     -> ( 83, "High")
-                    Toshiba.FanVeryHigh -> (100, "Very High")
+              unless (mode == Toshiba.ModeOff) $ do
+                case temperature of
+                  Temperature t -> handlerDisplay (show t ++ "°C")
 
-                  handlerAuto whiteButton
-                  handlerCool whiteButton
-                  handlerDry  whiteButton
-                  handlerFan  whiteButton
-                  case mode of
-                    Toshiba.ModeAuto -> handlerAuto blueButton
-                    Toshiba.ModeCool -> handlerCool blueButton
-                    Toshiba.ModeDry  -> handlerDry  blueButton
-                    Toshiba.ModeFan  -> handlerFan  blueButton
-                    Toshiba.ModeOff  -> return ()
+                handlerFanLevel $ case fan of
+                  Toshiba.FanAuto     -> (  0, "Auto")
+                  Toshiba.FanQuiet    -> ( 17, "Quiet")
+                  Toshiba.FanVeryLow  -> ( 33, "Very Low")
+                  Toshiba.FanLow      -> ( 50, "Low")
+                  Toshiba.FanNormal   -> ( 66, "Normal")
+                  Toshiba.FanHigh     -> ( 83, "High")
+                  Toshiba.FanVeryHigh -> (100, "Very High")
 
-                  handlerEco whiteButton
-                  handlerHi  whiteButton
-                  case mpower of
-                    Nothing                -> return ()
-                    Just Toshiba.PowerEco  -> handlerEco greenButton
-                    Just Toshiba.PowerHigh -> handlerHi  redButton
+                case mode of
+                  Toshiba.ModeAuto -> handlerAuto blueButton
+                  Toshiba.ModeCool -> handlerCool blueButton
+                  Toshiba.ModeDry  -> handlerDry  blueButton
+                  Toshiba.ModeFan  -> handlerFan  blueButton
+                  Toshiba.ModeOff  -> return ()
 
-      on click onButton $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.PowerOn)
-        handleResponse "[ToshibaAC.onButton.click]" mres doNothing $ \() -> notifyStateChanged ()
+                handlerEco whiteButton
+                handlerHi  whiteButton
+                case mpower of
+                  Nothing                -> return ()
+                  Just Toshiba.PowerEco  -> handlerEco greenButton
+                  Just Toshiba.PowerHigh -> handlerHi  redButton
 
-      on click offButton $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.PowerOff)
-        handleResponse "[ToshibaAC.offButton.click]" mres doNothing $ \() -> notifyStateChanged ()
+      unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
 
-      on click (getElement autoButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetMode Toshiba.ModeAuto)
-        handleResponse "[ToshibaAC.autoButton.click]" mres doNothing $ \() ->notifyStateChanged ()
+      on click onButton                    $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse Toshiba.PowerOn                                 doNothing notifyStateChanged
+      on click offButton                   $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse Toshiba.PowerOff                                doNothing notifyStateChanged
+      on click (getElement tempUpButton)   $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse Toshiba.UpTemperature                           doNothing notifyStateChanged
+      on click (getElement tempDownButton) $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse Toshiba.DownTemperature                         doNothing notifyStateChanged
+      on click (getElement fanUpButton)    $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse Toshiba.UpFan                                   doNothing notifyStateChanged
+      on click (getElement fanDownButton)  $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse Toshiba.DownFan                                 doNothing notifyStateChanged
+      on click (getElement autoButton)     $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.SetMode Toshiba.ModeAuto)              doNothing notifyStateChanged
+      on click (getElement coolButton)     $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.SetMode Toshiba.ModeCool)              doNothing notifyStateChanged
+      on click (getElement dryButton)      $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.SetMode Toshiba.ModeDry)               doNothing notifyStateChanged
+      on click (getElement fanButton)      $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.SetMode Toshiba.ModeFan)               doNothing notifyStateChanged
+      on click (getElement normalButton)   $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.SetPowerMode Nothing)                  doNothing notifyStateChanged
+      on click (getElement ecoButton)      $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.SetPowerMode $ Just Toshiba.PowerEco)  doNothing notifyStateChanged
+      on click (getElement hiButton)       $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.SetPowerMode $ Just Toshiba.PowerHigh) doNothing notifyStateChanged
 
-      on click (getElement tempUpButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.UpTemperature)
-        handleResponse "[ToshibaAC.tempUpButton.click]" mres doNothing $ \() -> notifyStateChanged ()
-
-      on click (getElement tempDownButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.DownTemperature)
-        handleResponse "[ToshibaAC.tempDownButton.click]" mres doNothing $ \() -> notifyStateChanged ()
-
-      on click (getElement fanUpButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.UpFan)
-        handleResponse "[ToshibaAC.fanUpButton.click]" mres doNothing $ \() -> notifyStateChanged ()
-
-      on click (getElement fanDownButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand Toshiba.DownFan)
-        handleResponse "[ToshibaAC.fanDownButton.click]" mres doNothing $ \() -> notifyStateChanged ()
-
-      on click (getElement coolButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetMode Toshiba.ModeCool)
-        handleResponse "[ToshibaAC.coolButton.click]" mres doNothing $ \() -> notifyStateChanged ()
-
-      on click (getElement dryButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetMode Toshiba.ModeDry)
-        handleResponse "[ToshibaAC.dryButton.click]" mres doNothing $ \() -> notifyStateChanged ()
-
-      on click (getElement fanButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetMode Toshiba.ModeFan)
-        handleResponse "[ToshibaAC.fanButton.click]" mres doNothing $ \() -> notifyStateChanged ()
-
-      on click (getElement normalButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetPowerMode Nothing)
-        handleResponse "[Toshiba.normalButton.click]" mres doNothing notifyStateChanged
-
-      on click (getElement ecoButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetPowerMode (Just Toshiba.PowerEco))
-        handleResponse "[ToshibaAC.ecoButton.click]" mres doNothing $ \() -> notifyStateChanged ()
-
-      on click (getElement hiButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand $ Toshiba.SetPowerMode (Just Toshiba.PowerHigh))
-        handleResponse "[Toshiba.hiButton.click]" mres doNothing $ \() -> notifyStateChanged ()
+      liftIO $ notifyStateChanged ()
 
       div #+ [ p # set class_ "text-center"
                  #+ map element [ onButton, offButton ]

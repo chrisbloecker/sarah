@@ -1,4 +1,5 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Remote.Sensor.DHT22
   where
@@ -24,7 +25,7 @@ instance HasRemote DHT22 where
     RemoteBuilderEnv{..} <- ask
     lift $ do
       (eventReadings, handlerReadings) <- liftIO newEvent
-      behaviourReadings                <- stepper ("--°C", "--%") eventReadings
+      behaviourReadings                <- stepper ("--", "--") eventReadings
 
       temperatureDisplay <- reactiveLabel ((++ "°C") . fst <$> behaviourReadings)
       humidityDisplay    <- reactiveLabel ((++ "%")  . snd <$> behaviourReadings)
@@ -39,7 +40,7 @@ instance HasRemote DHT22 where
       getTemperatureButton <- bootstrapButton buttonClass (Glyphicon "fa fa-thermometer-full")
       getHumidityButton    <- bootstrapButton buttonClass Glyph.tint
 
-      let eventStateChangedHandler _ = flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadings doNothing handlerReadings
+      let eventStateChangedHandler _ = flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadings doNothing $ \(Temperature t, Humidity h) -> handlerReadings (show t, show h)
 
       unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
 

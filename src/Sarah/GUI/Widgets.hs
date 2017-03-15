@@ -49,9 +49,12 @@ reactiveProgressBar behaviour = do
                  # set (attr "role") "progressbar"
                  # set (attr "aria-valuemin") "0"
                  # set (attr "aria-valuemax") "100"
-                 #+ [ element display ]
+                 #+ [ div # set class_ "text-center"
+                          #+ [ element display ]
+                    ]
 
   progressBar <- div # set class_ "progress"
+                     # set style [("width", "200px")]
                      #+ [ element inner ]
 
   element inner   # sink (attr "aria-valuenow") (show . fst <$> behaviour)

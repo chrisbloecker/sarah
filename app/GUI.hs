@@ -48,7 +48,7 @@ run Options{..} = do
                              , jsStatic     = Just "static"
                              , jsCustomHTML = Just "sarah.html"
                              }
-      middlewareHost   = fromMaybe "localhost" midHost
+      middlewareHost   = fromMaybe "192.168.0.7" midHost
       middlewarePort   = fromMaybe 8090        midPort
       middleware       = BaseUrl Http middlewareHost middlewarePort ""
   manager      <- newManager defaultManagerSettings
