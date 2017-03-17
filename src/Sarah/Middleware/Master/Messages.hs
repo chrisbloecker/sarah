@@ -15,12 +15,14 @@ import GHC.Generics                             (Generic)
 import Sarah.Middleware.Device
 import Sarah.Middleware.Distributed
 import Sarah.Middleware.Model
+import Sarah.Middleware.Types
 import Sarah.Persist.Model
 --------------------------------------------------------------------------------
 
-data GetStatus     = GetStatus ProcessId              deriving (Binary, Generic, Typeable)
-data Log           = Log Text Text LogLevel           deriving (Binary, Generic, Typeable)
-data NodeUp        = NodeUp ProcessId NodeInfo        deriving (Binary, Generic, Typeable)
+data GetStatus          = GetStatus ProcessId                          deriving (Binary, Generic, Typeable)
+data Log                = Log Text Text LogLevel                       deriving (Binary, Generic, Typeable)
+data NodeUp             = NodeUp ProcessId NodeInfo                    deriving (Binary, Generic, Typeable)
+data DeviceStateChanged = DeviceStateChanged DeviceAddress EncodedJSON deriving (Binary, Generic, Typeable)
 -- ToDo: how to sore sensor readings in general? There could be "fuzzy sensors"
 --       that don't return numerical readings, but something weird
 data SensorReading = SensorReading Room Sensor Double deriving (Binary, Generic, Typeable)

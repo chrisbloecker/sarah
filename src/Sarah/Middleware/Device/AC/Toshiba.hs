@@ -20,7 +20,8 @@ import Data.Typeable               (Typeable)
 import GHC.Generics                (Generic)
 import Physics
 import Raspberry.GPIO
-import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..))
+import Sarah.Middleware.Slave.Messages
+import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..), Slave)
 import Sarah.Middleware.Types      (FromPid (..), Query (..), getCommand, mkSuccess, mkError)
 --------------------------------------------------------------------------------
 import qualified Data.ByteString   as BS
@@ -231,136 +232,78 @@ setAC (Pin pin) config = do
 
 newtype ToshibaAC = ToshibaAC Pin deriving (Show)
 
+data ControllerEnv = ControllerEnv { slave       :: Slave
+                                   , portManager :: PortManager
+                                   , pin         :: Pin
+                                   }
+
+data Reading = GetConfig
+  deriving (Generic, ToJSON, FromJSON)
+
+data Writing = PowerOn
+             | PowerOff
+             | UpTemperature
+             | DownTemperature
+             | UpFan
+             | DownFan
+             | SetTemperature Temperature
+             | SetFanMode     Fan
+             | SetMode        Mode
+             | SetPowerMode   (Maybe Power)
+  deriving (Generic, ToJSON, FromJSON)
+
 instance IsDevice ToshibaAC where
   type DeviceState ToshibaAC = Config
 
-  data DeviceCommand ToshibaAC = SetTemperature Temperature
-                               | SetFanMode     Fan
-                               | SetMode        Mode
-                               | SetPowerMode   (Maybe Power)
-                               | GetConfig
-                               | PowerOn
-                               | PowerOff
-                               | UpTemperature
-                               | DownTemperature
-                               | UpFan
-                               | DownFan
+  data DeviceCommand ToshibaAC = Read  Reading
+                               | Write Writing
     deriving (Generic, ToJSON, FromJSON)
 
-  startDeviceController (ToshibaAC pin) portManager = do
+  startDeviceController (ToshibaAC pin) slave portManager = do
     say "[ToshibaAC.startDeviceController]"
-    DeviceController <$> spawnLocal (controller defaultConfig portManager pin)
+    let env = ControllerEnv{..}
+    DeviceController <$> spawnLocal (controller env defaultConfig)
 
       where
-        controller :: Config -> PortManager -> Pin -> Process ()
-        controller config@Config{..} portManager pin =
+        controller :: ControllerEnv -> Config -> Process ()
+        controller env@ControllerEnv{..} config@Config{..} =
           receiveWait [ match $ \(FromPid src Query{..}) -> case getCommand queryCommand of
                           Left err -> say $ "[ToshibaAC.controller] Can't decode command: " ++ err
                           Right command -> case command of
-                            SetTemperature t -> do
-                              let config' = config { temperature = t }
+                            Read reading -> case reading of
+                              GetConfig -> do
+                                send src (mkSuccess config)
+                                controller env config
+
+                            Write writing -> do
+                              let config' = case writing of
+                                              PowerOn          -> defaultConfig
+                                              PowerOff         -> config { mode        = ModeOff }
+                                              UpTemperature    -> if temperature >= toTemperature maxBound
+                                                                    then config
+                                                                    else config { temperature = Temperature $ getTemperature temperature + 1 }
+                                              DownTemperature  -> if temperature <= toTemperature minBound
+                                                                    then config
+                                                                    else config { temperature = Temperature $ getTemperature temperature - 1 }
+                                              UpFan            -> if fan == maxBound
+                                                                    then config
+                                                                    else config { fan = succ fan }
+                                              DownFan          -> if fan == FanQuiet
+                                                                    then config
+                                                                    else config { fan = pred fan }
+                                              SetTemperature t -> config { temperature = t }
+                                              SetFanMode     f -> config { fan         = f }
+                                              SetMode        m -> config { mode        = m }
+                                              SetPowerMode   p -> config { mpower      = p }
                               res <- liftIO $ setAC pin config'
                               case res of
-                                Ok    -> emptyReply src
-                                Error -> send src (mkError "")
-                              controller config' portManager pin
-
-                            SetFanMode f -> do
-                              let config' = config { fan = f }
-                              res <- liftIO $ setAC pin config'
-                              case res of
-                                Ok    -> emptyReply src
-                                Error -> send src (mkError "")
-                              controller config' portManager pin
-
-                            SetMode m -> do
-                              let config' = config { mode = m }
-                              res <- liftIO $ setAC pin config'
-                              case res of
-                                Ok    -> emptyReply src
-                                Error -> send src (mkError "")
-                              controller config' portManager pin
-
-                            SetPowerMode mp -> do
-                              let config' = config { mpower = mp }
-                              res <- liftIO $ setAC pin config'
-                              case res of
-                                Ok    -> emptyReply src
-                                Error -> send src (mkError "")
-                              controller config' portManager pin
-
-                            GetConfig -> do
-                              send src (mkSuccess config)
-                              controller config portManager pin
-
-                            PowerOn -> do
-                              res <- liftIO $ setAC pin defaultConfig
-                              case res of
-                                Ok    -> emptyReply src
-                                Error -> send src (mkError "")
-                              controller defaultConfig portManager pin
-
-                            PowerOff -> do
-                              let config' = config { mode = ModeOff }
-                              res <- liftIO $ setAC pin config'
-                              case res of
-                                Ok    -> emptyReply src
-                                Error -> send src (mkError "")
-                              controller config' portManager pin
-
-                            UpTemperature -> if temperature >= toTemperature maxBound
-                              then do
-                                emptyReply src
-                                controller config portManager pin
-                              else do
-                                let temperature' = Temperature (getTemperature temperature + 1)
-                                    config' = config { temperature = temperature' }
-                                res <- liftIO $ setAC pin config'
-                                case res of
-                                  Ok    -> emptyReply src
-                                  Error -> send src (mkError "")
-                                controller config' portManager pin
-
-                            DownTemperature -> if temperature <= toTemperature minBound
-                              then do
-                                emptyReply src
-                                controller config portManager pin
-                              else do
-                                let temperature' = Temperature (getTemperature temperature - 1)
-                                    config' = config { temperature = temperature' }
-                                res <- liftIO $ setAC pin config'
-                                case res of
-                                  Ok    -> emptyReply src
-                                  Error -> send src (mkError "")
-                                controller config' portManager pin
-
-                            UpFan -> if fan == maxBound
-                              then do
-                                emptyReply src
-                                controller config portManager pin
-                              else do
-                                let config' = config { fan = succ fan }
-                                res <- liftIO $ setAC pin config'
-                                case res of
-                                  Ok    -> emptyReply src
-                                  Error -> send src (mkError "")
-                                controller config' portManager pin
-
-                            DownFan -> if fan == FanQuiet
-                              then do
-                                emptyReply src
-                                controller config portManager pin
-                              else do
-                                let config' = config { fan = pred fan }
-                                res <- liftIO $ setAC pin config'
-                                case res of
-                                  Ok -> emptyReply src
-                                  Error -> send src (mkError "")
-                                controller config' portManager pin
+                                Ok    -> sendStateChanged slave config'
+                                Error -> return () -- ToDo: should we do something else?
+                              controller env config'
 
                       , matchAny $ \m -> do
                           say $ "[ToshibaAC] Received unexpected message " ++ show m
-                          controller config portManager pin
+                          controller env config
                       ]
 
 emptyReply :: ProcessId -> Process ()

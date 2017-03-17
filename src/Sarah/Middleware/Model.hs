@@ -65,7 +65,7 @@ class (ToJSON model, FromJSON model, ToJSON (DeviceCommand model), FromJSON (Dev
   data DeviceCommand model :: *
 
   -- a device controller runs a process for a device, takes commands and executes them
-  startDeviceController :: model -> PortManager -> Process DeviceController
+  startDeviceController :: model -> Slave -> PortManager -> Process DeviceController
 
 mkCommand :: IsDevice model => DeviceCommand model -> Command
 mkCommand = Command . decodeUtf8 . BS.toStrict . encode

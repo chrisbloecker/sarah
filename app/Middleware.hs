@@ -24,10 +24,12 @@ import Raspberry.Hardware
 import Sarah.Middleware.Api
 import Sarah.Middleware.Master
 import Sarah.Middleware.Model
+import Sarah.Middleware.Server
 import Sarah.Middleware.Slave
 --------------------------------------------------------------------------------
-import qualified Data.ByteString as BS
-import qualified Data.Yaml       as Y
+import qualified Data.ByteString    as BS
+import qualified Data.Yaml          as Y
+import qualified Network.WebSockets as WS
 --------------------------------------------------------------------------------
 
 data NodeRole = RoleMaster | RoleSlave
@@ -82,7 +84,9 @@ go Options{..} = case nodeRole of
                                 , manager    = manager
                                 }
 
-            run webPort $ logStdoutDev $ corsPolicy $ app config
+            serverState <- newMVar initState
+            WS.runServer "0.0.0.0" 80 $ server serverState
+            --run webPort $ logStdoutDev $ corsPolicy $ app config
 
 
   RoleSlave -> do

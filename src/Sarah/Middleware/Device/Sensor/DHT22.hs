@@ -82,7 +82,8 @@ data DHT22State = DHT22State { readings :: Either Error (Temperature, Humidity)
                              , readAt   :: TimeSpec
                              }
 
-data ControllerEnv = ControllerEnv { portManager :: PortManager
+data ControllerEnv = ControllerEnv { slave       :: Slave
+                                   , portManager :: PortManager
                                    , pin         :: Pin
                                    }
 
@@ -105,11 +106,9 @@ instance IsDevice DHT22 where
   data DeviceCommand DHT22 = GetReadings
     deriving (Generic, ToJSON, FromJSON)
 
-  startDeviceController (DHT22 pin) portManager = do
+  startDeviceController (DHT22 pin) slave portManager = do
     say "[DHT22.startDeviceController]"
-    let env = ControllerEnv { portManager = portManager
-                            , pin         = pin
-                            }
+    let env = ControllerEnv{..}
     DeviceController <$> spawnLocal (initState env >>= controller env)
 
       where

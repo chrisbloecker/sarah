@@ -13,13 +13,14 @@ module Sarah.Middleware.Device.Example
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Data.Aeson                  (ToJSON (..), FromJSON (..))
-import Data.Aeson.Types            (Parser, Value (..), (.=), (.:), object, withObject)
-import Data.Text                   (Text, unpack)
-import GHC.Generics                (Generic)
+import Data.Aeson                      (ToJSON (..), FromJSON (..))
+import Data.Aeson.Types                (Parser, Value (..), (.=), (.:), object, withObject)
+import Data.Text                       (Text, unpack)
+import GHC.Generics                    (Generic)
 import Raspberry.GPIO
-import Sarah.Middleware.Model      (DeviceController (..), IsDevice (..), PortManager (..))
-import Sarah.Middleware.Types      (FromPid (..), Query (..), getCommand, mkSuccess, mkError)
+import Sarah.Middleware.Slave.Messages
+import Sarah.Middleware.Model          (DeviceController (..), IsDevice (..), PortManager (..), Slave (..))
+import Sarah.Middleware.Types          (FromPid (..), Query (..), getCommand, mkSuccess, mkError)
 --------------------------------------------------------------------------------
 
 -- Define the device, let's say it uses a GPIO pin.
@@ -41,25 +42,25 @@ instance IsDevice ExampleDevice where
     deriving (Generic, ToJSON, FromJSON)
 
   -- setup the device and start a server that listens for commands
-  startDeviceController (ExampleDevice pin) portManager = do
+  startDeviceController (ExampleDevice pin) slave portManager = do
     say "[ExampleDevice.startDeviceController]"
     -- start the server and wrap its pid into a DeviceController
-    DeviceController <$> spawnLocal (controller Normal portManager pin)
+    DeviceController <$> spawnLocal (controller Normal slave portManager pin)
 
       where
         -- the controller listens for requests and replies to them
-        controller :: DeviceState ExampleDevice -> PortManager -> Pin -> Process ()
-        controller state portManager pin =
+        controller :: DeviceState ExampleDevice -> Slave -> PortManager -> Pin -> Process ()
+        controller state slave portManager pin =
           receiveWait [ match $ \(FromPid src Query{..}) -> case getCommand queryCommand of
                           Left err -> say $ "[ExampleDevice.controller] Can't decode command: " ++ err
                           Right command -> case command of
-                            GetRandomNumber -> send src (mkSuccess (42 :: Integer))           >> controller state  portManager pin
-                            SetState state' -> send src (mkSuccess ())                        >> controller state' portManager pin
-                            GetState        -> send src (mkSuccess state)                     >> controller state  portManager pin
-                            AlwaysFailing   -> send src (mkError "This command always fails") >> controller state  portManager pin
+                            GetRandomNumber -> send src (mkSuccess (42 :: Integer))           >> controller state  slave portManager pin
+                            SetState state' -> sendStateChanged slave state                   >> controller state' slave portManager pin
+                            GetState        -> send src (mkSuccess state)                     >> controller state  slave portManager pin
+                            AlwaysFailing   -> send src (mkError "This command always fails") >> controller state  slave portManager pin
                       , matchAny $ \m -> do
                           say $ "[ExampleDevice.controller] Received unexpected message: " ++ show m
-                          controller state portManager pin
+                          controller state slave portManager pin
                       ]
 
 

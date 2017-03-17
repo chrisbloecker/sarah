@@ -1,10 +1,10 @@
-{-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ExplicitForAll #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE ExplicitForAll        #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RankNTypes            #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE TemplateHaskell       #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Slave
   ( SlaveSettings (..)
@@ -29,10 +29,10 @@ import Sarah.Middleware.Model            hiding (master, nodeName)
 import Sarah.Middleware.Model.Interface
 import Sarah.Middleware.Slave.Messages
 import Sarah.Middleware.Util
-import Sarah.Middleware.Types                   (FromPid (..), DeviceName, Query (..), QueryResult (..), deviceName)
+import Sarah.Middleware.Types                   (FromPid (..), DeviceName, DeviceAddress (..), NodeName, Query (..), QueryResult (..), deviceName)
 import Sarah.Persist.Model
 --------------------------------------------------------------------------------
-import qualified Data.Map.Strict   as M  (fromList, lookup)
+import qualified Data.Map.Strict   as M  (fromList, empty, insert, lookup, foldrWithKey)
 import qualified Data.HashMap.Lazy as HM (fromList)
 --------------------------------------------------------------------------------
 
@@ -52,7 +52,7 @@ instance FromJSON DeviceDescription where
     DeviceDescription <$> o .: "name"
                       <*> parseJSON (Object o)
 
-data SlaveSettings = SlaveSettings { nodeName      :: Text
+data SlaveSettings = SlaveSettings { nodeName      :: NodeName
                                    , nodeAddress   :: WebAddress
                                    , masterAddress :: WebAddress
                                    , devices       :: [DeviceDescription]
@@ -61,6 +61,9 @@ data SlaveSettings = SlaveSettings { nodeName      :: Text
 deriveJSON jsonOptions ''SlaveSettings
 
 data State = State { deviceControllers :: Map DeviceName DeviceController
+                   , reverseLookup     :: Map ProcessId  DeviceName
+                   , master            :: Master
+                   , nodeName          :: NodeName
                    }
 
 --------------------------------------------------------------------------------
@@ -85,15 +88,17 @@ runSlave SlaveSettings{..} = do
       -- make sure there's enough time to print the message
       liftIO $ threadDelay 100000
     Just master -> do
-      portManager <- startPortManager
-      deviceControllers <- fmap M.fromList <$> forM devices $ \(DeviceDescription name (Device model)) -> do pid <- startDeviceController model portManager
+      self              <- getSelfPid
+      let slave         = Slave self
+      portManager       <- startPortManager
+      deviceControllers <- fmap M.fromList <$> forM devices $ \(DeviceDescription name (Device model)) -> do pid <- startDeviceController model slave portManager
                                                                                                              return (name, pid)
 
-      self <- getSelfPid
       nodeUp master self (NodeInfo nodeName [ (name, toDeviceRep device) | (DeviceDescription name device) <- devices ])
       linkMaster master
 
-      loop $ State deviceControllers
+      let reverseLookup = M.foldrWithKey (\deviceName (DeviceController pid) -> M.insert pid deviceName) M.empty deviceControllers
+      loop State{..}
 
 loop :: State -> Process ()
 loop state@State{..} =
@@ -109,6 +114,13 @@ loop state@State{..} =
                                   ]
                   loop state
 
-              , match $ \Terminate ->
+              , match $ \(FromPid src msg@(StateChanged encodedState)) -> do
+                  case M.lookup src reverseLookup of
+                    Nothing         -> say $ "[slave] Unknown pid: " ++ show src
+                    Just deviceName -> sendMaster master $ DeviceStateChanged (DeviceAddress nodeName deviceName) encodedState
+                  loop state
+
+              , match $ \Terminate -> do
+                  say "[slave] Terminating slave"
                   return ()
               ]

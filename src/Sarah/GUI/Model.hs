@@ -89,6 +89,7 @@ withResponse command errorHandler successHandler = do
         Success encoded -> case decodeWrapped encoded of
           Nothing -> putStrLn $ "Error decoding result: " ++ show result
           Just decoded -> successHandler decoded
+    
 
 doNothing :: IO ()
 doNothing = return ()
