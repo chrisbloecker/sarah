@@ -64,7 +64,7 @@ run Options{..} = do
       appEnv    = AppEnv {..}
 
   -- use a websocket for communication with the middleware
-  WS.runClient middlewareHost 80 "/" middlewareClient
+  WS.runClient middlewareHost 80 "/" (middlewareClient remoteEvents)
   -- start the threepeny-gui server
   startGUI config (setup appEnv)
 

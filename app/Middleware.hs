@@ -84,8 +84,8 @@ go Options{..} = case nodeRole of
                                 , manager    = manager
                                 }
 
-            serverState <- newMVar initState
-            WS.runServer "0.0.0.0" 80 $ server serverState
+            serverState <- initState
+            WS.runServer "0.0.0.0" 80 $ server config serverState
             --run webPort $ logStdoutDev $ corsPolicy $ app config
 
 

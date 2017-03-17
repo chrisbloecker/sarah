@@ -12,12 +12,15 @@ module Sarah.Middleware.Server
 --------------------------------------------------------------------------------
 import Control.Exception
 import Control.Concurrent.STM
+import Control.Distributed.Process  (Process, expect)
 import Control.Monad
-import Data.Aeson              (ToJSON, FromJSON)
-import Data.Text               (Text, unpack)
-import GHC.Generics            (Generic)
+import Data.Aeson                   (ToJSON, FromJSON)
+import Data.Text                    (Text, unpack)
+import GHC.Generics                 (Generic)
 import Network.WebSockets
-import Sarah.Middleware.Types  (Query (..), decodeFromText)
+import Sarah.Middleware.Distributed (sendWithPid)
+import Sarah.Middleware.Model       (Config (..), Master, unMaster)
+import Sarah.Middleware.Types       (Query (..), QueryResult, encodeAsText, decodeFromText, mkError)
 --------------------------------------------------------------------------------
 
 data ConnectionMode = ModeSubscribe
@@ -43,8 +46,8 @@ disconnect ServerState{..} connectionId = do
   atomically $ modifyTVar subscribers (filter ((/= connectionId) . fst))
 
 
-server :: ServerState -> ServerApp
-server state@ServerState{..} pending = do
+server :: Config -> ServerState -> PendingConnection -> IO ()
+server Config{..} state@ServerState{..} pending = do
   connection <- acceptRequest pending
 
   -- start a ping thread to "force" the remote side to stay alive
@@ -63,16 +66,23 @@ server state@ServerState{..} pending = do
     Just mode -> case mode of
       ModeSubscribe -> do
         atomically $ modifyTVar subscribers ((newId, connection) :)
+        -- Just keep the websocket open, we don't really expect any messages
         forever $ do
           message <- receiveData connection :: IO Text
           putStrLn $ "Received message: " ++ unpack message
         atomically $ modifyTVar subscribers (filter ((/= newId) . fst))
 
-      -- run the server in command mode, i.e. receive a stream of command messages
-      -- and forward them to the master
-      -- ToDo: we need a way to reply to a command directly... how?
-      ModeCommand -> forever $ do
+      -- run the server in command mode, i.e. receive exactly one command
+      -- and reply with exactly one response
+      ModeCommand -> do
         encoded <- receiveData connection
         case decodeFromText encoded of
-          Nothing -> return ()
-          Just query@Query{..} -> return ()
+          Nothing -> do
+            putStrLn $ "[server] Error decoding command: " ++ show encoded
+            sendTextData connection (encodeAsText $ mkError "Couldn't decode command")
+
+          Just query@Query{..} -> do
+            response <- runLocally $ do
+                          sendWithPid (unMaster master) query
+                          expect :: Process QueryResult
+            sendTextData connection (encodeAsText response)

@@ -230,6 +230,7 @@ setAC (Pin pin) config = do
 
 --------------------------------------------------------------------------------
 
+-- a toshiba AC is connected through a GPIO pin
 newtype ToshibaAC = ToshibaAC Pin deriving (Show)
 
 data ControllerEnv = ControllerEnv { slave       :: Slave
@@ -237,9 +238,11 @@ data ControllerEnv = ControllerEnv { slave       :: Slave
                                    , pin         :: Pin
                                    }
 
+-- commands that are reading, i.e. they don't change the state
 data Reading = GetConfig
   deriving (Generic, ToJSON, FromJSON)
 
+-- commands that are writing, i.e. they change the state
 data Writing = PowerOn
              | PowerOff
              | UpTemperature

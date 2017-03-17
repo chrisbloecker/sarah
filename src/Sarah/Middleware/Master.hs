@@ -8,8 +8,9 @@ module Sarah.Middleware.Master
   , masterName
   ) where
 --------------------------------------------------------------------------------
+import Control.Concurrent.STM           (TVar, atomically, readTVar)
 import Control.Distributed.Process
-import Control.Monad                    (void)
+import Control.Monad                    (void, forM_)
 import Data.Map.Strict                  (Map, empty, elems, insert, delete)
 import Data.Text                        (unpack)
 import Data.Time.Calendar
@@ -18,13 +19,13 @@ import Data.Time.LocalTime
 import GHC.Generics                     (Generic)
 import Import.DeriveJSON
 import Network.HTTP.Client              (Manager)
+import Network.WebSockets               (Connection, sendTextData)
 import Raspberry.Hardware
 import Sarah.Middleware.Distributed     (NodeInfo (..), Status (..), sendWithPid)
 import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model           hiding (manager)
-import Sarah.Middleware.Types           (FromPid (..), Query (..), QueryResult (..), NodeName, deviceNode)
+import Sarah.Middleware.Types           (FromPid (..), Query (..), QueryResult (..), NodeName, deviceNode, encodeAsText)
 import Sarah.Middleware.Util
---import Servant.Common.BaseUrl           (BaseUrl)
 import Servant.Client
 --------------------------------------------------------------------------------
 import qualified Data.Map.Strict      as M
@@ -41,20 +42,22 @@ data MasterSettings = MasterSettings { masterNode :: WebAddress
 data State = State { nodes          :: Map ProcessId NodeInfo
                    , nodeNames      :: Map NodeName  ProcessId
                    , backendClient  :: ClientEnv
+                   , subscribers    :: TVar [(Integer, Connection)]
 --                   , manager        :: Manager
 --                   , persistBackend :: BaseUrl
                    }
 
 --------------------------------------------------------------------------------
 
-runMaster :: ClientEnv -> Process ()
-runMaster backendClient = do
+runMaster :: ClientEnv -> TVar [(Integer, Connection)] -> Process ()
+runMaster backendClient subscribers = do
   self <- getSelfPid
   register masterName self
   say "Master up"
   loop State { nodes         = empty
              , nodeNames     = empty
              , backendClient = backendClient
+             , subscribers   = subscribers
              }
 
 
@@ -76,6 +79,12 @@ loop state@State{..} =
                       receiveWait [ match    $ \result@QueryResult{..} -> send src result
                                   , matchAny $ \m                      -> say $ "[master] Unexpected message: " ++ show m
                                   ]
+                  loop state
+
+              , match $ \(FromPid src update@(DeviceStateChanged _ _)) -> do
+                  spawnLocal $ liftIO $ do
+                    connections <- atomically $ readTVar subscribers
+                    forM_ connections $ \(_, connection) -> sendTextData connection (encodeAsText update)
                   loop state
 
               , match $ \(Log nodeName message logLevel) -> do

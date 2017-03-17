@@ -3,11 +3,14 @@ module Sarah.GUI.MiddlewareClient
 
 import Network.WebSockets
 
-client :: ClientApp
-client connection = do
+middlewareClient :: TVar (HashMap DeviceAddress RemoteEvent) -> ClientApp
+middlewareClient listener connection = do
   -- run the client in gui mode so we get all the notification of when something
   -- changes and we can send commands
-  sendTextData connection (encodeAsText ModeGUI)
+  sendTextData connection (encodeAsText ModeSubscribe)
+
   forever $ do
     encoded <- WS.receiveData connection
-    case decodeT
+    case decodeFromText encoded of
+      Nothing -> putStrLn "[middlewareClient] Error decoding message: " ++ show encoded
+      Just
