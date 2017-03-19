@@ -13,11 +13,6 @@ import Sarah.Middleware.Device     (DeviceRep)
 import Sarah.Middleware.Types      (DeviceName, EncodedJSON, FromPid (..), NodeName)
 --------------------------------------------------------------------------------
 
--- like send, but wraps the message with the pid of the sending process
-sendWithPid :: (Binary message, Typeable message) => ProcessId -> message -> Process ()
-sendWithPid to message = getSelfPid >>= \self -> send to (FromPid self message)
-
-
 data NodeInfo = NodeInfo { nodeName    :: NodeName
                          , nodeDevices :: [(DeviceName, DeviceRep)]
                          }

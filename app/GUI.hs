@@ -4,7 +4,7 @@
 module Main
   where
 --------------------------------------------------------------------------------
-import Control.Concurrent          (threadDelay)
+import Control.Concurrent          (forkIO, threadDelay)
 import Control.Concurrent.STM      (atomically, newTVar)
 import Control.Monad               (forever)
 import Control.Monad.Reader        (runReaderT)
@@ -15,10 +15,12 @@ import Data.Text                   (Text, unpack)
 import Graphics.UI.Threepenny.Core
 import Network.HTTP.Client         (newManager, defaultManagerSettings)
 import Options.Applicative
+import Raspberry.IP
 import Sarah.GUI
 import Sarah.GUI.Model
+import Sarah.GUI.Websocket
 import Sarah.Middleware            (ConnectionMode (..), encodeAsText)
-import Servant.Client
+--import Servant.Client
 --------------------------------------------------------------------------------
 import qualified Data.HashMap.Strict       as M
 import qualified Network.WebSockets        as WS
@@ -56,15 +58,19 @@ run Options{..} = do
                              }
       middlewareHost   = fromMaybe "192.168.0.7" midHost
       middlewarePort   = fromMaybe 8090          midPort
-      middleware       = BaseUrl Http middlewareHost middlewarePort ""
-  manager      <- newManager defaultManagerSettings
+      middleware       = WebAddress middlewareHost middlewarePort
+
   remoteEvents <- atomically $ newTVar M.empty
   counter      <- atomically $ newTVar 0
-  let clientEnv = ClientEnv manager middleware -- the client to talk to the middleware
-      appEnv    = AppEnv {..}
+
+  let appEnv = AppEnv {..}
 
   -- use a websocket for communication with the middleware
-  WS.runClient middlewareHost 80 "/" (middlewareClient remoteEvents)
+  putStrLn $ "Connecting to middleware at " ++ middlewareHost ++ ":" ++ show middlewarePort
+  forkIO $ do
+    WS.runClient middlewareHost middlewarePort "/" (subscribeDeviceStateChanges remoteEvents)
+    putStrLn "Websocket closed"
+
   -- start the threepeny-gui server
   startGUI config (setup appEnv)
 

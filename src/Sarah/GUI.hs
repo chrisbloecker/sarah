@@ -16,11 +16,11 @@ import Prelude                      hiding (div, span)
 import Sarah.GUI.Model
 import Sarah.GUI.Remote                    (Remote (..), fromDeviceRep)
 import Sarah.GUI.Widgets
-import Sarah.Middleware                    (DeviceAddress (..), DeviceName, DeviceRep, Status (..), NodeInfo (..))
+import Sarah.GUI.Websocket                 (toMaster)
+import Sarah.Middleware
 import Servant.Client
 --------------------------------------------------------------------------------
-import qualified Data.HashMap.Strict     as HM
-import qualified Sarah.Middleware.Client as Middleware
+import qualified Data.HashMap.Strict as HM
 --------------------------------------------------------------------------------
 
 data Navbar = Navbar { remotesButton :: Element
@@ -34,10 +34,14 @@ setup appEnv@AppEnv{..} window = void $ do
   remotes <- liftIO $ atomically $ newTVar HM.empty
 
   -- get the status of the middleware, i.e. the connected nodes and their info
-  mStatus <- liftIO $ runClientM Middleware.getStatus clientEnv
-  liftIO $ case mStatus of
-    Left err -> void . print $ err
-    Right Status{..} ->
+  --mStatus <- liftIO $ runClientM Middleware.getStatus clientEnv
+  liftIO $ putStrLn "[setup] Requesting status from master..."
+  status <- liftIO $ toMaster middleware GetStatusRequest
+  liftIO $ case status of
+    --Nothing -> void . putStrLn $ "[setup] Couldn't get status from master"
+    --Just (GetStatusReply Status{..}) -> do
+    GetStatusReply Status{..} -> do
+      putStrLn "[setup] Received status from master, building remotes..."
       forM_ connectedNodes $ \NodeInfo{..} ->
         forM_ nodeDevices $ \(deviceName, deviceRep) ->
           case fromDeviceRep deviceRep of
@@ -60,6 +64,8 @@ setup appEnv@AppEnv{..} window = void $ do
               remote <- runUI window $ mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget
               liftIO . atomically $ modifyTVar remotes (HM.insert deviceAddress remote)
 
+  liftIO $ putStrLn "Finished building remotes"
+
   -- ToDo: where and when should we clean up events for devices that don't exist
   --       or are not connected anymore?
 
@@ -79,11 +85,6 @@ setup appEnv@AppEnv{..} window = void $ do
   on click remotesButton $ \_ -> do
     remoteWidgets <- liftIO . atomically $ readTVar remotes
     element content # set children (HM.elems remoteWidgets)
-
-  on click devicesButton $ \_ -> do
-    status <- liftIO $ runClientM Middleware.getStatus clientEnv
-    devices <- sequence (either (const []) renderStatus status)
-    element content # set children devices
 
 
 mkNavbar :: UI Navbar

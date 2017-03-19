@@ -5,14 +5,15 @@
 module Sarah.GUI.Remote.Example
   where
 --------------------------------------------------------------------------------
-import Control.Monad.Reader           (lift, ask)
-import Data.Text                      (Text)
+import Control.Monad.Reader           (lift, ask, runReaderT)
+import Data.Text                      (Text, unpack)
 import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
-import Sarah.GUI.Model                (HasRemote (..), RemoteBuilder, RemoteBuilderEnv (..), sendCommand, embedUI, handleResponse, doNothing)
+import Sarah.GUI.Model                (HasRemote (..), RemoteBuilder, RemoteBuilderEnv (..), embedUI, handleResponse, doNothing)
 import Sarah.GUI.Widgets
-import Sarah.Middleware               (QueryResult (..), Result (..), mkCommand, decodeWrapped)
+import Sarah.GUI.Websocket            (withResponse, withoutResponse)
+import Sarah.Middleware               (QueryResult (..), Result (..), mkCommand, decodeFromText)
 import Sarah.Middleware.Device        (ExampleDevice)
 --------------------------------------------------------------------------------
 import qualified Graphics.UI.Bootstrap.Glyphicon as Glyph
@@ -33,14 +34,8 @@ instance HasRemote ExampleDevice where
       getRandomNumberButton <- bootstrapButton buttonClass Glyph.random
       alwaysFailingButton   <- bootstrapButton buttonClass Glyph.flash
 
-      on click getRandomNumberButton $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand ExampleDevice.GetRandomNumber)
-        handleResponse "[ExampleDevice.getRandomNumberButton.click]" mres doNothing (\(x :: Integer) -> handlerDisplay $ show x)
-
-      on click alwaysFailingButton $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand ExampleDevice.AlwaysFailing)
-        handleResponse "[ExampleDevice.alwaysFailingButton.click]" mres doNothing (const doNothing :: Text -> IO ())
-
+      on click getRandomNumberButton $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.GetRandomNumber doNothing (\(x :: Integer) -> handlerDisplay $ show x)
+      on click alwaysFailingButton   $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.AlwaysFailing   doNothing (\(_ :: Text) -> doNothing)
 
       (eventMinusButton, handlerMinusButton) <- liftIO newEvent
       (eventStarButton,  handlerStarButton)  <- liftIO newEvent
@@ -62,34 +57,31 @@ instance HasRemote ExampleDevice where
       element (getElement starButton)  #+ [ span # set class_ (unGlyphicon Glyph.star)  ]
       element (getElement heartButton) #+ [ span # set class_ (unGlyphicon Glyph.heart) ]
 
-      let eventStateChangedHandler _ = do
-            mres <- sendCommand appEnv deviceAddress (mkCommand ExampleDevice.GetState)
-            handleResponse "[ExampleDevice.eventStateChangedHandler]" mres doNothing $ \case
-              ExampleDevice.Normal -> handlerStarButton greyButton   >> handlerHeartButton greyButton
-              ExampleDevice.Star   -> handlerStarButton yellowButton >> handlerHeartButton greyButton
-              ExampleDevice.Heart  -> handlerStarButton greyButton   >> handlerHeartButton redButton
+      let eventStateChangedHandler :: Handler Text
+          eventStateChangedHandler encodedState = do
+            putStrLn $ "[Example.eventStateChangedHandler] Updating device state: " ++ show encodedState
+            case decodeFromText encodedState of
+              Nothing -> putStrLn $ "[ExampleDevice.eventStateChangedHandler] Cannot decode state" ++ unpack encodedState
+              Just state -> case state of
+                ExampleDevice.Normal -> handlerStarButton greyButton   >> handlerHeartButton greyButton
+                ExampleDevice.Star   -> handlerStarButton yellowButton >> handlerHeartButton greyButton
+                ExampleDevice.Heart  -> handlerStarButton greyButton   >> handlerHeartButton redButton
 
       unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
 
-
       on click (getElement minusButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand $ ExampleDevice.SetState ExampleDevice.Normal)
-        handleResponse "[ExampleDevice.minusButton.click]" mres doNothing $ \() -> notifyStateChanged ()
+        putStrLn "[Example.minusButton.click]"
+        flip runReaderT remoteRunnerEnv $ withoutResponse (ExampleDevice.SetState ExampleDevice.Normal)
 
-      on click (getElement starButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand $ ExampleDevice.SetState ExampleDevice.Star)
-        handleResponse "[ExampleDevice.starButton.click]" mres doNothing $ \() -> notifyStateChanged ()
+      on click (getElement starButton)  $ embedUI $ do
+        putStrLn "[Example.starButton.click]"
+        flip runReaderT remoteRunnerEnv $ withoutResponse (ExampleDevice.SetState ExampleDevice.Star)
 
       on click (getElement heartButton) $ embedUI $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand $ ExampleDevice.SetState ExampleDevice.Heart)
-        handleResponse "[ExampleDevice.heartButton.click]" mres doNothing $ \() -> notifyStateChanged ()
+        putStrLn "[Example.heartButton.click]"
+        flip runReaderT remoteRunnerEnv $ withoutResponse (ExampleDevice.SetState ExampleDevice.Heart)
 
-      liftIO $ do
-        mres <- sendCommand appEnv deviceAddress (mkCommand ExampleDevice.GetState)
-        handleResponse "[ExampleDevice.eventStateChangedHandler]" mres doNothing $ \case
-          ExampleDevice.Normal -> handlerStarButton greyButton   >> handlerHeartButton greyButton
-          ExampleDevice.Star   -> handlerStarButton yellowButton >> handlerHeartButton greyButton
-          ExampleDevice.Heart  -> handlerStarButton greyButton   >> handlerHeartButton redButton
+      liftIO $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.GetState doNothing eventStateChangedHandler
 
       div #+ [ p # set class_ "text-center"
                  #+ [ element display ]

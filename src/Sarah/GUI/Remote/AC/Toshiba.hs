@@ -6,13 +6,15 @@ module Sarah.GUI.Remote.AC.Toshiba
 --------------------------------------------------------------------------------
 import Control.Monad                  (unless)
 import Control.Monad.Reader           (runReaderT, lift, ask)
+import Data.Text                      (Text)
 import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
 import Physics
 import Sarah.GUI.Model
 import Sarah.GUI.Widgets
-import Sarah.Middleware               (QueryResult (..), Result (..), mkCommand)
+import Sarah.GUI.Websocket            (withResponse, withoutResponse)
+import Sarah.Middleware               (QueryResult (..), Result (..), mkCommand, decodeFromText)
 import Sarah.Middleware.Device        (ToshibaAC)
 --------------------------------------------------------------------------------
 import qualified Graphics.UI.Bootstrap.Glyphicon    as Glyph
@@ -84,8 +86,10 @@ instance HasRemote ToshibaAC where
       element (getElement ecoButton)    #+ [ span # set class_ (unGlyphicon Glyph.leaf)  ]
       element (getElement hiButton)     #+ [ span # set class_ (unGlyphicon Glyph.fire)  ]
 
-      let eventStateChangedHandler _ =
-            flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Read Toshiba.GetConfig) doNothing $ \Toshiba.Config{..} -> do
+      let eventStateChangedHandler :: Handler Text
+          eventStateChangedHandler encodedState = case decodeFromText encodedState of
+            Nothing -> putStrLn "[Toshiba.eventStateChangedHandler] Error decoding state"
+            Just Toshiba.Config{..} -> do
               handlerDisplay emptyDisplay
               handlerAuto whiteButton
               handlerCool whiteButton
@@ -124,21 +128,21 @@ instance HasRemote ToshibaAC where
 
       unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
 
-      on click onButton                    $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write Toshiba.PowerOn)                                 doNothing notifyStateChanged
-      on click offButton                   $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write Toshiba.PowerOff)                                doNothing notifyStateChanged
-      on click (getElement tempUpButton)   $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write Toshiba.UpTemperature)                           doNothing notifyStateChanged
-      on click (getElement tempDownButton) $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write Toshiba.DownTemperature)                         doNothing notifyStateChanged
-      on click (getElement fanUpButton)    $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write Toshiba.UpFan)                                   doNothing notifyStateChanged
-      on click (getElement fanDownButton)  $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write Toshiba.DownFan)                                 doNothing notifyStateChanged
-      on click (getElement autoButton)     $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeAuto))              doNothing notifyStateChanged
-      on click (getElement coolButton)     $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeCool))              doNothing notifyStateChanged
-      on click (getElement dryButton)      $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeDry))               doNothing notifyStateChanged
-      on click (getElement fanButton)      $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeFan))               doNothing notifyStateChanged
-      on click (getElement normalButton)   $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write (Toshiba.SetPowerMode Nothing))                  doNothing notifyStateChanged
-      on click (getElement ecoButton)      $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerEco))  doNothing notifyStateChanged
-      on click (getElement hiButton)       $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerHigh)) doNothing notifyStateChanged
+      on click onButton                    $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.PowerOn)
+      on click offButton                   $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.PowerOff)
+      on click (getElement tempUpButton)   $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.UpTemperature)
+      on click (getElement tempDownButton) $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.DownTemperature)
+      on click (getElement fanUpButton)    $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.UpFan)
+      on click (getElement fanDownButton)  $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.DownFan)
+      on click (getElement autoButton)     $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeAuto))
+      on click (getElement coolButton)     $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeCool))
+      on click (getElement dryButton)      $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeDry))
+      on click (getElement fanButton)      $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeFan))
+      on click (getElement normalButton)   $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode Nothing))
+      on click (getElement ecoButton)      $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerEco))
+      on click (getElement hiButton)       $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerHigh))
 
-      liftIO $ notifyStateChanged ()
+      liftIO $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Read Toshiba.GetConfig) doNothing eventStateChangedHandler
 
       div #+ [ p # set class_ "text-center"
                  #+ map element [ onButton, offButton ]

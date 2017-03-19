@@ -33,13 +33,9 @@ library
                      , Sarah.GUI.Remote.Example
                      , Sarah.GUI.Remote.Power.HS110
                      , Sarah.GUI.Remote.Sensor.DHT22
+                     , Sarah.GUI.Websocket
                      , Sarah.GUI.Widgets
                      , Sarah.Middleware
-                     , Sarah.Middleware.Api
-                     , Sarah.Middleware.Api.Device
-                     , Sarah.Middleware.Api.Sensor
-                     , Sarah.Middleware.Api.Status
-                     , Sarah.Middleware.Client
                      , Sarah.Middleware.Device
                      , Sarah.Middleware.Distributed
                      , Sarah.Middleware.Device.AC.Toshiba
@@ -77,6 +73,7 @@ library
                      , bytestring
                      , clock
                      , containers
+                     , constraints
                      , distributed-process
                      , distributed-process-extras
                      , either

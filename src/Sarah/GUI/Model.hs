@@ -1,5 +1,4 @@
 {-# LANGUAGE DuplicateRecordFields #-}
-{-# LANGUAGE RecordWildCards       #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Model
   where
@@ -8,19 +7,22 @@ import Control.Concurrent.STM      (TVar)
 import Control.Monad.Reader        (ReaderT, ask, lift)
 import Data.Aeson                  (ToJSON, FromJSON)
 import Data.HashMap.Strict         (HashMap)
-import Data.Text                   (unpack)
+import Data.Text                   (Text, unpack)
 import Graphics.UI.Threepenny.Core
 import Network.HTTP.Client         (Manager)
+import Raspberry.IP                (WebAddress)
 import Servant.Client
 import Sarah.Middleware
 --------------------------------------------------------------------------------
 
 -- ToDo: Tidings?
-type RemoteEvent = (Event (), Handler ())
+-- ToDo: wrap this into some type that represents device events? Maybe together
+--       with a device representation, so we can deserialise it properly?
+type RemoteEvent = (Event Text, Handler Text)
 
-data AppEnv = AppEnv { clientEnv    :: ClientEnv
-                     , remoteEvents :: TVar (HashMap DeviceAddress RemoteEvent)
+data AppEnv = AppEnv { remoteEvents :: TVar (HashMap DeviceAddress RemoteEvent)
                      , counter      :: TVar Integer
+                     , middleware   :: WebAddress
                      }
 
 type App = ReaderT AppEnv UI
@@ -32,15 +34,15 @@ type SuccessHandler a = a -> IO ()
 
 data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , deviceAddress      :: DeviceAddress
-                                         , eventStateChanged  :: Event ()
-                                         , notifyStateChanged :: Handler ()
+                                         , eventStateChanged  :: Event Text
+                                         , notifyStateChanged :: Handler Text
                                          , remoteRunnerEnv    :: RemoteRunnerEnv
                                          }
 
 type RemoteBuilder = ReaderT RemoteBuilderEnv UI
 
 data RemoteRunnerEnv = RemoteRunnerEnv { deviceAddress :: DeviceAddress
-                                       , clientEnv     :: ClientEnv
+                                       , middleware    :: WebAddress
                                        }
 
 type RemoteRunner = ReaderT RemoteRunnerEnv IO
@@ -55,6 +57,7 @@ class IsDevice model => HasRemote model where
   buildRemote :: model -> RemoteBuilder Element
 
 -- construct a command, build a query, and send it
+{-
 sendCommand :: AppEnv -> DeviceAddress -> Command -> IO (Maybe QueryResult)
 sendCommand AppEnv{..} deviceAddress command = do
   let query = Query deviceAddress command
@@ -62,6 +65,7 @@ sendCommand AppEnv{..} deviceAddress command = do
   case mres of
     Left  err -> putStrLn ("[sendCommand] " ++ show err) >> return Nothing
     Right res -> return (Just res)
+-}
 
 handleResponse :: (ToJSON a, FromJSON a) => String -> Maybe QueryResult -> ErrorHandler -> SuccessHandler a -> IO ()
 handleResponse handlerName response errorHandler successHandler = case response of
@@ -75,22 +79,6 @@ handleResponse handlerName response errorHandler successHandler = case response 
       Just result -> do
         putStrLn $ handlerName ++ " Success"
         successHandler result
-
-withResponse :: (IsDevice model, ToJSON reply, FromJSON reply)
-             => DeviceCommand model -> ErrorHandler -> SuccessHandler reply -> RemoteRunner ()
-withResponse command errorHandler successHandler = do
-  RemoteRunnerEnv{..} <- ask
-  lift $ do
-    let query = Query deviceAddress (mkCommand command)
-    mresponse <- runClientM (runDeviceCommand query) clientEnv
-    case mresponse of
-      Left error -> return ()
-      Right (QueryResult result) -> case result of
-        Error message -> errorHandler
-        Success encoded -> case decodeWrapped encoded of
-          Nothing -> putStrLn $ "Error decoding result: " ++ show result
-          Just decoded -> successHandler decoded
-
 
 doNothing :: IO ()
 doNothing = return ()

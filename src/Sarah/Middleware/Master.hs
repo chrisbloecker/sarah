@@ -21,10 +21,10 @@ import Import.DeriveJSON
 import Network.HTTP.Client              (Manager)
 import Network.WebSockets               (Connection, sendTextData)
 import Raspberry.Hardware
-import Sarah.Middleware.Distributed     (NodeInfo (..), Status (..), sendWithPid)
+import Sarah.Middleware.Distributed     (NodeInfo (..), Status (..))
 import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model           hiding (manager)
-import Sarah.Middleware.Types           (FromPid (..), Query (..), QueryResult (..), NodeName, deviceNode, encodeAsText)
+import Sarah.Middleware.Types
 import Sarah.Middleware.Util
 import Servant.Client
 --------------------------------------------------------------------------------
@@ -63,12 +63,13 @@ runMaster backendClient subscribers = do
 
 loop :: State -> Process ()
 loop state@State{..} =
-  receiveWait [ match $ \(GetStatus pid) -> do
-                  send pid (Status $ elems nodes)
+  receiveWait [ match $ \(FromPid pid GetStatusRequest) -> do
+                  say $ "[master] Status requested by " ++ show pid
+                  send pid (GetStatusReply $ Status (elems nodes))
                   loop state
 
               , match $ \(FromPid src query@Query{..}) -> do
-                  say "Received Query"
+                  say "[master] Received Query"
                   let nodeName = deviceNode queryTarget
                   case M.lookup nodeName nodeNames of
                     Nothing   -> say $ "[master] Unknown node name " ++ unpack nodeName
@@ -81,10 +82,16 @@ loop state@State{..} =
                                   ]
                   loop state
 
-              , match $ \(FromPid src update@(DeviceStateChanged _ _)) -> do
-                  spawnLocal $ liftIO $ do
-                    connections <- atomically $ readTVar subscribers
-                    forM_ connections $ \(_, connection) -> sendTextData connection (encodeAsText update)
+                -- whenever the state of a device changes, we're informing all subscribers
+                -- about the change and send them the encoded device address and state
+              , match $ \(FromPid src (DeviceStateChanged deviceAddress@DeviceAddress{..} encodedState)) -> do
+                  say $ "[master] A device changed its state: " ++ unpack deviceNode ++ ":" ++ unpack deviceName
+                  spawnLocal $ do
+                    say "[master] Broadcasting new device state"
+                    liftIO $ do
+                      connections <- atomically $ readTVar subscribers
+                      forM_ connections $ \(_, connection) ->
+                        sendTextData connection $ encodeAsText (deviceAddress, encodedState)
                   loop state
 
               , match $ \(Log nodeName message logLevel) -> do
@@ -128,4 +135,8 @@ loop state@State{..} =
                       loop $ state { nodes     = pid      `delete` nodes
                                    , nodeNames = nodeName `delete` nodeNames
                                    }
+
+              , matchAny $ \message -> do
+                  say $ "[master] Received unexpected message: " ++ show message
+                  loop state
               ]

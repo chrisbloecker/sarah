@@ -23,13 +23,13 @@ import Data.Text                                (unpack)
 import Import.DeriveJSON
 import Raspberry.Hardware
 import Sarah.Middleware.Device
-import Sarah.Middleware.Distributed             (NodeInfo (..), sendWithPid)
+import Sarah.Middleware.Distributed             (NodeInfo (..))
 import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model            hiding (master, nodeName)
 import Sarah.Middleware.Model.Interface
 import Sarah.Middleware.Slave.Messages
 import Sarah.Middleware.Util
-import Sarah.Middleware.Types                   (FromPid (..), DeviceName, DeviceAddress (..), NodeName, Query (..), QueryResult (..), deviceName)
+import Sarah.Middleware.Types
 import Sarah.Persist.Model
 --------------------------------------------------------------------------------
 import qualified Data.Map.Strict   as M  (fromList, empty, insert, lookup, foldrWithKey)
@@ -115,9 +115,12 @@ loop state@State{..} =
                   loop state
 
               , match $ \(FromPid src msg@(StateChanged encodedState)) -> do
+                  say $ "[slave] A device changed its state at node: " ++ show src
                   case M.lookup src reverseLookup of
                     Nothing         -> say $ "[slave] Unknown pid: " ++ show src
-                    Just deviceName -> sendMaster master $ DeviceStateChanged (DeviceAddress nodeName deviceName) encodedState
+                    Just deviceName -> do
+                      say $ "[slave] Device that changed its state: " ++ unpack nodeName ++ ":" ++ unpack deviceName
+                      sendWithPid (unMaster master) $ DeviceStateChanged (DeviceAddress nodeName deviceName) encodedState
                   loop state
 
               , match $ \Terminate -> do

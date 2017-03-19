@@ -20,7 +20,7 @@ import GHC.Generics                    (Generic)
 import Raspberry.GPIO
 import Sarah.Middleware.Slave.Messages
 import Sarah.Middleware.Model          (DeviceController (..), IsDevice (..), PortManager (..), Slave (..))
-import Sarah.Middleware.Types          (FromPid (..), Query (..), getCommand, mkSuccess, mkError)
+import Sarah.Middleware.Types          (FromPid (..), Query (..), getCommand, mkSuccess, mkError, sendWithPid, encodeAndWrap, encodeAsText)
 --------------------------------------------------------------------------------
 
 -- Define the device, let's say it uses a GPIO pin.
@@ -54,10 +54,25 @@ instance IsDevice ExampleDevice where
           receiveWait [ match $ \(FromPid src Query{..}) -> case getCommand queryCommand of
                           Left err -> say $ "[ExampleDevice.controller] Can't decode command: " ++ err
                           Right command -> case command of
-                            GetRandomNumber -> send src (mkSuccess (42 :: Integer))           >> controller state  slave portManager pin
-                            SetState state' -> sendStateChanged slave state                   >> controller state' slave portManager pin
-                            GetState        -> send src (mkSuccess state)                     >> controller state  slave portManager pin
-                            AlwaysFailing   -> send src (mkError "This command always fails") >> controller state  slave portManager pin
+                            GetRandomNumber -> do
+                              say "[Example.controller] Getting random number"
+                              send src (mkSuccess (42 :: Integer))
+                              controller state slave portManager pin
+
+                            SetState state' -> do
+                              say "[Example.controller] Setting state"
+                              sendWithPid (unSlave slave) (StateChanged $ encodeAndWrap state')
+                              controller state' slave portManager pin
+
+                            GetState -> do
+                              say "[Example.controller] Getting state"
+                              send src (mkSuccess $ encodeAsText state)
+                              controller state slave portManager pin
+
+                            AlwaysFailing -> do
+                              say "[Example.controller] This action always fails"
+                              send src (mkError "This command always fails")
+                              controller state slave portManager pin
                       , matchAny $ \m -> do
                           say $ "[ExampleDevice.controller] Received unexpected message: " ++ show m
                           controller state slave portManager pin

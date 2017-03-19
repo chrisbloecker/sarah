@@ -21,8 +21,8 @@ import GHC.Generics                (Generic)
 import Physics
 import Raspberry.GPIO
 import Sarah.Middleware.Slave.Messages
-import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..), Slave)
-import Sarah.Middleware.Types      (FromPid (..), Query (..), getCommand, mkSuccess, mkError)
+import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..), Slave (..))
+import Sarah.Middleware.Types      (FromPid (..), Query (..), getCommand, mkSuccess, mkError, sendWithPid, encodeAndWrap, encodeAsText)
 --------------------------------------------------------------------------------
 import qualified Data.ByteString   as BS
 import qualified Language.C.Inline as C
@@ -275,7 +275,7 @@ instance IsDevice ToshibaAC where
                           Right command -> case command of
                             Read reading -> case reading of
                               GetConfig -> do
-                                send src (mkSuccess config)
+                                send src (mkSuccess $ encodeAsText config)
                                 controller env config
 
                             Write writing -> do
@@ -300,7 +300,7 @@ instance IsDevice ToshibaAC where
                                               SetPowerMode   p -> config { mpower      = p }
                               res <- liftIO $ setAC pin config'
                               case res of
-                                Ok    -> sendStateChanged slave config'
+                                Ok    -> sendWithPid (unSlave slave) (StateChanged $ encodeAndWrap config')
                                 Error -> return () -- ToDo: should we do something else?
                               controller env config'
 

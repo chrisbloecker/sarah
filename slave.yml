@@ -2,7 +2,7 @@ nodeAddress:
   host: localhost
   port: 50001
 masterAddress:
-  host: localhost
+  host: 192.168.0.4
   port: 50000
 devices:
 - name: AC

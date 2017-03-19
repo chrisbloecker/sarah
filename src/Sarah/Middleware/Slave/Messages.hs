@@ -27,4 +27,4 @@ sendSlave :: Serializable a => Slave -> a -> Process ()
 sendSlave (Slave slave) = send slave
 
 sendStateChanged :: (ToJSON state, FromJSON state) => Slave -> state -> Process ()
-sendStateChanged (Slave slave) state = send slave (encodeAndWrap state)
+sendStateChanged (Slave slave) state = send slave (StateChanged $ encodeAndWrap state)

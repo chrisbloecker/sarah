@@ -5,7 +5,7 @@
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Server
   ( ConnectionMode (..)
-  , initState
+  , initState, subscribers
   , server
   )
   where
@@ -17,15 +17,27 @@ import Control.Monad
 import Data.Aeson                   (ToJSON, FromJSON)
 import Data.Text                    (Text, unpack)
 import GHC.Generics                 (Generic)
-import Network.WebSockets
-import Sarah.Middleware.Distributed (sendWithPid)
+import Network.WebSockets    hiding (Request)
+import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model       (Config (..), Master, unMaster)
-import Sarah.Middleware.Types       (Query (..), QueryResult, encodeAsText, decodeFromText, mkError)
+import Sarah.Middleware.Types       (Query (..), QueryResult, encodeAsText, decodeFromText, mkError, sendWithPid)
 --------------------------------------------------------------------------------
 
 data ConnectionMode = ModeSubscribe
                     | ModeCommand
+                    | ModeMaster
   deriving (Generic, ToJSON, FromJSON)
+
+instance WebSocketsData ConnectionMode where
+  toLazyByteString ModeSubscribe = "ModeSubscribe"
+  toLazyByteString ModeCommand   = "ModeCommand"
+  toLazyByteString ModeMaster    = "ModeMaster"
+
+  fromLazyByteString "ModeSubscribe" = ModeSubscribe
+  fromLazyByteString "ModeCommand"   = ModeCommand
+  fromLazyByteString "ModeMaster"    = ModeMaster
+  fromLazyByteString unknown         = error $ "Unknown mode: " ++ show unknown
+
 
 data ServerState = ServerState { subscribers :: TVar [(Integer, Connection)]
                                , nextId      :: TVar Integer
@@ -59,30 +71,42 @@ server Config{..} state@ServerState{..} pending = do
     return newId
 
   -- receive the connection mode that should be used
-  encoded <- receiveData connection
+  connectionMode <- receiveData connection
 
-  case decodeFromText encoded of
-    Nothing -> putStrLn $ "Unexpected message: " ++ show encoded
-    Just mode -> case mode of
-      ModeSubscribe -> do
-        atomically $ modifyTVar subscribers ((newId, connection) :)
-        -- Just keep the websocket open, we don't really expect any messages
-        forever $ do
-          message <- receiveData connection :: IO Text
-          putStrLn $ "Received message: " ++ unpack message
-        atomically $ modifyTVar subscribers (filter ((/= newId) . fst))
+  case connectionMode of
+    ModeSubscribe -> do
+      atomically $ modifyTVar subscribers ((newId, connection) :)
+      -- Just keep the websocket open, we don't really expect any messages
+      forever $ do
+        message <- receiveData connection :: IO Text
+        putStrLn $ "Received message: " ++ unpack message
+      atomically $ modifyTVar subscribers (filter ((/= newId) . fst))
 
-      -- run the server in command mode, i.e. receive exactly one command
-      -- and reply with exactly one response
-      ModeCommand -> do
-        encoded <- receiveData connection
-        case decodeFromText encoded of
-          Nothing -> do
-            putStrLn $ "[server] Error decoding command: " ++ show encoded
-            sendTextData connection (encodeAsText $ mkError "Couldn't decode command")
+    -- run the server in command mode, i.e. receive exactly one command
+    -- and reply with exactly one response
+    ModeCommand -> do
+      encoded <- receiveData connection
+      case decodeFromText encoded of
+        Nothing -> do
+          putStrLn $ "[server] Error decoding command: " ++ show encoded
+          sendTextData connection (encodeAsText $ mkError "Couldn't decode command")
 
-          Just query@Query{..} -> do
-            response <- runLocally $ do
-                          sendWithPid (unMaster master) query
-                          expect :: Process QueryResult
-            sendTextData connection (encodeAsText response)
+        Just query@Query{..} -> do
+          response <- runLocally $ do
+                        sendWithPid (unMaster master) query
+                        expect :: Process QueryResult
+          sendTextData connection (encodeAsText response)
+
+    -- run the server in master mode, i.e. receive exactly one command and
+    -- forward it to the master
+    ModeMaster -> do
+      putStrLn "Running in ModeMaster"
+      MasterRequest request <- receiveData connection
+      putStrLn "Sending request to master"
+      reply <- serverMaster master request
+      putStrLn "Sending reply to gui"
+      sendBinaryData connection reply
+
+  where
+    serverMaster :: (IsMasterCommand command) => Master -> Request command -> IO (Reply command)
+    serverMaster master request = runLocally $ sendWithPid (unMaster master) request >> expect

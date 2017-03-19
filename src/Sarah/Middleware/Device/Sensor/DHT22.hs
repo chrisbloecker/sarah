@@ -22,6 +22,7 @@ import Physics
 import Raspberry.GPIO
 import Sarah.Middleware.Model
 import Sarah.Middleware.Types
+import Sarah.Middleware.Slave.Messages
 import System.Clock
 --------------------------------------------------------------------------------
 import qualified Language.C.Inline            as C
@@ -33,7 +34,7 @@ data Error = InitFailed
            | Timeout
            | Parameter
            | Unknown
-  deriving (Show)
+  deriving (Show, Generic, ToJSON, FromJSON)
 
 -- Conversion from C error codes to Haskell representation
 toError :: C.CInt -> Error
@@ -129,7 +130,7 @@ instance IsDevice DHT22 where
                                     say "[DHT22.controller] Using cached readings"
                                     case readings of
                                       Left dht22Error -> send src $ mkError (pack . show $ dht22Error)
-                                      Right readings  -> send src $ mkSuccess readings
+                                      Right readings  -> send src $ mkSuccess (encodeAsText readings)
                                     controller env state
 
                                   else do
@@ -141,8 +142,9 @@ instance IsDevice DHT22 where
                                         say $ "[DHT22.controller] Error reading sensor: " ++ show dht22Error
                                         send src $ mkError (pack . show $ dht22Error)
                                       Right readings ->
-                                        send src $ mkSuccess readings
+                                        send src $ mkSuccess (encodeAsText readings)
 
+                                    sendWithPid (unSlave slave) (StateChanged $ encodeAndWrap ereadings)
                                     controller env state { readings = ereadings, readAt = readingCompleted }
 
                       , matchAny $ \m -> do

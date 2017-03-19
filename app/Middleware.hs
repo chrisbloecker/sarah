@@ -21,7 +21,6 @@ import Options.Applicative
 import Servant.Client
 --------------------------------------------------------------------------------
 import Raspberry.Hardware
-import Sarah.Middleware.Api
 import Sarah.Middleware.Master
 import Sarah.Middleware.Model
 import Sarah.Middleware.Server
@@ -69,10 +68,12 @@ go Options{..} = case nodeRole of
           Left err ->
             throw err
           Right transport -> do
+            serverState <- initState
+
             manager   <- newManager defaultManagerSettings
             let database = BaseUrl Http (host backend) (port backend) ""
             node      <- newLocalNode transport initRemoteTable
-            masterPid <- forkProcess node (runMaster $ ClientEnv manager database)
+            masterPid <- forkProcess node (runMaster (ClientEnv manager database) (subscribers serverState))
 
             let config = Config { master     = Master masterPid
                                 , localNode  = node
@@ -84,8 +85,9 @@ go Options{..} = case nodeRole of
                                 , manager    = manager
                                 }
 
-            serverState <- initState
-            WS.runServer "0.0.0.0" 80 $ server config serverState
+            -- Launch a server for communication with clients using websockets
+            putStrLn $ "Launching server at " ++ host masterNode ++ ":" ++ show webPort
+            WS.runServer (host masterNode) webPort $ server config serverState
             --run webPort $ logStdoutDev $ corsPolicy $ app config
 
 

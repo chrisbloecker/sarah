@@ -4,7 +4,7 @@
 module Sarah.Middleware.Types
   where
 --------------------------------------------------------------------------------
-import Control.Distributed.Process (ProcessId)
+import Control.Distributed.Process (Process, ProcessId, getSelfPid, send)
 import Data.Aeson                  (ToJSON, FromJSON, encode, decode', eitherDecode')
 import Data.Binary                 (Binary)
 import Data.Hashable               (Hashable)
@@ -32,6 +32,10 @@ data DeviceAddress = DeviceAddress { deviceNode :: NodeName
 
 -- A wrapper that is intended to be used to add the pid of a sending process
 data FromPid message = FromPid ProcessId message deriving (Generic, Binary)
+
+-- like send, but wraps the message with the pid of the sending process
+sendWithPid :: (Binary message, Typeable message) => ProcessId -> message -> Process ()
+sendWithPid to message = getSelfPid >>= \self -> send to (FromPid self message)
 
 
 -- Text that is tagged as encoded JSON.
