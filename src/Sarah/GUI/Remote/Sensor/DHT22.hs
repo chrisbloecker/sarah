@@ -51,6 +51,9 @@ instance HasRemote DHT22 where
 
       unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
 
+      on click getTemperatureButton $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadings doNothing eventStateChangedHandler
+      on click getHumidityButton    $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadings doNothing eventStateChangedHandler
+
       liftIO $ flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadings doNothing eventStateChangedHandler
 
       div #+ [ p # set class_ "text-center"
