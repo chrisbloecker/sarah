@@ -10,7 +10,7 @@ import Data.Binary                 (Binary)
 import Data.Typeable               (Typeable)
 import GHC.Generics                (Generic)
 import Sarah.Middleware.Device     (DeviceRep)
-import Sarah.Middleware.Types      (DeviceName, EncodedJSON, FromPid (..), NodeName)
+import Sarah.Middleware.Model      (NodeName, DeviceName)
 --------------------------------------------------------------------------------
 
 data NodeInfo = NodeInfo { nodeName    :: NodeName

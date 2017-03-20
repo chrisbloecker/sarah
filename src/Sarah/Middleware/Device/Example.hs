@@ -13,30 +13,30 @@ module Sarah.Middleware.Device.Example
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Data.Aeson                      (ToJSON (..), FromJSON (..))
+import Data.Aeson                      (ToJSON (..), FromJSON (..), encode)
 import Data.Aeson.Types                (Parser, Value (..), (.=), (.:), object, withObject)
 import Data.Text                       (Text, unpack)
 import GHC.Generics                    (Generic)
 import Raspberry.GPIO
 import Sarah.Middleware.Slave.Messages
-import Sarah.Middleware.Model          (DeviceController (..), IsDevice (..), PortManager (..), Slave (..))
-import Sarah.Middleware.Types          (FromPid (..), Query (..), getCommand, mkSuccess, mkError, sendWithPid, encodeAndWrap, encodeAsText)
+import Sarah.Middleware.Model          (DeviceController (..), IsDevice (..), PortManager (..), Slave (..), FromPid (..), Query (..), getCommand, mkSuccess, mkError, sendWithPid, encodeAsText)
 --------------------------------------------------------------------------------
 
 -- Define the device, let's say it uses a GPIO pin.
 newtype ExampleDevice = ExampleDevice Pin deriving (Show)
 
-data ExampleState = Normal | Star | Heart  deriving (Generic, ToJSON, FromJSON)
-
 -- Implement an instance for IsDevice
 instance IsDevice ExampleDevice where
   -- Define the device state
-  type DeviceState ExampleDevice = ExampleState
+  data DeviceState ExampleDevice = Normal
+                                 | Star
+                                 | Heart
+    deriving (Generic, ToJSON, FromJSON)
 
   -- List all the possible commands the device should support
   -- DeviceCommand needs to have instances for ToJSON and FromJSON
   data DeviceCommand ExampleDevice = GetRandomNumber
-                                   | SetState ExampleState
+                                   | SetState (DeviceState ExampleDevice)
                                    | GetState
                                    | AlwaysFailing
     deriving (Generic, ToJSON, FromJSON)
@@ -56,17 +56,17 @@ instance IsDevice ExampleDevice where
                           Right command -> case command of
                             GetRandomNumber -> do
                               say "[Example.controller] Getting random number"
-                              send src (mkSuccess (42 :: Integer))
+                              send src (mkSuccess $ encode (42 :: Integer))
                               controller state slave portManager pin
 
                             SetState state' -> do
                               say "[Example.controller] Setting state"
-                              sendWithPid (unSlave slave) (StateChanged $ encodeAndWrap state')
+                              sendStateChanged slave state'
                               controller state' slave portManager pin
 
                             GetState -> do
                               say "[Example.controller] Getting state"
-                              send src (mkSuccess $ encodeAsText state)
+                              send src (mkSuccess $ encode state)
                               controller state slave portManager pin
 
                             AlwaysFailing -> do

@@ -11,20 +11,16 @@ import Control.Exception                    (throw)
 import Data.Maybe                           (fromMaybe)
 import Data.Monoid                          ((<>))
 import Network.HTTP.Client                  (newManager, defaultManagerSettings)
-import Network.Transport                    (EndPointAddress (..), newEndPoint)
 import Network.Transport.TCP                (createTransport, defaultTCPParameters)
-import Network.Wai                          (Application, Middleware)
-import Network.Wai.Handler.Warp             (run)
-import Network.Wai.Middleware.RequestLogger (logStdoutDev)
-import Network.Wai.Middleware.Cors          (CorsResourcePolicy (..), cors, simpleCorsResourcePolicy)
 import Options.Applicative
 import Servant.Client
 --------------------------------------------------------------------------------
 import Raspberry.Hardware
-import Sarah.Middleware.Master
-import Sarah.Middleware.Model
-import Sarah.Middleware.Server
-import Sarah.Middleware.Slave
+import Sarah.Middleware
+--import Sarah.Middleware.Master
+--import Sarah.Middleware.Model
+--import Sarah.Middleware.Server
+--import Sarah.Middleware.Slave
 --------------------------------------------------------------------------------
 import qualified Data.ByteString    as BS
 import qualified Data.Yaml          as Y
@@ -48,11 +44,6 @@ options = Options <$> optional settingsFile
 
 --------------------------------------------------------------------------------
 
-corsPolicy :: Middleware
-corsPolicy = cors (const $ Just policy)
-  where
-    policy = simpleCorsResourcePolicy { corsRequestHeaders = ["Content-Type"] }
-
 go :: Options -> IO ()
 go Options{..} = case nodeRole of
   RoleMaster -> do
@@ -75,20 +66,19 @@ go Options{..} = case nodeRole of
             node      <- newLocalNode transport initRemoteTable
             masterPid <- forkProcess node (runMaster (ClientEnv manager database) (subscribers serverState))
 
-            let config = Config { master     = Master masterPid
+            let config = Config { master     = mkMaster masterPid
                                 , localNode  = node
                                 , runLocally = \p -> liftIO $ do m <- newEmptyMVar
                                                                  runProcess node $ do r <- p
                                                                                       liftIO $ putMVar m r
                                                                  takeMVar m
-                                , backend    = database
+                                , database   = database
                                 , manager    = manager
                                 }
 
             -- Launch a server for communication with clients using websockets
             putStrLn $ "Launching server at " ++ host masterNode ++ ":" ++ show webPort
-            WS.runServer (host masterNode) webPort $ server config serverState
-            --run webPort $ logStdoutDev $ corsPolicy $ app config
+            WS.runServer (host masterNode) webPort $ runServer config serverState
 
 
   RoleSlave -> do

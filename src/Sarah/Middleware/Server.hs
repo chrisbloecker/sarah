@@ -5,8 +5,9 @@
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Server
   ( ConnectionMode (..)
-  , initState, subscribers
-  , server
+  , runServer
+  , initState
+  , subscribers
   )
   where
 --------------------------------------------------------------------------------
@@ -17,10 +18,9 @@ import Control.Monad
 import Data.Aeson                   (ToJSON, FromJSON)
 import Data.Text                    (Text, unpack)
 import GHC.Generics                 (Generic)
-import Network.WebSockets    hiding (Request)
+import Network.WebSockets    hiding (Request, runServer)
 import Sarah.Middleware.Master.Messages
-import Sarah.Middleware.Model       (Config (..), Master, unMaster)
-import Sarah.Middleware.Types       (Query (..), QueryResult, encodeAsText, decodeFromText, mkError, sendWithPid)
+import Sarah.Middleware.Model       (Config (..), Master, unMaster, Query (..), QueryResult, encodeAsText, decodeFromText, mkError, sendWithPid)
 --------------------------------------------------------------------------------
 
 data ConnectionMode = ModeSubscribe
@@ -58,8 +58,8 @@ disconnect ServerState{..} connectionId = do
   atomically $ modifyTVar subscribers (filter ((/= connectionId) . fst))
 
 
-server :: Config -> ServerState -> PendingConnection -> IO ()
-server Config{..} state@ServerState{..} pending = do
+runServer :: Config -> ServerState -> PendingConnection -> IO ()
+runServer Config{..} state@ServerState{..} pending = do
   connection <- acceptRequest pending
 
   -- start a ping thread to "force" the remote side to stay alive

@@ -5,7 +5,6 @@
 module Sarah.Middleware.Master
   ( MasterSettings (..)
   , runMaster
-  , masterName
   ) where
 --------------------------------------------------------------------------------
 import Control.Concurrent.STM           (TVar, atomically, readTVar)
@@ -24,7 +23,6 @@ import Raspberry.Hardware
 import Sarah.Middleware.Distributed     (NodeInfo (..), Status (..))
 import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model           hiding (manager)
-import Sarah.Middleware.Types
 import Sarah.Middleware.Util
 import Servant.Client
 --------------------------------------------------------------------------------
@@ -43,8 +41,6 @@ data State = State { nodes          :: Map ProcessId NodeInfo
                    , nodeNames      :: Map NodeName  ProcessId
                    , backendClient  :: ClientEnv
                    , subscribers    :: TVar [(Integer, Connection)]
---                   , manager        :: Manager
---                   , persistBackend :: BaseUrl
                    }
 
 --------------------------------------------------------------------------------

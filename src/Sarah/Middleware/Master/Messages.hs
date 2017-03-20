@@ -23,7 +23,6 @@ import Network.WebSockets                       (WebSocketsData (..))
 import Sarah.Middleware.Device
 import Sarah.Middleware.Distributed
 import Sarah.Middleware.Model
-import Sarah.Middleware.Types
 import Sarah.Persist.Model
 --------------------------------------------------------------------------------
 
@@ -80,10 +79,10 @@ mkMasterRequest = MasterRequest
 --------------------------------------------------------------------------------
 
 nodeUp :: Master -> ProcessId -> NodeInfo -> Process ()
-nodeUp (Master master) pid nodeInfo = send master (NodeUp pid nodeInfo)
+nodeUp master pid nodeInfo = send (unMaster master) (NodeUp pid nodeInfo)
 
 getStatus :: Master -> ProcessId -> Process ()
-getStatus (Master master) pid = send master (FromPid pid GetStatusRequest)
+getStatus master pid = send (unMaster master) (FromPid pid GetStatusRequest)
 
 sendMaster :: Serializable a => Master -> a -> Process ()
-sendMaster (Master master) = send master
+sendMaster master = send (unMaster master)

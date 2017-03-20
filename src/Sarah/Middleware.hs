@@ -8,33 +8,47 @@ import Sarah.Middleware.Device as Sarah.Middleware
   )
 
 import Sarah.Middleware.Distributed as Sarah.Middleware
-  ( NodeInfo (..), nodeName, nodeDevices
-  , Status (..), connectedNodes
+  ( NodeInfo (..)
+  , nodeName
+  , nodeDevices
+
+  , Status (..)
+  , connectedNodes
+  )
+
+import Sarah.Middleware.Master as Sarah.Middleware
+  ( MasterSettings (..)
+  , runMaster
   )
 
 import Sarah.Middleware.Master.Messages as Sarah.Middleware
   ( IsMasterCommand (..)
   , GetStatus (..)
-  , Request (..), Reply (..)
+  , Request (..)
+  , Reply (..)
   )
 
 import Sarah.Middleware.Model as Sarah.Middleware
-  ( IsDevice (..), mkCommand
-  , runEIO
+  ( Config (..)
+  , IsDevice (..)
+  , mkMaster
+  , DeviceName
+  , NodeName
+  , DeviceAddress (..)
+  , Command (..), mkCommand, getCommand
+  , Query (..)
+  , QueryResult (..), Result (..)
+  , encodeAsText, decodeFromText
   )
 
 import Sarah.Middleware.Server as Sarah.Middleware
   ( ConnectionMode (..)
+  , runServer
+  , initState
+  , subscribers
   )
 
-import Sarah.Middleware.Types as Sarah.Middleware
-  ( DeviceName
-  , NodeName
-  , DeviceAddress (..)
-  , Command (..), getCommand
-  , Query (..)
-  , QueryResult (..), Result (..)
-  , EncodedJSON (..)
-  , encodeAsText, decodeFromText
-  , encodeAndWrap, decodeWrapped
+import Sarah.Middleware.Slave as Sarah.Middleware
+  ( SlaveSettings (..)
+  , runSlave
   )

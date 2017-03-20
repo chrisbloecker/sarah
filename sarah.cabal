@@ -49,7 +49,6 @@ library
                      , Sarah.Middleware.Server
                      , Sarah.Middleware.Slave
                      , Sarah.Middleware.Slave.Messages
-                     , Sarah.Middleware.Types
                      , Sarah.Middleware.Util
                      , Sarah.Persist.Api
                      , Sarah.Persist.Api.Log

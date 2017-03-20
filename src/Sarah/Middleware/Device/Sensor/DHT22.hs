@@ -21,7 +21,6 @@ import GHC.Generics                 (Generic)
 import Physics
 import Raspberry.GPIO
 import Sarah.Middleware.Model
-import Sarah.Middleware.Types
 import Sarah.Middleware.Slave.Messages
 import System.Clock
 --------------------------------------------------------------------------------
@@ -79,10 +78,6 @@ unCDouble (C.CDouble d) = d
 -- DHT22 sensors are connected through a GPIO pin.
 newtype DHT22 = DHT22 Pin deriving (Show)
 
-data DHT22State = DHT22State { readings :: Either Error (Temperature, Humidity)
-                             , readAt   :: TimeSpec
-                             }
-
 data ControllerEnv = ControllerEnv { slave       :: Slave
                                    , portManager :: PortManager
                                    , pin         :: Pin
@@ -96,12 +91,16 @@ initState ControllerEnv{..} = do
     Left dht22Error -> say $ "[DHT22.initState] Error reading sensor: " ++ show dht22Error
     Right _         -> return ()
 
-  return $ DHT22State ereadings readAt
+  return $ DHT22State (SensorState ereadings) readAt
 
+data DHT22State = DHT22State { sensorState :: DeviceState DHT22
+                             , readAt      :: TimeSpec
+                             }
 
 instance IsDevice DHT22 where
   -- The DHT22 does not have a state
-  type DeviceState DHT22 = DHT22State
+  data DeviceState DHT22 = SensorState { readings :: Either Error (Temperature, Humidity) }
+    deriving (Generic, ToJSON, FromJSON)
 
   -- The DHT22 can be used to read the temperature, the humidity, or both
   data DeviceCommand DHT22 = GetReadings
@@ -128,9 +127,9 @@ instance IsDevice DHT22 where
                                 if sec (diffTimeSpec readAt now) < 2
                                   then do
                                     say "[DHT22.controller] Using cached readings"
-                                    case readings of
+                                    case readings sensorState of
                                       Left dht22Error -> send src $ mkError (pack . show $ dht22Error)
-                                      Right readings  -> send src $ mkSuccess (encodeAsText readings)
+                                      Right readings  -> send src $ mkSuccess (encode readings)
                                     controller env state
 
                                   else do
@@ -142,10 +141,12 @@ instance IsDevice DHT22 where
                                         say $ "[DHT22.controller] Error reading sensor: " ++ show dht22Error
                                         send src $ mkError (pack . show $ dht22Error)
                                       Right readings ->
-                                        send src $ mkSuccess (encodeAsText readings)
+                                        send src $ mkSuccess (encode readings)
 
-                                    sendWithPid (unSlave slave) (StateChanged $ encodeAndWrap ereadings)
-                                    controller env state { readings = ereadings, readAt = readingCompleted }
+                                    sendStateChanged slave (SensorState ereadings)
+                                    controller env state { sensorState = SensorState ereadings
+                                                         , readAt      = readingCompleted
+                                                         }
 
                       , matchAny $ \m -> do
                           say $ "[DHT22.controller] Received unexpected message" ++ show m

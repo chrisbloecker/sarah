@@ -29,7 +29,6 @@ import Sarah.Middleware.Model            hiding (master, nodeName)
 import Sarah.Middleware.Model.Interface
 import Sarah.Middleware.Slave.Messages
 import Sarah.Middleware.Util
-import Sarah.Middleware.Types
 import Sarah.Persist.Model
 --------------------------------------------------------------------------------
 import qualified Data.Map.Strict   as M  (fromList, empty, insert, lookup, foldrWithKey)
@@ -89,13 +88,13 @@ runSlave SlaveSettings{..} = do
       liftIO $ threadDelay 100000
     Just master -> do
       self              <- getSelfPid
-      let slave         = Slave self
+      let slave         = mkSlave self
       portManager       <- startPortManager
       deviceControllers <- fmap M.fromList <$> forM devices $ \(DeviceDescription name (Device model)) -> do pid <- startDeviceController model slave portManager
                                                                                                              return (name, pid)
 
       nodeUp master self (NodeInfo nodeName [ (name, toDeviceRep device) | (DeviceDescription name device) <- devices ])
-      linkMaster master
+      link (unMaster master)
 
       let reverseLookup = M.foldrWithKey (\deviceName (DeviceController pid) -> M.insert pid deviceName) M.empty deviceControllers
       loop State{..}

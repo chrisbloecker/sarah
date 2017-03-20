@@ -1,5 +1,12 @@
 module Sarah.Middleware.Util
-  where
+  ( findMaster
+  , masterName
+
+  , milliseconds
+  , seconds
+  , minutes
+  , hours
+  ) where
 --------------------------------------------------------------------------------
 import Control.Monad                              (join)
 import Control.Distributed.Process
@@ -37,10 +44,7 @@ findMaster host port (Timeout timeout) = do
   let remoteNode = NodeId $ encodeEndPointAddress host port 0
   whereisRemoteAsync remoteNode masterName
   mpid <- join <$> receiveTimeout timeout [ match $ \(WhereIsReply _ mpid) -> return mpid ]
-  return $ Master <$> mpid
-
-linkMaster :: Master -> Process ()
-linkMaster (Master master) = link master
+  return $ mkMaster <$> mpid
 
 duplicates :: (Eq a) => [a] -> [a]
 duplicates []     = []

@@ -5,11 +5,13 @@
 module Sarah.Middleware.Device
   ( IsDevice (..)
   , Device (..)
-  , DeviceRep (..), toDeviceRep
-  , DHT22         -- temperature and humidity sensor
-  , ExampleDevice -- the example device
-  , HS110         -- TPLink smart plug
-  , ToshibaAC     -- well, guess...
+  , DeviceRep (..)
+  , toDeviceRep
+
+  , DHT22
+  , ExampleDevice
+  , HS110
+  , ToshibaAC
   ) where
 --------------------------------------------------------------------------------
 import Control.Applicative                  ((<|>))
@@ -18,8 +20,7 @@ import Data.Aeson.Types                     (Parser)
 import Data.Binary                          (Binary)
 import Data.Maybe                           (fromJust)
 import Data.Text                            (Text)
-import Sarah.Middleware.Model               (IsDevice)
-import Sarah.Middleware.Types               (encodeAsText, decodeFromText)
+import Sarah.Middleware.Model               (IsDevice, encodeAsText, decodeFromText)
 --------------------------------------------------------------------------------
 -- The devices
 import Sarah.Middleware.Device.AC.Toshiba   (ToshibaAC)

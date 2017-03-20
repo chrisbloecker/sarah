@@ -22,7 +22,8 @@ data ControllerEnv = ControllerEnv { slave       :: Slave
                                    }
 
 instance IsDevice HS110 where
-  type DeviceState HS110 = ()
+  data DeviceState HS110 = HS110State
+    deriving (Generic, ToJSON, FromJSON)
 
   data DeviceCommand HS110 = SetPower Power
                            | GetPower
