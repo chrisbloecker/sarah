@@ -5,7 +5,7 @@
 module Sarah.Middleware.Device
   ( IsDevice (..)
   , Device (..)
-  , DeviceRep (..)
+  , DeviceRep
   , toDeviceRep
 
   , DHT22
@@ -15,12 +15,15 @@ module Sarah.Middleware.Device
   ) where
 --------------------------------------------------------------------------------
 import Control.Applicative                  ((<|>))
-import Data.Aeson                           (ToJSON (..), FromJSON (..), encode, decode')
+import Data.Aeson                           (ToJSON (..), FromJSON (..), encode, decode', eitherDecode')
 import Data.Aeson.Types                     (Parser)
 import Data.Binary                          (Binary)
+import Data.ByteString.Lazy                 (ByteString, toStrict, fromStrict)
 import Data.Maybe                           (fromJust)
 import Data.Text                            (Text)
-import Sarah.Middleware.Model               (IsDevice, encodeAsText, decodeFromText)
+import Data.Text.Encoding                   (encodeUtf8, decodeUtf8)
+import Network.WebSockets                   (WebSocketsData (..))
+import Sarah.Middleware.Model               (IsDevice (..))
 --------------------------------------------------------------------------------
 -- The devices
 import Sarah.Middleware.Device.AC.Toshiba   (ToshibaAC)
@@ -55,14 +58,13 @@ instance FromJSON Device where
             <|> Device <$> (parseJSON v :: Parser ExampleDevice)
             <|> fail ("Can't parse Device from JSON: " ++ show v)
 
--- We're representing devices using JSON. DeviceReps can be serialised and sent
--- over the network.
+-- Device representations contain a JSON string that is converted to a text, so
+-- we can encode a device representation itself to JSON and send it over websockets.
+-- ToDo: there must be a better, more straigtforward way to do this...
 newtype DeviceRep = DeviceRep { unDeviceRep :: Text } deriving (Show, Binary, ToJSON, FromJSON)
 
 toDeviceRep :: Device -> DeviceRep
-toDeviceRep = DeviceRep . encodeAsText
+toDeviceRep = DeviceRep . decodeUtf8 . toStrict . encode
 
--- This is not supposed to go wrong because DeviceReps *should only* be created
--- from valid Devices, so we will be able to decode them again
 fromDeviceRep :: DeviceRep -> Device
-fromDeviceRep = fromJust . decodeFromText . unDeviceRep
+fromDeviceRep = fromJust . decode' . fromStrict . encodeUtf8 . unDeviceRep

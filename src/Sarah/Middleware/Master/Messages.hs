@@ -11,9 +11,10 @@ module Sarah.Middleware.Master.Messages
 --------------------------------------------------------------------------------
 import Control.Distributed.Process              (Process, ProcessId, send)
 import Control.Distributed.Process.Serializable (Serializable)
-import Data.Aeson                               (ToJSON (..), FromJSON (..), encode, decode)
+import Data.Aeson                               (ToJSON (..), FromJSON (..), encode, decode')
 import Data.Aeson.Types                         (Parser)
 import Data.Binary                              (Binary)
+import Data.ByteString.Lazy                     (ByteString)
 import Data.Constraint
 import Data.Maybe                               (fromJust)
 import Data.Text                                (Text)
@@ -26,31 +27,36 @@ import Sarah.Middleware.Model
 import Sarah.Persist.Model
 --------------------------------------------------------------------------------
 
-class ( Binary (Request command), Generic (Request command), Typeable (Request command), WebSocketsData (Request command), ToJSON (Request command), FromJSON (Request command)
-      , Binary (Reply   command), Generic (Reply   command), Typeable (Reply   command), WebSocketsData (Reply   command), ToJSON (Reply   command), FromJSON (Reply   command)
+class ( Binary (MRequest command), Generic (MRequest command), Typeable (MRequest command), WebSocketsData (MRequest command), ToJSON (MRequest command), FromJSON (MRequest command)
+      , Binary (MReply   command), Generic (MReply   command), Typeable (MReply   command), WebSocketsData (MReply   command), ToJSON (MReply   command), FromJSON (MReply   command)
       ) => IsMasterCommand command where
-  data Request command :: *
-  data Reply   command :: *
+  data MRequest command :: *
+  data MReply   command :: *
 
 data GetStatus
 
 instance IsMasterCommand GetStatus where
-  data Request GetStatus = GetStatusRequest         deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
-  data Reply   GetStatus = GetStatusReply   Status  deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+  data MRequest GetStatus = GetStatusRequest         deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+  data MReply   GetStatus = GetStatusReply   Status  deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
 
-instance WebSocketsData (Request GetStatus) where
+instance WebSocketsData (MRequest GetStatus) where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode
+  fromLazyByteString = fromJust . decode'
 
-instance WebSocketsData (Reply GetStatus) where
+instance WebSocketsData (MReply GetStatus) where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode
+  fromLazyByteString = fromJust . decode'
 
 
---data GetStatus          = GetStatus ProcessId                          deriving (Binary, Generic, Typeable)
-data Log                = Log Text Text LogLevel                       deriving (Binary, Generic, Typeable)
-data NodeUp             = NodeUp ProcessId NodeInfo                    deriving (Binary, Generic, Typeable)
-data DeviceStateChanged = DeviceStateChanged DeviceAddress EncodedJSON deriving (Binary, Generic, Typeable)
+data Log = Log Text Text LogLevel
+  deriving (Binary, Generic, Typeable)
+
+data NodeUp = NodeUp ProcessId NodeInfo
+  deriving (Binary, Generic, Typeable)
+
+data DeviceStateChanged = DeviceStateChanged DeviceAddress EncodedDeviceState
+  deriving (Binary, Generic, Typeable)
+
 -- ToDo: how to sore sensor readings in general? There could be "fuzzy sensors"
 --       that don't return numerical readings, but something weird
 data SensorReading = SensorReading Room Sensor Double deriving (Binary, Generic, Typeable)
@@ -60,20 +66,19 @@ deriving instance Binary Sensor
 deriving instance Binary LogLevel
 
 data MasterRequest = forall command. (IsMasterCommand command)
-                   => MasterRequest (Request command)
+                   => MasterRequest (MRequest command)
 
 instance ToJSON MasterRequest where
   toJSON (MasterRequest request) = toJSON request
 
 instance FromJSON MasterRequest where
-  parseJSON v = MasterRequest <$> (parseJSON v :: Parser (Request GetStatus))
-
+  parseJSON v = MasterRequest <$> (parseJSON v :: Parser (MRequest GetStatus))
 
 instance WebSocketsData MasterRequest where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode
+  fromLazyByteString = fromJust . decode'
 
-mkMasterRequest :: IsMasterCommand command => Request command -> MasterRequest
+mkMasterRequest :: IsMasterCommand command => MRequest command -> MasterRequest
 mkMasterRequest = MasterRequest
 
 --------------------------------------------------------------------------------

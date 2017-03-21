@@ -1,4 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Model
   where
@@ -18,7 +19,7 @@ import Sarah.Middleware
 -- ToDo: Tidings?
 -- ToDo: wrap this into some type that represents device events? Maybe together
 --       with a device representation, so we can deserialise it properly?
-type RemoteEvent = (Event Text, Handler Text)
+type RemoteEvent = (Event EncodedDeviceState, Handler EncodedDeviceState)
 
 data AppEnv = AppEnv { remoteEvents :: TVar (HashMap DeviceAddress RemoteEvent)
                      , counter      :: TVar Integer
@@ -55,30 +56,6 @@ class IsDevice model => HasRemote model where
   --  - A DeviceAddress, so we know where the device is. Potentially, there can be
   --    many devices of the same kind available, even at the same node.
   buildRemote :: model -> RemoteBuilder Element
-
--- construct a command, build a query, and send it
-{-
-sendCommand :: AppEnv -> DeviceAddress -> Command -> IO (Maybe QueryResult)
-sendCommand AppEnv{..} deviceAddress command = do
-  let query = Query deviceAddress command
-  mres <- runClientM (runDeviceCommand query) clientEnv
-  case mres of
-    Left  err -> putStrLn ("[sendCommand] " ++ show err) >> return Nothing
-    Right res -> return (Just res)
--}
-
-handleResponse :: (ToJSON a, FromJSON a) => String -> Maybe QueryResult -> ErrorHandler -> SuccessHandler a -> IO ()
-handleResponse handlerName response errorHandler successHandler = case response of
-  Nothing -> liftIO $ putStrLn $ handlerName ++ " No response"
-  Just (QueryResult result) -> case result of
-    Error message -> do
-      putStrLn (handlerName ++ " Error: " ++ unpack message)
-      errorHandler
-    Success result -> case decodeWrapped result of
-      Nothing -> putStrLn $ handlerName ++ " Error decoding result: " ++ show result
-      Just result -> do
-        putStrLn $ handlerName ++ " Success"
-        successHandler result
 
 doNothing :: IO ()
 doNothing = return ()

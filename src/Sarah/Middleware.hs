@@ -24,21 +24,32 @@ import Sarah.Middleware.Master as Sarah.Middleware
 import Sarah.Middleware.Master.Messages as Sarah.Middleware
   ( IsMasterCommand (..)
   , GetStatus (..)
-  , Request (..)
-  , Reply (..)
+  , MRequest (..)
+  , MReply (..)
   )
 
 import Sarah.Middleware.Model as Sarah.Middleware
   ( Config (..)
   , IsDevice (..)
   , mkMaster
+  , mkSlave
+
   , DeviceName
   , NodeName
   , DeviceAddress (..)
-  , Command (..), mkCommand, getCommand
+
+  , Command
+  , mkCommand
+  , getCommand
+
   , Query (..)
-  , QueryResult (..), Result (..)
-  , encodeAsText, decodeFromText
+  , mkQuery
+
+  , QueryResult (..)
+
+  , MiddlewareEvent (..)
+
+  , EncodedDeviceState
   )
 
 import Sarah.Middleware.Server as Sarah.Middleware

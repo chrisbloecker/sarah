@@ -1,8 +1,11 @@
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE DeriveAnyClass        #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TypeFamilies          #-}
 -- This module defines an example device and shows what needs to be done in order
 -- to implement a new device.
 -- The Language extensions DeriveAnyClass and DeriveGeneric are required for deriving JSON instances.
@@ -13,17 +16,81 @@ module Sarah.Middleware.Device.Example
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Data.Aeson                      (ToJSON (..), FromJSON (..), encode)
+import Data.Aeson                      (ToJSON (..), FromJSON (..), encode, decode')
 import Data.Aeson.Types                (Parser, Value (..), (.=), (.:), object, withObject)
+import Data.Binary                     (Binary)
+import Data.Maybe                      (fromJust)
 import Data.Text                       (Text, unpack)
 import GHC.Generics                    (Generic)
+import Network.WebSockets              (WebSocketsData (..))
 import Raspberry.GPIO
 import Sarah.Middleware.Slave.Messages
-import Sarah.Middleware.Model          (DeviceController (..), IsDevice (..), PortManager (..), Slave (..), FromPid (..), Query (..), getCommand, mkSuccess, mkError, sendWithPid, encodeAsText)
+import Sarah.Middleware.Model
 --------------------------------------------------------------------------------
 
 -- Define the device, let's say it uses a GPIO pin.
 newtype ExampleDevice = ExampleDevice Pin deriving (Show)
+
+
+data GetRandomNumber
+
+instance RequestReplyPair ExampleDevice GetRandomNumber where
+  data Request ExampleDevice GetRandomNumber = GetRandomNumberReq         deriving (Generic, Binary, ToJSON, FromJSON)
+  data Reply   ExampleDevice GetRandomNumber = GetRandomNumberRep Integer deriving (Generic, Binary, ToJSON, FromJSON)
+
+instance WebSocketsData (Request ExampleDevice GetRandomNumber) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
+instance WebSocketsData (Reply ExampleDevice GetRandomNumber) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
+
+data SetState
+
+instance RequestReplyPair ExampleDevice SetState where
+  data Request ExampleDevice SetState = SetStateReq (DeviceState ExampleDevice) deriving (Generic, Binary, ToJSON, FromJSON)
+  data Reply   ExampleDevice SetState = SetStateRep                             deriving (Generic, Binary, ToJSON, FromJSON)
+
+instance WebSocketsData (Request ExampleDevice SetState) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
+instance WebSocketsData (Reply ExampleDevice SetState) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
+
+data GetState
+
+instance RequestReplyPair ExampleDevice GetState where
+  data Request ExampleDevice GetState = GetStateReq                             deriving (Generic, Binary, ToJSON, FromJSON)
+  data Reply   ExampleDevice GetState = GetStateRep (DeviceState ExampleDevice) deriving (Generic, Binary, ToJSON, FromJSON)
+
+instance WebSocketsData (Request ExampleDevice GetState) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
+instance WebSocketsData (Reply ExampleDevice GetState) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
+
+data AlwaysFailing
+
+instance RequestReplyPair ExampleDevice AlwaysFailing where
+  data Request ExampleDevice AlwaysFailing = AlwaysFailingReq deriving (Generic, Binary, ToJSON, FromJSON)
+  data Reply   ExampleDevice AlwaysFailing = AlwaysFailingRep deriving (Generic, Binary, ToJSON, FromJSON)
+
+instance WebSocketsData (Request ExampleDevice AlwaysFailing) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
+instance WebSocketsData (Reply ExampleDevice AlwaysFailing) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
 
 -- Implement an instance for IsDevice
 instance IsDevice ExampleDevice where
@@ -31,10 +98,11 @@ instance IsDevice ExampleDevice where
   data DeviceState ExampleDevice = Normal
                                  | Star
                                  | Heart
-    deriving (Generic, ToJSON, FromJSON)
+    deriving (Generic, Binary, ToJSON, FromJSON)
 
   -- List all the possible commands the device should support
   -- DeviceCommand needs to have instances for ToJSON and FromJSON
+
   data DeviceCommand ExampleDevice = GetRandomNumber
                                    | SetState (DeviceState ExampleDevice)
                                    | GetState
@@ -51,12 +119,12 @@ instance IsDevice ExampleDevice where
         -- the controller listens for requests and replies to them
         controller :: DeviceState ExampleDevice -> Slave -> PortManager -> Pin -> Process ()
         controller state slave portManager pin =
-          receiveWait [ match $ \(FromPid src Query{..}) -> case getCommand queryCommand of
+          receiveWait [ {-match $ \(FromPid src (query :: Query)) -> case getCommand (queryCommand query) of
                           Left err -> say $ "[ExampleDevice.controller] Can't decode command: " ++ err
                           Right command -> case command of
                             GetRandomNumber -> do
                               say "[Example.controller] Getting random number"
-                              send src (mkSuccess $ encode (42 :: Integer))
+                              send src (mkSuccess (42 :: Integer))
                               controller state slave portManager pin
 
                             SetState state' -> do
@@ -66,13 +134,30 @@ instance IsDevice ExampleDevice where
 
                             GetState -> do
                               say "[Example.controller] Getting state"
-                              send src (mkSuccess $ encode state)
+                              send src (mkSuccess state)
                               controller state slave portManager pin
 
                             AlwaysFailing -> do
                               say "[Example.controller] This action always fails"
                               send src (mkError "This command always fails")
                               controller state slave portManager pin
+-}
+                        match $ \(FromPid src GetRandomNumberReq) -> do
+                          send src (GetRandomNumberRep 42)
+                          controller state slave portManager pin
+
+                      , match $ \(FromPid src (SetStateReq state')) -> do
+                          sendStateChanged slave state'
+                          controller state' slave portManager pin
+
+                      , match $ \(FromPid src GetStateReq) -> do
+                          send src (GetStateRep state)
+                          controller state slave portManager pin
+
+                      , match $ \(FromPid src AlwaysFailingReq) -> do
+                          send src AlwaysFailingRep
+                          controller state slave portManager pin
+
                       , matchAny $ \m -> do
                           say $ "[ExampleDevice.controller] Received unexpected message: " ++ show m
                           controller state slave portManager pin

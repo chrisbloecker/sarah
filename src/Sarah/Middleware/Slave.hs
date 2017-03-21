@@ -4,6 +4,7 @@
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RankNTypes            #-}
 {-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TemplateHaskell       #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Slave
@@ -101,15 +102,15 @@ runSlave SlaveSettings{..} = do
 
 loop :: State -> Process ()
 loop state@State{..} =
-  receiveWait [ match $ \(FromPid src query@Query{..}) -> do
+  receiveWait [ match $ \(FromPid src (query :: Query)) -> do
                   -- ToDo: should we check if the query was intended for this node?
-                  let deviceName' = deviceName queryTarget
+                  let deviceName' = deviceName (queryTarget query)
                   case M.lookup deviceName' deviceControllers of
                     Nothing                      -> say $ "[slave] Unknown device: " ++ unpack deviceName'
                     Just (DeviceController dest) -> void $ spawnLocal $ do
                       sendWithPid dest query
-                      receiveWait [ match    $ \result@QueryResult{..} -> send src result
-                                  , matchAny $ \m                      -> say $ "[slave] Unexpected message: " ++ show m
+                      receiveWait [ match    $ \(result :: QueryResult) -> send src result
+                                  , matchAny $ \m                       -> say $ "[slave] Unexpected message: " ++ show m
                                   ]
                   loop state
 

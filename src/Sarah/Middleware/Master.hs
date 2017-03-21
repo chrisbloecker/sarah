@@ -1,6 +1,7 @@
-{-# LANGUAGE DeriveAnyClass  #-}
-{-# LANGUAGE DeriveGeneric   #-}
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Master
   ( MasterSettings (..)
@@ -64,17 +65,17 @@ loop state@State{..} =
                   send pid (GetStatusReply $ Status (elems nodes))
                   loop state
 
-              , match $ \(FromPid src query@Query{..}) -> do
+              , match $ \(FromPid src (query :: Query)) -> do
                   say "[master] Received Query"
-                  let nodeName = deviceNode queryTarget
+                  let nodeName = deviceNode (queryTarget query)
                   case M.lookup nodeName nodeNames of
                     Nothing   -> say $ "[master] Unknown node name " ++ unpack nodeName
                     -- ToDo: is it safe to spawn a process and continue there?
                     --       could some data change or a process die?
                     Just dest -> void $ spawnLocal $ do
                       sendWithPid dest query
-                      receiveWait [ match    $ \result@QueryResult{..} -> send src result
-                                  , matchAny $ \m                      -> say $ "[master] Unexpected message: " ++ show m
+                      receiveWait [ match    $ \(result :: QueryResult) -> send src result
+                                  , matchAny $ \m                       -> say $ "[master] Unexpected message: " ++ show m
                                   ]
                   loop state
 
@@ -87,7 +88,7 @@ loop state@State{..} =
                     liftIO $ do
                       connections <- atomically $ readTVar subscribers
                       forM_ connections $ \(_, connection) ->
-                        sendTextData connection $ encodeAsText (deviceAddress, encodedState)
+                        sendTextData connection $ StateChangeEvent deviceAddress encodedState
                   loop state
 
               , match $ \(Log nodeName message logLevel) -> do

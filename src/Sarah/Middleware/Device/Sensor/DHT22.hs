@@ -1,12 +1,13 @@
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE LambdaCase        #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
-{-# LANGUAGE QuasiQuotes       #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE QuasiQuotes         #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeFamilies        #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device.Sensor.DHT22
   where
@@ -114,8 +115,8 @@ instance IsDevice DHT22 where
       where
         controller :: ControllerEnv -> DHT22State -> Process ()
         controller env@ControllerEnv{..} state@DHT22State{..} =
-          receiveWait [ match $ \(FromPid src Query{..}) ->
-                          case (getCommand queryCommand :: Either String (DeviceCommand DHT22)) of
+          receiveWait [ match $ \(FromPid src (query :: Query)) ->
+                          case (getCommand (queryCommand query) :: Either String (DeviceCommand DHT22)) of
                             Left err -> say $ "[DHT22.controller] Can't decode command: " ++ err
                             Right command -> case command of
                               GetReadings -> do
@@ -129,7 +130,7 @@ instance IsDevice DHT22 where
                                     say "[DHT22.controller] Using cached readings"
                                     case readings sensorState of
                                       Left dht22Error -> send src $ mkError (pack . show $ dht22Error)
-                                      Right readings  -> send src $ mkSuccess (encode readings)
+                                      Right readings  -> send src $ mkSuccess readings
                                     controller env state
 
                                   else do
@@ -141,7 +142,7 @@ instance IsDevice DHT22 where
                                         say $ "[DHT22.controller] Error reading sensor: " ++ show dht22Error
                                         send src $ mkError (pack . show $ dht22Error)
                                       Right readings ->
-                                        send src $ mkSuccess (encode readings)
+                                        send src $ mkSuccess readings
 
                                     sendStateChanged slave (SensorState ereadings)
                                     controller env state { sensorState = SensorState ereadings

@@ -14,9 +14,9 @@ import GHC.Generics                             (Generic)
 import Sarah.Middleware.Model
 --------------------------------------------------------------------------------
 
-data GetStatus    = GetStatus               deriving (Binary, Generic, Typeable)
-data Terminate    = Terminate               deriving (Binary, Generic, Typeable)
-data StateChanged = StateChanged ByteString deriving (Binary, Generic, Typeable)
+data GetStatus    = GetStatus                       deriving (Binary, Generic, Typeable)
+data Terminate    = Terminate                       deriving (Binary, Generic, Typeable)
+data StateChanged = StateChanged EncodedDeviceState deriving (Binary, Generic, Typeable)
 
 --------------------------------------------------------------------------------
 
@@ -27,4 +27,4 @@ sendSlave :: Serializable a => Slave -> a -> Process ()
 sendSlave slave = send (unSlave slave)
 
 sendStateChanged :: (IsDevice model) => Slave -> DeviceState model -> Process ()
-sendStateChanged slave state = sendWithPid (unSlave slave) (StateChanged $ encode state)
+sendStateChanged slave state = sendWithPid (unSlave slave) (encodeDeviceState state)

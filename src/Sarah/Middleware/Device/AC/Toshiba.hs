@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE QuasiQuotes       #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeFamilies      #-}
 --------------------------------------------------------------------------------
@@ -21,7 +22,7 @@ import GHC.Generics                (Generic)
 import Physics
 import Raspberry.GPIO
 import Sarah.Middleware.Slave.Messages
-import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..), Slave (..), FromPid (..), Query (..), getCommand, mkSuccess, encodeAsText, sendWithPid)
+import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..), Slave (..), FromPid (..), Query (..), getCommand, mkSuccess, sendWithPid)
 --------------------------------------------------------------------------------
 import qualified Data.ByteString   as BS
 import qualified Language.C.Inline as C
@@ -268,18 +269,18 @@ instance IsDevice ToshibaAC where
       where
         controller :: ControllerEnv -> DeviceState ToshibaAC -> Process ()
         controller env@ControllerEnv{..} config@Config{..} =
-          receiveWait [ match $ \(FromPid src Query{..}) -> case getCommand queryCommand of
+          receiveWait [ match $ \(FromPid src (query :: Query)) -> case getCommand (queryCommand query) of
                           Left err -> say $ "[ToshibaAC.controller] Can't decode command: " ++ err
                           Right command -> case command of
                             Read reading -> case reading of
                               GetConfig -> do
-                                send src (mkSuccess $ encode config)
+                                send src (mkSuccess config)
                                 controller env config
 
                             Write writing -> do
                               let config' = case writing of
                                               PowerOn          -> defaultConfig
-                                              PowerOff         -> config { mode        = ModeOff }
+                                              PowerOff         -> config { mode = ModeOff }
                                               UpTemperature    -> if temperature >= toTemperature maxBound
                                                                     then config
                                                                     else config { temperature = Temperature $ getTemperature temperature + 1 }

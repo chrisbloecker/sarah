@@ -15,12 +15,14 @@ import Control.Exception
 import Control.Concurrent.STM
 import Control.Distributed.Process  (Process, expect)
 import Control.Monad
-import Data.Aeson                   (ToJSON, FromJSON)
+import Data.Aeson                   (ToJSON, FromJSON, encode, decode')
+import Data.Maybe                   (fromJust)
 import Data.Text                    (Text, unpack)
 import GHC.Generics                 (Generic)
 import Network.WebSockets    hiding (Request, runServer)
 import Sarah.Middleware.Master.Messages
-import Sarah.Middleware.Model       (Config (..), Master, unMaster, Query (..), QueryResult, encodeAsText, decodeFromText, mkError, sendWithPid)
+import Sarah.Middleware.Model
+--------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 data ConnectionMode = ModeSubscribe
@@ -28,6 +30,10 @@ data ConnectionMode = ModeSubscribe
                     | ModeMaster
   deriving (Generic, ToJSON, FromJSON)
 
+instance WebSocketsData ConnectionMode where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+{-
 instance WebSocketsData ConnectionMode where
   toLazyByteString ModeSubscribe = "ModeSubscribe"
   toLazyByteString ModeCommand   = "ModeCommand"
@@ -37,7 +43,7 @@ instance WebSocketsData ConnectionMode where
   fromLazyByteString "ModeCommand"   = ModeCommand
   fromLazyByteString "ModeMaster"    = ModeMaster
   fromLazyByteString unknown         = error $ "Unknown mode: " ++ show unknown
-
+-}
 
 data ServerState = ServerState { subscribers :: TVar [(Integer, Connection)]
                                , nextId      :: TVar Integer
@@ -85,28 +91,19 @@ runServer Config{..} state@ServerState{..} pending = do
     -- run the server in command mode, i.e. receive exactly one command
     -- and reply with exactly one response
     ModeCommand -> do
-      encoded <- receiveData connection
-      case decodeFromText encoded of
-        Nothing -> do
-          putStrLn $ "[server] Error decoding command: " ++ show encoded
-          sendTextData connection (encodeAsText $ mkError "Couldn't decode command")
-
-        Just query@Query{..} -> do
-          response <- runLocally $ do
-                        sendWithPid (unMaster master) query
-                        expect :: Process QueryResult
-          sendTextData connection (encodeAsText response)
+      query <- receiveData connection :: IO Query
+      response <- runLocally $ do
+                    sendWithPid (unMaster master) query
+                    expect :: Process QueryResult
+      sendTextData connection response
 
     -- run the server in master mode, i.e. receive exactly one command and
     -- forward it to the master
     ModeMaster -> do
-      putStrLn "Running in ModeMaster"
       MasterRequest request <- receiveData connection
-      putStrLn "Sending request to master"
       reply <- serverMaster master request
-      putStrLn "Sending reply to gui"
       sendBinaryData connection reply
 
   where
-    serverMaster :: (IsMasterCommand command) => Master -> Request command -> IO (Reply command)
+    serverMaster :: (IsMasterCommand command) => Master -> MRequest command -> IO (MReply command)
     serverMaster master request = runLocally $ sendWithPid (unMaster master) request >> expect
