@@ -35,8 +35,7 @@ type SuccessHandler a = a -> IO ()
 
 data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , deviceAddress      :: DeviceAddress
-                                         , eventStateChanged  :: Event Text
-                                         , notifyStateChanged :: Handler Text
+                                         , eventStateChanged  :: Event EncodedDeviceState
                                          , remoteRunnerEnv    :: RemoteRunnerEnv
                                          }
 

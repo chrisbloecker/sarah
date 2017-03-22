@@ -13,6 +13,7 @@ module Sarah.Middleware.Device.AC.Toshiba
 import Control.Distributed.Process
 import Data.Aeson                  (ToJSON (..), FromJSON (..), (.=), (.:), encode)
 import Data.Aeson.Types            (Parser, Value (..), typeMismatch, object, withObject)
+import Data.Binary                 (Binary)
 import Data.Bits                   (Bits, testBit, xor, zeroBits)
 import Data.ByteString             (ByteString)
 import Data.Monoid                 ((<>))
@@ -22,7 +23,7 @@ import GHC.Generics                (Generic)
 import Physics
 import Raspberry.GPIO
 import Sarah.Middleware.Slave.Messages
-import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..), Slave (..), FromPid (..), Query (..), getCommand, mkSuccess, sendWithPid)
+import Sarah.Middleware.Model      (IsDevice (..), PortManager, DeviceController (..), Slave (..), FromPid (..), Query (..), getCommand, sendWithPid, mkQueryResult)
 --------------------------------------------------------------------------------
 import qualified Data.ByteString   as BS
 import qualified Language.C.Inline as C
@@ -257,8 +258,12 @@ instance IsDevice ToshibaAC where
     deriving (Generic, ToJSON, FromJSON)
 
 
-  data DeviceCommand ToshibaAC = Read  Reading
+  data DeviceRequest ToshibaAC = Read  Reading
                                | Write Writing
+    deriving (Generic, ToJSON, FromJSON)
+
+  data DeviceReply ToshibaAC = DeviceState (DeviceState ToshibaAC)
+                             | Empty
     deriving (Generic, ToJSON, FromJSON)
 
   startDeviceController (ToshibaAC pin) slave portManager = do
@@ -274,7 +279,7 @@ instance IsDevice ToshibaAC where
                           Right command -> case command of
                             Read reading -> case reading of
                               GetConfig -> do
-                                send src (mkSuccess config)
+                                send src (mkQueryResult $ DeviceState config)
                                 controller env config
 
                             Write writing -> do

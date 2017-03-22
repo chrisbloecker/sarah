@@ -15,7 +15,6 @@ module Sarah.Middleware.Model
   , mkSlave
 
   , IsDevice (..)
-  , RequestReplyPair (..)
 
   , NodeName
   , DeviceName
@@ -26,20 +25,21 @@ module Sarah.Middleware.Model
 
   , Query (queryTarget, queryCommand)
   , mkQuery
-  , QueryResult (unQueryResult)
+
+  , QueryResult
+  , mkQueryResult
+  , getQueryResult
 
   , Command
   , mkCommand
   , getCommand
-
-  , mkSuccess
-  , mkError
 
   , PortManager (..)
   , DeviceController (..)
 
   , EncodedDeviceState
   , encodeDeviceState
+  , decodeDeviceState
   , eitherDecodeDeviceState
 
   , MiddlewareEvent (..)
@@ -92,30 +92,19 @@ newtype DeviceController = DeviceController { unDeviceController :: ProcessId }
 -- ToDo: do we still need DeviceCommand in here or is it enough to use the RequestReplyPairs?
 class ( ToJSON model, FromJSON model
       , ToJSON (DeviceState model), FromJSON (DeviceState model)
-      , ToJSON (DeviceCommand model), FromJSON (DeviceCommand model)
+      , ToJSON (DeviceRequest model), FromJSON (DeviceRequest model)
+      , ToJSON (DeviceReply   model), FromJSON (DeviceReply   model)
       ) => IsDevice (model :: *) where
   -- the state of a device
   data family DeviceState model :: *
 
   -- the commands a device understands
-  data family DeviceCommand model :: *
+  data family DeviceRequest model :: *
+
+  data family DeviceReply   model :: *
 
   -- a device controller runs a process for a device, takes commands and executes them
   startDeviceController :: model -> Slave -> PortManager -> Process DeviceController
-
--- Request-reply-pairs are used to describe requests to devices and their expected replies.
--- In a sense, we're tying those two together. Request-reply-pairs need to have instances
--- for Binary, so we can send them through Cloud Haskell, and WebSocketsData, so we can
--- send them over websockets. For the WebSocketsData, we're abusing ToJSOn and FromJSON instances.
--- ToDo: how can we enforce that only the intended request-reply-pairs are used?
--- ToDo: how would we go about replies that can be generated "out of nothing",
---       i.e. without a request that "generates" them?
-class ( IsDevice model
-      , Binary (Request model t), ToJSON (Request model t), FromJSON (Request model t), WebSocketsData (Request model t)
-      , Binary (Reply   model t), ToJSON (Reply   model t), FromJSON (Reply   model t), WebSocketsData (Reply   model t)
-      ) => RequestReplyPair model t where
-  data family Request model t :: *
-  data family Reply   model t :: *
 
 -- Device states can be serialised and sent over the network. However, without
 -- knowledge of the concrete device model at hand, the state can not be interpretet.
@@ -124,12 +113,11 @@ newtype EncodedDeviceState = EncodedDeviceState { getState :: Text } deriving (G
 encodeDeviceState :: IsDevice model => DeviceState model -> EncodedDeviceState
 encodeDeviceState = EncodedDeviceState . decodeUtf8 . LBS.toStrict . encode
 
+decodeDeviceState :: IsDevice model => EncodedDeviceState -> Maybe (DeviceState model)
+decodeDeviceState = decode' . LBS.fromStrict . encodeUtf8 . getState
+
 eitherDecodeDeviceState :: IsDevice model => EncodedDeviceState -> Either String (DeviceState model)
 eitherDecodeDeviceState = eitherDecode' . LBS.fromStrict . encodeUtf8 . getState
-
-instance WebSocketsData EncodedDeviceState where
-  toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
 
 --------------------------------------------------------------------------------
 
@@ -160,11 +148,11 @@ sendWithPid to message = getSelfPid >>= \self -> send to (FromPid self message)
 -- for a different device type, it should just be ignored.
 newtype Command = Command { unCommand :: Text } deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
 
-mkCommand :: IsDevice model => DeviceCommand model -> Command
+mkCommand :: IsDevice model => DeviceRequest model -> Command
 mkCommand = Command . decodeUtf8 . LBS.toStrict . encode
 
 -- Turn the representation of a command into an actual command for a specific device.
-getCommand :: IsDevice model => Command -> Either String (DeviceCommand model)
+getCommand :: IsDevice model => Command -> Either String (DeviceRequest model)
 getCommand = eitherDecode' . LBS.fromStrict . encodeUtf8 . unCommand
 
 
@@ -177,24 +165,24 @@ data Query = Query { queryTarget  :: DeviceAddress
 
 instance WebSocketsData Query where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = fromJust. decode'
 
-mkQuery :: IsDevice model => DeviceAddress -> DeviceCommand model -> Query
+mkQuery :: IsDevice model => DeviceAddress -> DeviceRequest model -> Query
 mkQuery deviceAddress command = Query deviceAddress (mkCommand command)
 
 
-newtype QueryResult = QueryResult { unQueryResult :: Either Text Text } deriving (Generic, Binary, Typeable, ToJSON, FromJSON)
+newtype QueryResult = QueryResult { unQueryResult :: Text } deriving (Generic, Binary, Typeable, ToJSON, FromJSON)
 
 instance WebSocketsData QueryResult where
   toLazyByteString = encode
   fromLazyByteString = fromJust . decode'
 
+mkQueryResult :: IsDevice model => DeviceReply model -> QueryResult
+mkQueryResult = QueryResult . decodeUtf8 . LBS.toStrict . encode
 
-mkError :: Text -> QueryResult
-mkError = QueryResult . Left
+getQueryResult :: IsDevice model => QueryResult -> Either String (DeviceReply model)
+getQueryResult = eitherDecode' . LBS.fromStrict . encodeUtf8 . unQueryResult
 
-mkSuccess :: (ToJSON a, FromJSON a) => a -> QueryResult
-mkSuccess = QueryResult . Right . decodeUtf8 . LBS.toStrict . encode
 
 --------------------------------------------------------------------------------
 

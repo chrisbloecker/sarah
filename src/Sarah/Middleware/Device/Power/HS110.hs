@@ -25,8 +25,11 @@ instance IsDevice HS110 where
   data DeviceState HS110 = HS110State
     deriving (Generic, ToJSON, FromJSON)
 
-  data DeviceCommand HS110 = SetPower Power
+  data DeviceRequest HS110 = SetPower Power
                            | GetPower
+    deriving (Generic, ToJSON, FromJSON)
+
+  data DeviceReply HS110 = Empty
     deriving (Generic, ToJSON, FromJSON)
 
   startDeviceController (HS110 webAddress) slave portManager = do

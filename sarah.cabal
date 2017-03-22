@@ -36,6 +36,7 @@ library
                      , Sarah.GUI.Websocket
                      , Sarah.GUI.Widgets
                      , Sarah.Middleware
+                     , Sarah.Middleware.Api
                      , Sarah.Middleware.Device
                      , Sarah.Middleware.Distributed
                      , Sarah.Middleware.Device.AC.Toshiba
@@ -47,6 +48,7 @@ library
                      , Sarah.Middleware.Model
                      , Sarah.Middleware.Model.Interface
                      , Sarah.Middleware.Server
+                     , Sarah.Middleware.Servant
                      , Sarah.Middleware.Slave
                      , Sarah.Middleware.Slave.Messages
                      , Sarah.Middleware.Util
@@ -71,8 +73,9 @@ library
                      , binary
                      , bytestring
                      , clock
-                     , containers
                      , constraints
+                     , containers
+                     , contravariant
                      , distributed-process
                      , distributed-process-extras
                      , either

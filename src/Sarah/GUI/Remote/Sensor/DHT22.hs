@@ -7,6 +7,7 @@ module Sarah.GUI.Remote.Sensor.DHT22
 import Control.Concurrent             (forkIO, threadDelay)
 import Control.Monad                  (forever)
 import Control.Monad.Reader           (runReaderT, lift, ask)
+import Data.Foldable                  (traverse_)
 import Data.Text                      (Text)
 import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny  hiding (map)
@@ -15,7 +16,7 @@ import Physics
 import Sarah.GUI.Model
 import Sarah.GUI.Widgets
 import Sarah.GUI.Websocket            (withResponse)
-import Sarah.Middleware               (mkCommand, decodeFromText)
+import Sarah.Middleware               (DeviceState, EncodedDeviceState, decodeDeviceState, mkCommand)
 import Sarah.Middleware.Device        (DHT22)
 --------------------------------------------------------------------------------
 import qualified Graphics.UI.Bootstrap.Glyphicon      as Glyph
@@ -42,19 +43,17 @@ instance HasRemote DHT22 where
       getTemperatureButton <- bootstrapButton buttonClass (Glyphicon "fa fa-thermometer-full")
       getHumidityButton    <- bootstrapButton buttonClass Glyph.tint
 
-      let eventStateChangedHandler :: Handler Text
-          eventStateChangedHandler encodedState = case decodeFromText encodedState of
-            Nothing -> putStrLn "[DHT22.eventStateChangedHandler] Error decoding state"
-            Just state -> case state of
-              Left (_ :: DHT22.Error) -> putStrLn "[DHT22.eventStateChangedHandler] An error occured when obtaining the readings"
-              Right (Temperature t, Humidity h) -> handlerReadings (show t, show h)
+      let eventStateChangedHandler :: Handler (DeviceState DHT22)
+          eventStateChangedHandler DHT22.SensorState{..} = case readings of
+            Left (_ :: DHT22.Error) -> putStrLn "[DHT22.eventStateChangedHandler] An error occured when obtaining the readings"
+            Right (Temperature t, Humidity h) -> handlerReadings (show t, show h)
 
-      unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
+      unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
-      on click getTemperatureButton $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadings doNothing eventStateChangedHandler
-      on click getHumidityButton    $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadings doNothing eventStateChangedHandler
+      on click getTemperatureButton $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadingsRequest doNothing (\(DHT22.GetReadingsReply state) -> eventStateChangedHandler state)
+      on click getHumidityButton    $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadingsRequest doNothing (\(DHT22.GetReadingsReply state) -> eventStateChangedHandler state)
 
-      liftIO $ flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadings doNothing eventStateChangedHandler
+      liftIO $ flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadingsRequest doNothing (\(DHT22.GetReadingsReply state) -> eventStateChangedHandler state)
 
       div #+ [ p # set class_ "text-center"
                  #+ [ string "Temperature: ", element temperatureDisplay, element getTemperatureButton ]

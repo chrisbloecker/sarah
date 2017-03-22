@@ -99,12 +99,13 @@ data DHT22State = DHT22State { sensorState :: DeviceState DHT22
                              }
 
 instance IsDevice DHT22 where
-  -- The DHT22 does not have a state
   data DeviceState DHT22 = SensorState { readings :: Either Error (Temperature, Humidity) }
     deriving (Generic, ToJSON, FromJSON)
 
-  -- The DHT22 can be used to read the temperature, the humidity, or both
-  data DeviceCommand DHT22 = GetReadings
+  data DeviceRequest DHT22 = GetReadingsRequest
+    deriving (Generic, ToJSON, FromJSON)
+
+  data DeviceReply DHT22 = GetReadingsReply (DeviceState DHT22)
     deriving (Generic, ToJSON, FromJSON)
 
   startDeviceController (DHT22 pin) slave portManager = do
@@ -116,10 +117,10 @@ instance IsDevice DHT22 where
         controller :: ControllerEnv -> DHT22State -> Process ()
         controller env@ControllerEnv{..} state@DHT22State{..} =
           receiveWait [ match $ \(FromPid src (query :: Query)) ->
-                          case (getCommand (queryCommand query) :: Either String (DeviceCommand DHT22)) of
+                          case getCommand (queryCommand query) of
                             Left err -> say $ "[DHT22.controller] Can't decode command: " ++ err
                             Right command -> case command of
-                              GetReadings -> do
+                              GetReadingsRequest -> do
                                 -- ToDo: reserve the port through the port manager
                                 now <- liftIO $ getTime Monotonic
 
@@ -128,24 +129,19 @@ instance IsDevice DHT22 where
                                 if sec (diffTimeSpec readAt now) < 2
                                   then do
                                     say "[DHT22.controller] Using cached readings"
-                                    case readings sensorState of
-                                      Left dht22Error -> send src $ mkError (pack . show $ dht22Error)
-                                      Right readings  -> send src $ mkSuccess readings
+                                    send src (mkQueryResult $ GetReadingsReply sensorState)
                                     controller env state
 
                                   else do
                                     say "[DHT22.controller] Getting new readings"
                                     ereadings <- liftIO $ readDHT22 pin
                                     readingCompleted <- liftIO $ getTime Monotonic
-                                    case ereadings of
-                                      Left dht22Error -> do
-                                        say $ "[DHT22.controller] Error reading sensor: " ++ show dht22Error
-                                        send src $ mkError (pack . show $ dht22Error)
-                                      Right readings ->
-                                        send src $ mkSuccess readings
-
+                                    let sensorState' = SensorState ereadings
+                                    -- report the new readings to the asker
+                                    send src (mkQueryResult $ GetReadingsReply sensorState')
+                                    -- and inform the slave that the state changed
                                     sendStateChanged slave (SensorState ereadings)
-                                    controller env state { sensorState = SensorState ereadings
+                                    controller env state { sensorState = sensorState'
                                                          , readAt      = readingCompleted
                                                          }
 

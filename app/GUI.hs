@@ -19,8 +19,7 @@ import Raspberry.IP
 import Sarah.GUI
 import Sarah.GUI.Model
 import Sarah.GUI.Websocket
-import Sarah.Middleware            (ConnectionMode (..), encodeAsText)
---import Servant.Client
+import Sarah.Middleware            (ConnectionMode (..))
 --------------------------------------------------------------------------------
 import qualified Data.HashMap.Strict       as M
 import qualified Network.WebSockets        as WS

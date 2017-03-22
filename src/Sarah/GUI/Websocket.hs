@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies        #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Websocket
   where
@@ -36,25 +37,23 @@ subscribeDeviceStateChanges listeners connection = do
         handler encodedState
 
 
-withResponse :: (IsDevice model, ToJSON reply, FromJSON reply)
-             => DeviceCommand model -> ErrorHandler -> SuccessHandler reply -> RemoteRunner ()
+withResponse :: (IsDevice model, reply ~ DeviceReply model)
+             => DeviceRequest model -> ErrorHandler -> SuccessHandler reply -> RemoteRunner ()
 withResponse command errorHandler successHandler = do
   RemoteRunnerEnv{..} <- ask
   let query = mkQuery deviceAddress command
-  mresponse <- liftIO $ WS.runClient (host middleware) (port middleware) "/" $ \connection -> do
+  response <- liftIO $ WS.runClient (host middleware) (port middleware) "/" $ \connection -> do
     WS.sendBinaryData connection ModeCommand
     WS.sendTextData connection query
     WS.receiveData connection
-  liftIO $ case mresponse of
-    Nothing -> return ()
-    Just (result :: QueryResult) -> case unQueryResult result of
-      Left message -> errorHandler
-      Right encodedState -> successHandler encodedState
+  liftIO $ case getQueryResult response of
+    Left err -> print err >> errorHandler
+    Right reply -> successHandler reply
 
 
 -- fire and forget
 withoutResponse :: (IsDevice model)
-                => DeviceCommand model -> RemoteRunner ()
+                => DeviceRequest model -> RemoteRunner ()
 withoutResponse command = do
   RemoteRunnerEnv{..} <- ask
   let query = mkQuery deviceAddress command

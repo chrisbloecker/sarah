@@ -6,6 +6,8 @@ module Sarah.GUI.Remote.AC.Toshiba
 --------------------------------------------------------------------------------
 import Control.Monad                  (unless)
 import Control.Monad.Reader           (runReaderT, lift, ask)
+import Data.Foldable                  (traverse_)
+import Data.Functor.Contravariant     ((>$), contramap)
 import Data.Text                      (Text)
 import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny  hiding (map)
@@ -14,7 +16,7 @@ import Physics
 import Sarah.GUI.Model
 import Sarah.GUI.Widgets
 import Sarah.GUI.Websocket            (withResponse, withoutResponse)
-import Sarah.Middleware               (QueryResult (..), Result (..), mkCommand, decodeFromText)
+import Sarah.Middleware               (EncodedDeviceState, decodeDeviceState, QueryResult (..), mkCommand)
 import Sarah.Middleware.Device        (ToshibaAC)
 --------------------------------------------------------------------------------
 import qualified Graphics.UI.Bootstrap.Glyphicon    as Glyph
@@ -86,47 +88,45 @@ instance HasRemote ToshibaAC where
       element (getElement ecoButton)    #+ [ span # set class_ (unGlyphicon Glyph.leaf)  ]
       element (getElement hiButton)     #+ [ span # set class_ (unGlyphicon Glyph.fire)  ]
 
-      let eventStateChangedHandler :: Handler Text
-          eventStateChangedHandler encodedState = case decodeFromText encodedState of
-            Nothing -> putStrLn "[Toshiba.eventStateChangedHandler] Error decoding state"
-            Just Toshiba.Config{..} -> do
-              handlerDisplay emptyDisplay
-              handlerAuto whiteButton
-              handlerCool whiteButton
-              handlerDry  whiteButton
-              handlerFan  whiteButton
-              handlerEco  whiteButton
-              handlerHi   whiteButton
-              handlerFanLevel (0, "")
+      let eventStateChangedHandler :: Handler (Toshiba.DeviceState ToshibaAC)
+          eventStateChangedHandler Toshiba.Config{..} = do
+            handlerDisplay emptyDisplay
+            handlerAuto whiteButton
+            handlerCool whiteButton
+            handlerDry  whiteButton
+            handlerFan  whiteButton
+            handlerEco  whiteButton
+            handlerHi   whiteButton
+            handlerFanLevel (0, "")
 
-              unless (mode == Toshiba.ModeOff) $ do
-                case temperature of
-                  Temperature t -> handlerDisplay (show t ++ "°C")
+            unless (mode == Toshiba.ModeOff) $ do
+              case temperature of
+                Temperature t -> handlerDisplay (show t ++ "°C")
 
-                handlerFanLevel $ case fan of
-                  Toshiba.FanAuto     -> (  0, "Auto")
-                  Toshiba.FanQuiet    -> ( 17, "Quiet")
-                  Toshiba.FanVeryLow  -> ( 33, "Very Low")
-                  Toshiba.FanLow      -> ( 50, "Low")
-                  Toshiba.FanNormal   -> ( 66, "Normal")
-                  Toshiba.FanHigh     -> ( 83, "High")
-                  Toshiba.FanVeryHigh -> (100, "Very High")
+              handlerFanLevel $ case fan of
+                Toshiba.FanAuto     -> (  0, "Auto")
+                Toshiba.FanQuiet    -> ( 17, "Quiet")
+                Toshiba.FanVeryLow  -> ( 33, "Very Low")
+                Toshiba.FanLow      -> ( 50, "Low")
+                Toshiba.FanNormal   -> ( 66, "Normal")
+                Toshiba.FanHigh     -> ( 83, "High")
+                Toshiba.FanVeryHigh -> (100, "Very High")
 
-                case mode of
-                  Toshiba.ModeAuto -> handlerAuto blueButton
-                  Toshiba.ModeCool -> handlerCool blueButton
-                  Toshiba.ModeDry  -> handlerDry  blueButton
-                  Toshiba.ModeFan  -> handlerFan  blueButton
-                  Toshiba.ModeOff  -> return ()
+              case mode of
+                Toshiba.ModeAuto -> handlerAuto blueButton
+                Toshiba.ModeCool -> handlerCool blueButton
+                Toshiba.ModeDry  -> handlerDry  blueButton
+                Toshiba.ModeFan  -> handlerFan  blueButton
+                Toshiba.ModeOff  -> return ()
 
-                handlerEco whiteButton
-                handlerHi  whiteButton
-                case mpower of
-                  Nothing                -> return ()
-                  Just Toshiba.PowerEco  -> handlerEco greenButton
-                  Just Toshiba.PowerHigh -> handlerHi  redButton
+              handlerEco whiteButton
+              handlerHi  whiteButton
+              case mpower of
+                Nothing                -> return ()
+                Just Toshiba.PowerEco  -> handlerEco greenButton
+                Just Toshiba.PowerHigh -> handlerHi  redButton
 
-      unregister <- liftIO $ register eventStateChanged eventStateChangedHandler
+      unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
       on click onButton                    $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.PowerOn)
       on click offButton                   $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.PowerOff)
@@ -142,7 +142,7 @@ instance HasRemote ToshibaAC where
       on click (getElement ecoButton)      $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerEco))
       on click (getElement hiButton)       $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerHigh))
 
-      liftIO $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Read Toshiba.GetConfig) doNothing eventStateChangedHandler
+      liftIO $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Read Toshiba.GetConfig) doNothing (\(Toshiba.DeviceState config) -> eventStateChangedHandler config)
 
       div #+ [ p # set class_ "text-center"
                  #+ map element [ onButton, offButton ]

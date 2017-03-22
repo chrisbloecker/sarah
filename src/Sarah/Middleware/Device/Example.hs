@@ -31,67 +31,6 @@ import Sarah.Middleware.Model
 -- Define the device, let's say it uses a GPIO pin.
 newtype ExampleDevice = ExampleDevice Pin deriving (Show)
 
-
-data GetRandomNumber
-
-instance RequestReplyPair ExampleDevice GetRandomNumber where
-  data Request ExampleDevice GetRandomNumber = GetRandomNumberReq         deriving (Generic, Binary, ToJSON, FromJSON)
-  data Reply   ExampleDevice GetRandomNumber = GetRandomNumberRep Integer deriving (Generic, Binary, ToJSON, FromJSON)
-
-instance WebSocketsData (Request ExampleDevice GetRandomNumber) where
-  toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
-
-instance WebSocketsData (Reply ExampleDevice GetRandomNumber) where
-  toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
-
-
-data SetState
-
-instance RequestReplyPair ExampleDevice SetState where
-  data Request ExampleDevice SetState = SetStateReq (DeviceState ExampleDevice) deriving (Generic, Binary, ToJSON, FromJSON)
-  data Reply   ExampleDevice SetState = SetStateRep                             deriving (Generic, Binary, ToJSON, FromJSON)
-
-instance WebSocketsData (Request ExampleDevice SetState) where
-  toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
-
-instance WebSocketsData (Reply ExampleDevice SetState) where
-  toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
-
-
-data GetState
-
-instance RequestReplyPair ExampleDevice GetState where
-  data Request ExampleDevice GetState = GetStateReq                             deriving (Generic, Binary, ToJSON, FromJSON)
-  data Reply   ExampleDevice GetState = GetStateRep (DeviceState ExampleDevice) deriving (Generic, Binary, ToJSON, FromJSON)
-
-instance WebSocketsData (Request ExampleDevice GetState) where
-  toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
-
-instance WebSocketsData (Reply ExampleDevice GetState) where
-  toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
-
-
-data AlwaysFailing
-
-instance RequestReplyPair ExampleDevice AlwaysFailing where
-  data Request ExampleDevice AlwaysFailing = AlwaysFailingReq deriving (Generic, Binary, ToJSON, FromJSON)
-  data Reply   ExampleDevice AlwaysFailing = AlwaysFailingRep deriving (Generic, Binary, ToJSON, FromJSON)
-
-instance WebSocketsData (Request ExampleDevice AlwaysFailing) where
-  toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
-
-instance WebSocketsData (Reply ExampleDevice AlwaysFailing) where
-  toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
-
-
 -- Implement an instance for IsDevice
 instance IsDevice ExampleDevice where
   -- Define the device state
@@ -103,10 +42,16 @@ instance IsDevice ExampleDevice where
   -- List all the possible commands the device should support
   -- DeviceCommand needs to have instances for ToJSON and FromJSON
 
-  data DeviceCommand ExampleDevice = GetRandomNumber
-                                   | SetState (DeviceState ExampleDevice)
-                                   | GetState
-                                   | AlwaysFailing
+  data DeviceRequest ExampleDevice = RandomNumberRequest
+                                   | SetStateRequest (DeviceState ExampleDevice)
+                                   | GetStateRequest
+                                   | AlwaysFailingRequest
+    deriving (Generic, ToJSON, FromJSON)
+
+  data DeviceReply ExampleDevice = RandomNumberReply Integer
+                                 | SetStateReply
+                                 | GetStateReply (DeviceState ExampleDevice)
+                                 | AlwaysFailingReply
     deriving (Generic, ToJSON, FromJSON)
 
   -- setup the device and start a server that listens for commands
@@ -119,44 +64,28 @@ instance IsDevice ExampleDevice where
         -- the controller listens for requests and replies to them
         controller :: DeviceState ExampleDevice -> Slave -> PortManager -> Pin -> Process ()
         controller state slave portManager pin =
-          receiveWait [ {-match $ \(FromPid src (query :: Query)) -> case getCommand (queryCommand query) of
+          receiveWait [ match $ \(FromPid src (query :: Query)) -> case getCommand (queryCommand query) of
                           Left err -> say $ "[ExampleDevice.controller] Can't decode command: " ++ err
                           Right command -> case command of
-                            GetRandomNumber -> do
+                            RandomNumberRequest -> do
                               say "[Example.controller] Getting random number"
-                              send src (mkSuccess (42 :: Integer))
+                              send src (mkQueryResult $ RandomNumberReply 42)
                               controller state slave portManager pin
 
-                            SetState state' -> do
+                            SetStateRequest state' -> do
                               say "[Example.controller] Setting state"
                               sendStateChanged slave state'
                               controller state' slave portManager pin
 
-                            GetState -> do
+                            GetStateRequest -> do
                               say "[Example.controller] Getting state"
-                              send src (mkSuccess state)
+                              send src (mkQueryResult $ GetStateReply state)
                               controller state slave portManager pin
 
-                            AlwaysFailing -> do
+                            AlwaysFailingRequest -> do
                               say "[Example.controller] This action always fails"
-                              send src (mkError "This command always fails")
+                              send src (mkQueryResult AlwaysFailingReply)
                               controller state slave portManager pin
--}
-                        match $ \(FromPid src GetRandomNumberReq) -> do
-                          send src (GetRandomNumberRep 42)
-                          controller state slave portManager pin
-
-                      , match $ \(FromPid src (SetStateReq state')) -> do
-                          sendStateChanged slave state'
-                          controller state' slave portManager pin
-
-                      , match $ \(FromPid src GetStateReq) -> do
-                          send src (GetStateRep state)
-                          controller state slave portManager pin
-
-                      , match $ \(FromPid src AlwaysFailingReq) -> do
-                          send src AlwaysFailingRep
-                          controller state slave portManager pin
 
                       , matchAny $ \m -> do
                           say $ "[ExampleDevice.controller] Received unexpected message: " ++ show m

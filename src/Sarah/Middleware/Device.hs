@@ -5,7 +5,7 @@
 module Sarah.Middleware.Device
   ( IsDevice (..)
   , Device (..)
-  , DeviceRep
+  , DeviceRep (unDeviceRep)
   , toDeviceRep
 
   , DHT22

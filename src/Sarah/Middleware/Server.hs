@@ -33,17 +33,6 @@ data ConnectionMode = ModeSubscribe
 instance WebSocketsData ConnectionMode where
   toLazyByteString = encode
   fromLazyByteString = fromJust . decode'
-{-
-instance WebSocketsData ConnectionMode where
-  toLazyByteString ModeSubscribe = "ModeSubscribe"
-  toLazyByteString ModeCommand   = "ModeCommand"
-  toLazyByteString ModeMaster    = "ModeMaster"
-
-  fromLazyByteString "ModeSubscribe" = ModeSubscribe
-  fromLazyByteString "ModeCommand"   = ModeCommand
-  fromLazyByteString "ModeMaster"    = ModeMaster
-  fromLazyByteString unknown         = error $ "Unknown mode: " ++ show unknown
--}
 
 data ServerState = ServerState { subscribers :: TVar [(Integer, Connection)]
                                , nextId      :: TVar Integer

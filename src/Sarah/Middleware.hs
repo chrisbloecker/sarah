@@ -4,7 +4,7 @@ module Sarah.Middleware
 
 import Sarah.Middleware.Device as Sarah.Middleware
   ( Device (..)
-  , DeviceRep
+  , DeviceRep (unDeviceRep)
   )
 
 import Sarah.Middleware.Distributed as Sarah.Middleware
@@ -42,14 +42,17 @@ import Sarah.Middleware.Model as Sarah.Middleware
   , mkCommand
   , getCommand
 
-  , Query (..)
+  , Query (queryTarget, queryCommand)
   , mkQuery
 
-  , QueryResult (..)
+  , QueryResult
+  , getQueryResult
 
   , MiddlewareEvent (..)
 
   , EncodedDeviceState
+  , decodeDeviceState
+  , eitherDecodeDeviceState
   )
 
 import Sarah.Middleware.Server as Sarah.Middleware
