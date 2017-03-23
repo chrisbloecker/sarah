@@ -9,7 +9,7 @@ module Sarah.Middleware.Device.Power.HS110
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
 import Data.Aeson                  (ToJSON (..), FromJSON (..))
-import Data.Aeson.Types            (Parser, Value (..), typeMismatch)
+import Data.Aeson.Types            (Parser, Value (..), (.=), (.:), typeMismatch, object, withObject)
 import Data.Text                   (Text)
 import GHC.Generics                (Generic)
 import Raspberry.IP
@@ -28,13 +28,19 @@ data Month = January
            | October
            | November
            | December
+  deriving (Generic, ToJSON)
 
 type Year = Integer
 
 data HS110Command = System SystemCommand
                   | Time   TimeCommand
                   | EMeter EMeterCommand
-  deriving (ToJSON)
+
+instance ToJSON HS110Command where
+  toJSON (System systemCommand) = object [ "system" .= toJSON systemCommand ]
+  toJSON (Time   timeCommand)   = object [ "time"   .= toJSON timeCommand   ]
+  toJSON (EMeter emeterCommand) = object [ "emeter" .= toJSON emeterCommand ]
+
 
 data SystemCommand = GetSystemInfo
                    | Reboot
@@ -42,17 +48,35 @@ data SystemCommand = GetSystemInfo
                    | TurnOn
                    | TurnOff
                    | NightMode
+                   | DayMode
                    | CheckConfig
+
+instance ToJSON SystemCommand where
+  toJSON GetSystemInfo = object [ "get_sysinfo"     .= Null ]
+  toJSON Reboot        = object [ "reboot"          .= object [ "delay" .= (1 :: Int) ] ]
+  toJSON Reset         = object [ "reset"           .= object [ "delay" .= (1 :: Int) ] ]
+  toJSON TurnOn        = object [ "set_relay_state" .= object [ "state" .= (1 :: Int) ] ]
+  toJSON TurnOff       = object [ "set_relay_state" .= object [ "state" .= (0 :: Int) ] ]
+  toJSON NightMode     = object [ "set_led_off"     .= object [ "off"   .= (1 :: Int) ] ]
+  toJSON DayMode       = object [ "set_led_off"     .= object [ "off"   .= (0 :: Int) ] ]
+
 
 data TimeCommand = GetTime
                  | GetTimeZone
 
+instance ToJSON TimeCommand where
+  toJSON GetTime     = object [ "get_time"      .= Null ]
+  toJSON GetTimeZone = object [ "get_time_zone" .= Null ]
+
+
 data EMeterCommand = GetCurrentAndVoltageReadings
-                   | GetVGainAndIGain
-                   | SetVGainAndIGain
-                   | StartCalibration
                    | GetDailyStatistics Year Month
                    | GetMonthlyStatistics Year
+
+instance ToJSON EMeterCommand where
+  toJSON GetCurrentAndVoltageReadings      = object [ "get_realtime"  .= object [] ]
+  toJSON (GetDailyStatistics   year month) = object [ "get_daystat"   .= object [ "year" .= toJSON year, "month" .= toJSON month ] ]
+  toJSON (GetMonthlyStatistics year)       = object [ "get_monthstat" .= object [ "year" .= toJSON year ] ]
 
 --------------------------------------------------------------------------------
 
