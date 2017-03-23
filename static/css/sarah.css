@@ -26,33 +26,8 @@
   margin: 2px;
 }
 
-.btn-circle.btn-lg {
-  width: 50px;
-  height: 50px;
-  padding: 10px 16px;
-  font-size: 18px;
-  line-height: 1.33;
-  border-radius: 25px;
-}
-
-.btn-circle.btn-xl {
-  width: 70px;
-  height: 70px;
-  padding: 10px 16px;
-  font-size: 24px;
-  line-height: 1.33;
-  border-radius: 35px;
-}
-
-.btn-outline {
-  background: none;
-  border: none;
-  border-radius: 24px;
-  box-shadow: none;
-  margin: 2px;
-}
-
 .btn-no-border {
+  background: none;
   border: none;
   box-shadow: none;
 }
