@@ -114,7 +114,7 @@ loop state@State{..} =
                                   ]
                   loop state
 
-              , match $ \(FromPid src msg@(StateChanged encodedState)) -> do
+              , match $ \(FromPid src (StateChanged encodedState)) -> do
                   say $ "[slave] A device changed its state at node: " ++ show src
                   case M.lookup src reverseLookup of
                     Nothing         -> say $ "[slave] Unknown pid: " ++ show src
@@ -123,7 +123,10 @@ loop state@State{..} =
                       sendWithPid (unMaster master) $ DeviceStateChanged (DeviceAddress nodeName deviceName) encodedState
                   loop state
 
-              , match $ \Terminate -> do
+              , match $ \Terminate ->
                   say "[slave] Terminating slave"
-                  return ()
+
+              , matchAny $ \message -> do
+                  say $ "[slave] Received unexpected message: " ++ show message
+                  loop state
               ]

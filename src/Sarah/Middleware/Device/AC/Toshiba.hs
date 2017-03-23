@@ -1,11 +1,11 @@
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE QuasiQuotes       #-}
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE QuasiQuotes         #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TemplateHaskell   #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE TypeFamilies        #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device.AC.Toshiba
   where
@@ -87,6 +87,7 @@ setAC (Pin pin) config = do
     double dutyCycle = 0.5;         // The duty cycle of the IR signal. 0.5 means for every cycle,
                                     // the LED will turn on for half the cycle time, and off the other half
 
+    // The pulses that should be sent over the IR LED
     int* codes = (int*) calloc(4 * $bs-len:bs + 7, sizeof(int));
 
     if (!codes)
@@ -229,7 +230,7 @@ data ControllerEnv = ControllerEnv { slave       :: Slave
 data Reading = GetConfig
   deriving (Generic, ToJSON, FromJSON)
 
--- commands that are writing, i.e. they change the state
+-- commands that perform a writing action, i.e. they change the state
 data Writing = PowerOn
              | PowerOff
              | UpTemperature
@@ -243,9 +244,9 @@ data Writing = PowerOn
   deriving (Generic, ToJSON, FromJSON)
 
 defaultConfig :: DeviceState ToshibaAC
-defaultConfig = Config { temperature = Temperature 22
+defaultConfig = Config { temperature = Temperature 20
                        , fan         = FanAuto
-                       , mode        = ModeAuto
+                       , mode        = ModeOff
                        , mpower      = Nothing
                        }
 

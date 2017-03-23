@@ -27,4 +27,4 @@ sendSlave :: Serializable a => Slave -> a -> Process ()
 sendSlave slave = send (unSlave slave)
 
 sendStateChanged :: (IsDevice model) => Slave -> DeviceState model -> Process ()
-sendStateChanged slave state = sendWithPid (unSlave slave) (encodeDeviceState state)
+sendStateChanged slave state = sendWithPid (unSlave slave) (StateChanged $ encodeDeviceState state)

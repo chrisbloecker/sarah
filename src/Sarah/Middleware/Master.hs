@@ -79,7 +79,7 @@ loop state@State{..} =
                                   ]
                   loop state
 
-                -- whenever the state of a device changes, we're informing all subscribers
+                -- whenever the state of a device changes, we inform all subscribers
                 -- about the change and send them the encoded device address and state
               , match $ \(FromPid src (DeviceStateChanged deviceAddress@DeviceAddress{..} encodedState)) -> do
                   say $ "[master] A device changed its state: " ++ unpack deviceNode ++ ":" ++ unpack deviceName
@@ -93,7 +93,6 @@ loop state@State{..} =
 
               , match $ \(Log nodeName message logLevel) -> do
                   say "Received Log message"
-                  -- ToDo: pass the result back to the master instead of just printing something
                   spawnLocal $ do
                     now <- liftIO getCurrentTime
                     let logEntry = Persist.Log (utctDay now) (timeToTimeOfDay . utctDayTime $ now) nodeName message logLevel
@@ -112,7 +111,6 @@ loop state@State{..} =
 
               , match $ \(SensorReading room sensor value) -> do
                   say "Received SensorReading message"
-                  -- ToDo: same here, pass the result back to the master
                   spawnLocal $ do
                     now <- liftIO getCurrentTime
                     let sensorReading = Persist.SensorReading (utctDay now) (timeToTimeOfDay . utctDayTime $ now) room sensor value
