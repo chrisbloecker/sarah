@@ -41,7 +41,7 @@ instance HasRemote ToshibaAC where
       fanlevelDisplay                  <- reactiveLabel behaviourFanlevel
 
       -- styles for differently coloured buttons
-      let whiteButton = buildClass [ btn, btn_sm, btn_default, btn_no_border ]
+      let whiteButton = buildClass [ btn, btn_sm, btn_default, btn_no_border, btn_no_border ]
           blueButton  = buildClass [ btn, btn_sm, btn_info,    btn_no_border ]
           greenButton = buildClass [ btn, btn_sm, btn_success, btn_no_border ]
           redButton   = buildClass [ btn, btn_sm, btn_danger,  btn_no_border ]

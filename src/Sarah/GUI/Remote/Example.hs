@@ -42,7 +42,7 @@ instance HasRemote ExampleDevice where
       (eventStarButton,  handlerStarButton)  <- liftIO newEvent
       (eventHeartButton, handlerHeartButton) <- liftIO newEvent
 
-      let greyButton   = buildClass [ btn, btn_sm, btn_default, btn_circle ]
+      let greyButton   = buildClass [ btn, btn_sm, btn_default, btn_circle, btn_no_border ]
           yellowButton = buildClass [ btn, btn_sm, btn_warning, btn_circle ]
           redButton    = buildClass [ btn, btn_sm, btn_danger,  btn_circle ]
 
