@@ -27,23 +27,24 @@ instance HasRemote ToshibaAC where
   buildRemote _ = do
     RemoteBuilderEnv{..} <- ask
     lift $ do
-      let emptyDisplay = "--°C"
+      let emptyTemperature = "--°C"
+          emptyFanlevel    = "--"
 
       -- a reactive label to display the current temperature
-      (eventDisplay, handlerDisplay) <- liftIO newEvent
-      behaviourDisplay               <- stepper emptyDisplay eventDisplay
-      display                        <- reactiveLabel behaviourDisplay
+      (eventTemperature, handlerTemperature) <- liftIO newEvent
+      behaviourTemperature                   <- stepper emptyTemperature eventTemperature
+      temperatureDisplay                     <- reactiveLabel behaviourTemperature
 
       -- a reactive progress bar to display the current fan level
-      (eventFanLevel, handlerFanLevel) <- liftIO newEvent
-      behaviourFanLevel                <- stepper (0, "") eventFanLevel
-      fanLevel                         <- reactiveProgressBar behaviourFanLevel
+      (eventFanlevel, handlerFanlevel) <- liftIO newEvent
+      behaviourFanlevel                <- stepper emptyFanlevel eventFanlevel
+      fanlevelDisplay                  <- reactiveLabel behaviourFanlevel
 
       -- styles for differently coloured buttons
-      let whiteButton = buildClass [ btn, btn_sm, btn_default, btn_circle, btn_no_background ]
-          blueButton  = buildClass [ btn, btn_sm, btn_info,    btn_circle, btn_no_background ]
-          greenButton = buildClass [ btn, btn_sm, btn_success, btn_circle, btn_no_background ]
-          redButton   = buildClass [ btn, btn_sm, btn_danger,  btn_circle, btn_no_background ]
+      let whiteButton = buildClass [ btn, btn_sm, btn_default, btn_no_background ]
+          blueButton  = buildClass [ btn, btn_sm, btn_info,    btn_no_background ]
+          greenButton = buildClass [ btn, btn_sm, btn_success, btn_no_background ]
+          redButton   = buildClass [ btn, btn_sm, btn_danger,  btn_no_background ]
 
       onButton       <- button # set class_ (unClass whiteButton) #+ [ label # set text "On"  ]
       offButton      <- button # set class_ (unClass whiteButton) #+ [ label # set text "Off" ]
@@ -67,10 +68,14 @@ instance HasRemote ToshibaAC where
       dryButton  <- reactiveButton behaviourDry  (pure $ Style [])
       fanButton  <- reactiveButton behaviourFan  (pure $ Style [])
 
-      element (getElement autoButton) #+ [ span # set class_ (unGlyphicon Glyph.font)  ]
-      element (getElement coolButton) #+ [ span # set class_ "fa fa-snowflake-o"       ]
-      element (getElement dryButton)  #+ [ span # set class_ (unGlyphicon Glyph.tint)  ]
-      element (getElement fanButton)  #+ [ span # set class_ (unGlyphicon Glyph.cloud) ]
+      --element (getElement autoButton) #+ [ span # set class_ (unGlyphicon Glyph.font)  ]
+      --element (getElement coolButton) #+ [ span # set class_ "fa fa-snowflake-o"       ]
+      --element (getElement dryButton)  #+ [ span # set class_ (unGlyphicon Glyph.tint)  ]
+      --element (getElement fanButton)  #+ [ span # set class_ (unGlyphicon Glyph.cloud) ]
+      element (getElement autoButton) #+ [ label # set text "Auto" ]
+      element (getElement coolButton) #+ [ label # set text "Cool" ]
+      element (getElement dryButton)  #+ [ label # set text "Dry"  ]
+      element (getElement fanButton)  #+ [ label # set text "Fan"  ]
 
       (eventNormal, handlerNormal) <- liftIO newEvent
       (eventEco,    handlerEco)    <- liftIO newEvent
@@ -84,33 +89,36 @@ instance HasRemote ToshibaAC where
       ecoButton    <- reactiveButton behaviourEco    (pure $ Style [])
       hiButton     <- reactiveButton behaviourHi     (pure $ Style [])
 
-      element (getElement normalButton) #+ [ span # set class_ (unGlyphicon Glyph.minus) ]
-      element (getElement ecoButton)    #+ [ span # set class_ (unGlyphicon Glyph.leaf)  ]
-      element (getElement hiButton)     #+ [ span # set class_ (unGlyphicon Glyph.fire)  ]
+      --element (getElement normalButton) #+ [ span # set class_ (unGlyphicon Glyph.minus) ]
+      --element (getElement ecoButton)    #+ [ span # set class_ (unGlyphicon Glyph.leaf)  ]
+      --element (getElement hiButton)     #+ [ span # set class_ (unGlyphicon Glyph.fire)  ]
+      element (getElement normalButton) #+ [ label # set text "Normal" ]
+      element (getElement ecoButton)    #+ [ label # set text "Eco"    ]
+      element (getElement hiButton)     #+ [ label # set text "High"   ]
 
       let eventStateChangedHandler :: Handler (Toshiba.DeviceState ToshibaAC)
           eventStateChangedHandler Toshiba.Config{..} = do
-            handlerDisplay emptyDisplay
+            handlerTemperature  emptyTemperature
+            handlerFanlevel     emptyFanlevel
             handlerAuto whiteButton
             handlerCool whiteButton
             handlerDry  whiteButton
             handlerFan  whiteButton
             handlerEco  whiteButton
             handlerHi   whiteButton
-            handlerFanLevel (0, "")
 
             unless (mode == Toshiba.ModeOff) $ do
               case temperature of
-                Temperature t -> handlerDisplay (show t ++ "°C")
+                Temperature t -> handlerTemperature (show t ++ "°C")
 
-              handlerFanLevel $ case fan of
-                Toshiba.FanAuto     -> (  0, "Auto")
-                Toshiba.FanQuiet    -> ( 17, "Quiet")
-                Toshiba.FanVeryLow  -> ( 33, "Very Low")
-                Toshiba.FanLow      -> ( 50, "Low")
-                Toshiba.FanNormal   -> ( 66, "Normal")
-                Toshiba.FanHigh     -> ( 83, "High")
-                Toshiba.FanVeryHigh -> (100, "Very High")
+              handlerFanlevel $ case fan of
+                Toshiba.FanAuto     -> "Auto"
+                Toshiba.FanQuiet    -> "Quiet"
+                Toshiba.FanVeryLow  -> "Very Low"
+                Toshiba.FanLow      -> "Low"
+                Toshiba.FanNormal   -> "Normal"
+                Toshiba.FanHigh     -> "High"
+                Toshiba.FanVeryHigh -> "Very High"
 
               case mode of
                 Toshiba.ModeAuto -> handlerAuto blueButton
@@ -144,14 +152,14 @@ instance HasRemote ToshibaAC where
 
       liftIO $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Read Toshiba.GetConfig) doNothing (\(Toshiba.DeviceState config) -> eventStateChangedHandler config)
 
-      div #+ [ p # set class_ "text-center"
-                 #+ map element [ onButton, offButton ]
-             , p # set class_ "text-center"
-                 #+ [ element tempDownButton, element display, element tempUpButton ]
-             , p # set class_ "text-center"
-                 #+ [ element fanDownButton, element fanLevel, element fanUpButton ]
-             , p # set class_ "text-center"
-                 #+ map element [ autoButton, coolButton, dryButton, fanButton ]
-             , p # set class_ "text-center"
-                 #+ map element [ normalButton, ecoButton, hiButton ]
+      div #+ [ div # set class_ "row text-center"
+                   #+ map element [ onButton, offButton ]
+             , div # set class_ "row text-center"
+                   #+ [ element tempDownButton, element temperatureDisplay, element tempUpButton ]
+             , div # set class_ "row text-center"
+                   #+ [ element fanDownButton, element fanlevelDisplay, element fanUpButton ]
+             , div # set class_ "row text-center"
+                   #+ map element [ autoButton, coolButton, dryButton, fanButton ]
+             , div # set class_ "row text-center"
+                   #+ map element [ normalButton, ecoButton, hiButton ]
              ]

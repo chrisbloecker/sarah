@@ -294,10 +294,10 @@ instance IsDevice ToshibaAC where
                                                                     then config
                                                                     else config { temperature = Temperature $ getTemperature temperature - 1 }
                                               UpFan            -> if fan == maxBound
-                                                                    then config
+                                                                    then config { fan = minBound }
                                                                     else config { fan = succ fan }
-                                              DownFan          -> if fan == FanQuiet
-                                                                    then config
+                                              DownFan          -> if fan == minBound
+                                                                    then config { fan = maxBound }
                                                                     else config { fan = pred fan }
                                               SetTemperature t -> config { temperature = t }
                                               SetFanMode     f -> config { fan         = f }
@@ -305,9 +305,14 @@ instance IsDevice ToshibaAC where
                                               SetPowerMode   p -> config { mpower      = p }
                               res <- liftIO $ setAC pin config'
                               case res of
-                                Ok    -> sendStateChanged slave config'
-                                Error -> return () -- ToDo: should we do something else?
-                              controller env config'
+                                Ok -> do
+                                  sendStateChanged slave config'
+                                  controller env config'
+                                -- if setting the new config fails, keep the old one
+                                Error -> do
+                                  send src (mkQueryResult Empty)
+                                  controller env config
+
 
                       , matchAny $ \m -> do
                           say $ "[ToshibaAC] Received unexpected message " ++ show m

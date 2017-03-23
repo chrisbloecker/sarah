@@ -55,8 +55,8 @@ instance HasRemote DHT22 where
 
       liftIO $ flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadingsRequest doNothing (\(DHT22.GetReadingsReply state) -> eventStateChangedHandler state)
 
-      div #+ [ p # set class_ "text-center"
+      div #+ [ div # set class_ "row text-center"
                  #+ [ string "Temperature: ", element temperatureDisplay, element getTemperatureButton ]
-             , p # set class_ "text-center"
+             , div # set class_ "row text-center"
                  #+ [ string "Humidity: ", element humidityDisplay, element getHumidityButton ]
              ]

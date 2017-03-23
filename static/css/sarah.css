@@ -55,4 +55,5 @@
 .btn-no-background {
   background: none;
   border: none;
+  box-shadow: none;
 }

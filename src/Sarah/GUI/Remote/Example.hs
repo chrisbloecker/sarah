@@ -80,10 +80,10 @@ instance HasRemote ExampleDevice where
 
       liftIO $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.GetStateRequest doNothing (\(ExampleDevice.GetStateReply state) -> eventStateChangedHandler state)
 
-      div #+ [ p # set class_ "text-center"
-                 #+ [ element display ]
-             , p # set class_ "text-center"
-                 #+ map element [getRandomNumberButton, alwaysFailingButton ]
-             , p # set class_ "text-center"
-                 #+ map element [ minusButton, starButton, heartButton ]
+      div #+ [ div # set class_ "row text-center"
+                   #+ [ element display ]
+             , div # set class_ "row text-center"
+                   #+ map element [getRandomNumberButton, alwaysFailingButton ]
+             , div # set class_ "row text-center"
+                   #+ map element [ minusButton, starButton, heartButton ]
              ]

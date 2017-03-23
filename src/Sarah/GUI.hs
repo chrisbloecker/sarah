@@ -123,7 +123,8 @@ mkTile title content = div # set class_ "col-lg-4 col-md-4 col-sm-6"
                                              #+ [ div # set class_ "panel-title"
                                                       # set text title
                                                 ]
-                                       , content
+                                       , div # set class_ "panel-body"
+                                             #+ [ content ]
                                        ]
                               ]
 

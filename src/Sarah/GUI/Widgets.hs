@@ -45,19 +45,23 @@ instance Widget ReactiveProgressBar where
 reactiveProgressBar :: Behavior (Integer, String) -> UI ReactiveProgressBar
 reactiveProgressBar behaviour = do
   display <- string ""
-  inner   <- div # set class_ "progress-bar"
+  inner   <- div # set class_ "progress-bar progress-bar-info"
                  # set (attr "role") "progressbar"
                  # set (attr "aria-valuemin") "0"
                  # set (attr "aria-valuemax") "100"
                  #+ [ div # set class_ "text-center"
-                          #+ [ element display ]
+                          #+ [ element display # set style [("color", "black")] ]
                     ]
 
   progressBar <- div # set class_ "progress"
-                     # set style [("width", "200px")]
                      #+ [ element inner ]
 
   element inner   # sink (attr "aria-valuenow") (show . fst <$> behaviour)
+  element inner   # sink style                  (mkWidth . show . fst <$> behaviour)
   element display # sink text                   (       snd <$> behaviour)
 
   return ReactiveProgressBar { _elementRPB = progressBar }
+
+    where
+      mkWidth :: String -> [(String, String)]
+      mkWidth w = [("width", w ++ "%")]
