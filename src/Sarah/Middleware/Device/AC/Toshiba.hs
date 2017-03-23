@@ -246,7 +246,7 @@ data Writing = PowerOn
 defaultConfig :: DeviceState ToshibaAC
 defaultConfig = Config { temperature = Temperature 20
                        , fan         = FanAuto
-                       , mode        = ModeAuto
+                       , mode        = ModeOff
                        , mpower      = Nothing
                        }
 
@@ -285,7 +285,7 @@ instance IsDevice ToshibaAC where
 
                             Write writing -> do
                               let config' = case writing of
-                                              PowerOn          -> defaultConfig
+                                              PowerOn          -> defaultConfig { mode = ModeAuto }
                                               PowerOff         -> config { mode = ModeOff }
                                               UpTemperature    -> if temperature >= toTemperature maxBound
                                                                     then config
