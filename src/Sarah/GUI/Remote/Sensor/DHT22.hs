@@ -33,12 +33,7 @@ instance HasRemote DHT22 where
       temperatureDisplay <- reactiveLabel ((++ "°C") . fst <$> behaviourReadings)
       humidityDisplay    <- reactiveLabel ((++ "%")  . snd <$> behaviourReadings)
 
-      let buttonClass = buildClass [ btn
-                                   , btn_sm
-                                   , btn_default
-                                   , btn_circle
-                                   , btn_no_background
-                                   ]
+      let buttonClass = buildClass [ btn, btn_sm, btn_default, btn_circle ]
 
       getTemperatureButton <- bootstrapButton buttonClass (Glyphicon "fa fa-thermometer-full")
       getHumidityButton    <- bootstrapButton buttonClass Glyph.tint

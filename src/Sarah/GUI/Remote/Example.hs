@@ -30,7 +30,7 @@ instance HasRemote ExampleDevice where
 
       display <- reactiveLabel behaviourDisplay
 
-      let buttonClass = buildClass [ btn, btn_sm, btn_default, btn_circle, btn_no_background ]
+      let buttonClass = buildClass [ btn, btn_sm, btn_default, btn_circle ]
 
       getRandomNumberButton <- bootstrapButton buttonClass Glyph.random
       alwaysFailingButton   <- bootstrapButton buttonClass Glyph.flash
@@ -42,7 +42,7 @@ instance HasRemote ExampleDevice where
       (eventStarButton,  handlerStarButton)  <- liftIO newEvent
       (eventHeartButton, handlerHeartButton) <- liftIO newEvent
 
-      let greyButton   = buildClass [ btn, btn_sm, btn_default, btn_circle, btn_no_background ]
+      let greyButton   = buildClass [ btn, btn_sm, btn_default, btn_circle ]
           yellowButton = buildClass [ btn, btn_sm, btn_warning, btn_circle ]
           redButton    = buildClass [ btn, btn_sm, btn_danger,  btn_circle ]
 
