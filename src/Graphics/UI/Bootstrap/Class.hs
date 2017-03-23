@@ -28,4 +28,4 @@ btn_link = Class "btn-link"
 btn_circle = Class "btn-circle"
 
 -- additional styles
-btn_no_background = Class "btn-no-background"
+btn_no_border = Class "btn-no-border"

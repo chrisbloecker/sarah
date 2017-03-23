@@ -52,8 +52,7 @@
   margin: 2px;
 }
 
-.btn-no-background {
-  background: none;
+.btn-no-border {
   border: none;
   box-shadow: none;
 }
