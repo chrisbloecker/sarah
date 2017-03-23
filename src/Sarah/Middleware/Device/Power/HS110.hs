@@ -3,16 +3,58 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeFamilies      #-}
-
+--------------------------------------------------------------------------------
 module Sarah.Middleware.Device.Power.HS110
   where
-
+--------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Data.Aeson.Types            (Value (..), typeMismatch)
+import Data.Aeson                  (ToJSON (..), FromJSON (..))
+import Data.Aeson.Types            (Parser, Value (..), typeMismatch)
+import Data.Text                   (Text)
 import GHC.Generics                (Generic)
-import Import.DeriveJSON
 import Raspberry.IP
 import Sarah.Middleware.Model
+--------------------------------------------------------------------------------
+
+data Month = January
+           | February
+           | March
+           | April
+           | May
+           | June
+           | July
+           | August
+           | September
+           | October
+           | November
+           | December
+
+type Year = Integer
+
+data HS110Command = System SystemCommand
+                  | Time   TimeCommand
+                  | EMeter EMeterCommand
+  deriving (ToJSON)
+
+data SystemCommand = GetSystemInfo
+                   | Reboot
+                   | Reset
+                   | TurnOn
+                   | TurnOff
+                   | NightMode
+                   | CheckConfig
+
+data TimeCommand = GetTime
+                 | GetTimeZone
+
+data EMeterCommand = GetCurrentAndVoltageReadings
+                   | GetVGainAndIGain
+                   | SetVGainAndIGain
+                   | StartCalibration
+                   | GetDailyStatistics Year Month
+                   | GetMonthlyStatistics Year
+
+--------------------------------------------------------------------------------
 
 newtype HS110 = HS110 WebAddress deriving (Show)
 
@@ -25,8 +67,9 @@ instance IsDevice HS110 where
   data DeviceState HS110 = HS110State
     deriving (Generic, ToJSON, FromJSON)
 
-  data DeviceRequest HS110 = SetPower Power
-                           | GetPower
+  data DeviceRequest HS110 = PowerOn
+                           | PowerOff
+                           | GetReadings
     deriving (Generic, ToJSON, FromJSON)
 
   data DeviceReply HS110 = Empty
@@ -54,5 +97,3 @@ instance FromJSON HS110 where
     case model of
       "HS110" -> HS110 <$> o .: "ip"
       model   -> fail $ "Invalid model identifier: " ++ show model
-
-data Power = PowerOn | PowerOff deriving (Generic, ToJSON, FromJSON)

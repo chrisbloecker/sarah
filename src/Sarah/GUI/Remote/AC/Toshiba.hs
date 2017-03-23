@@ -27,7 +27,7 @@ instance HasRemote ToshibaAC where
   buildRemote _ = do
     RemoteBuilderEnv{..} <- ask
     lift $ do
-      let emptyTemperature = "--°C"
+      let emptyTemperature = "--"
           emptyFanlevel    = "--"
 
       -- a reactive label to display the current temperature
@@ -68,10 +68,6 @@ instance HasRemote ToshibaAC where
       dryButton  <- reactiveButton behaviourDry  (pure $ Style [])
       fanButton  <- reactiveButton behaviourFan  (pure $ Style [])
 
-      --element (getElement autoButton) #+ [ span # set class_ (unGlyphicon Glyph.font)  ]
-      --element (getElement coolButton) #+ [ span # set class_ "fa fa-snowflake-o"       ]
-      --element (getElement dryButton)  #+ [ span # set class_ (unGlyphicon Glyph.tint)  ]
-      --element (getElement fanButton)  #+ [ span # set class_ (unGlyphicon Glyph.cloud) ]
       element (getElement autoButton) #+ [ label # set text "Auto" ]
       element (getElement coolButton) #+ [ label # set text "Cool" ]
       element (getElement dryButton)  #+ [ label # set text "Dry"  ]
@@ -89,9 +85,6 @@ instance HasRemote ToshibaAC where
       ecoButton    <- reactiveButton behaviourEco    (pure $ Style [])
       hiButton     <- reactiveButton behaviourHi     (pure $ Style [])
 
-      --element (getElement normalButton) #+ [ span # set class_ (unGlyphicon Glyph.minus) ]
-      --element (getElement ecoButton)    #+ [ span # set class_ (unGlyphicon Glyph.leaf)  ]
-      --element (getElement hiButton)     #+ [ span # set class_ (unGlyphicon Glyph.fire)  ]
       element (getElement normalButton) #+ [ label # set text "Normal" ]
       element (getElement ecoButton)    #+ [ label # set text "Eco"    ]
       element (getElement hiButton)     #+ [ label # set text "High"   ]
