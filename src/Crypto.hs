@@ -1,12 +1,11 @@
-{-# LANGUAGE GADTs #-}
-
 module Crypto
-  ( autokey
+  ( autokey, unautokey
   ) where
 
 import Data.Bits (Bits, xor)
 
 autokey :: Bits b => b -> [b] -> [b]
-autokey _   []     = []
-autokey key (b:bs) = let key' = b `xor` key
-                     in key' : autokey key' bs
+autokey k bs = zipWith xor (scanl xor k bs) bs
+
+unautokey :: Bits b => b -> [b] -> [b]
+unautokey k bs = zipWith xor (k:bs) bs
