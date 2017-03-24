@@ -69,14 +69,37 @@ setup appEnv@AppEnv{..} window = void $ do
   -- ToDo: where and when should we clean up events for devices that don't exist
   --       or are not connected anymore?
 
-  Navbar{..} <- mkNavbar
-
   content <- div # set id_ "content"
-                 # set class_ "container"
+                 # set class_ "page-content"
 
-  getBody window #+ [ element navbar
-                    , element content
-                    ]
+  remotesButton <- a # set class_ "mdl-navigation__link"
+                     # set href ""
+                     # set text "Remotes"
+
+  page <- div # set class_ "mdl-layout mdl-js-layout mdl-layout--fixed-header"
+              #+ [ header # set class_ "mdl-layout__header"
+                          #+ [ div # set class_ "mdl-layout__header-row"
+                                   #+ [ span # set class_ "mdl-layout-title"
+                                             # set text "sarah"
+                                      , div # set class_ "mdl-layout-spacer"
+                                      , nav # set class_ "mdl-navigation mdl-layout--large-screen-only"
+                                            #+ [
+                                               ]
+                                      ]
+                             ]
+                 , div # set class_ "mdl-layout__drawer"
+                       #+ [ span # set class_ "mdl-layout-title"
+                                 # set text "Title"
+                          , nav # set class_ "mdl-navigation"
+                                #+ [ element remotesButton
+                                   ]
+                          ]
+                 , main # set class_ "mdl-layout__content"
+                        #+ [ element content
+                           ]
+                 ]
+
+  getBody window #+ [ element page ]
 
   -- add the navbar and render the remotes by default
   remoteWidgets <- liftIO . atomically $ readTVar remotes
