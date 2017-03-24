@@ -65,7 +65,10 @@ instance IsDevice ExampleDevice where
         controller :: DeviceState ExampleDevice -> Slave -> PortManager -> Pin -> Process ()
         controller state slave portManager pin =
           receiveWait [ match $ \(FromPid src (query :: Query)) -> case getCommand (queryCommand query) of
-                          Left err -> say $ "[ExampleDevice.controller] Can't decode command: " ++ err
+                          Left err -> do
+                            say $ "[ExampleDevice.controller] Can't decode command: " ++ err
+                            controller state slave portManager pin
+
                           Right command -> case command of
                             RandomNumberRequest -> do
                               say "[Example.controller] Getting random number"

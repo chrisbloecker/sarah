@@ -1,19 +1,28 @@
-{-# LANGUAGE DeriveAnyClass    #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
-{-# LANGUAGE TypeFamilies      #-}
+{-# LANGUAGE DeriveAnyClass      #-}
+{-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies        #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device.Power.HS110
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Data.Aeson                  (ToJSON (..), FromJSON (..))
+import Control.Monad               (join)
+import Crypto                      (autokey, unautokey)
+import Data.Aeson                  (ToJSON (..), FromJSON (..), encode, decodeStrict')
 import Data.Aeson.Types            (Parser, Value (..), (.=), (.:), typeMismatch, object, withObject)
-import Data.Text                   (Text)
+import Data.ByteString             (ByteString)
+import Data.Char                   (chr, ord)
+import Data.Text                   (Text, pack, unpack)
+import Data.Text.Encoding          (encodeUtf8, decodeUtf8)
 import GHC.Generics                (Generic)
 import Raspberry.IP
 import Sarah.Middleware.Model
+--------------------------------------------------------------------------------
+import qualified Data.ByteString.Lazy as LBS (toStrict, fromStrict)
+import qualified Network.Simple.TCP   as TCP (connect, recv, send)
 --------------------------------------------------------------------------------
 
 data Month = January
@@ -31,6 +40,7 @@ data Month = January
   deriving (Generic, ToJSON)
 
 type Year = Integer
+
 
 data HS110Command = System SystemCommand
                   | Time   TimeCommand
@@ -78,7 +88,42 @@ instance ToJSON EMeterCommand where
   toJSON (GetDailyStatistics   year month) = object [ "get_daystat"   .= object [ "year" .= toJSON year, "month" .= toJSON month ] ]
   toJSON (GetMonthlyStatistics year)       = object [ "get_monthstat" .= object [ "year" .= toJSON year ] ]
 
+
+data HS110Reply = HS110Reply
+
+instance FromJSON HS110Reply where
+  parseJSON = undefined
+
 --------------------------------------------------------------------------------
+
+encrypt :: HS110Command -> ByteString
+encrypt = encodeUtf8
+        . pack
+        . ("\0\0\0\0" ++)
+        . map chr
+        . autokey (171 :: Int)
+        . map ord
+        . unpack
+        . decodeUtf8
+        . LBS.toStrict
+        . encode
+
+decrypt :: ByteString -> Maybe HS110Reply
+decrypt = decodeStrict'
+        . encodeUtf8
+        . pack
+        . map chr
+        . unautokey (171 :: Int)
+        . map ord
+        . drop 4
+        . unpack
+        . decodeUtf8
+
+sendCommand :: WebAddress -> HS110Command -> IO (Maybe HS110Reply)
+sendCommand webAddress command = TCP.connect (host webAddress) (show $ port webAddress) $ \(socket, remote) -> do
+  TCP.send socket (encrypt command)
+  maybe Nothing decrypt <$> TCP.recv socket 2048
+
 
 newtype HS110 = HS110 WebAddress deriving (Show)
 
@@ -105,10 +150,29 @@ instance IsDevice HS110 where
 
       where
         controller :: ControllerEnv -> Process ()
-        controller env = receiveWait [ matchAny $ \m -> do
-                                         say $ "[HS110] Received unexpected message" ++ show m
-                                         controller env
-                                     ]
+        controller env@ControllerEnv{..} =
+          receiveWait [ match $ \(FromPid src (query :: Query)) -> case getCommand (queryCommand query) of
+                          Left err -> do
+                            say $ "[HS110.controller] Can't decode command: " ++ err
+                            controller env
+
+                          Right command -> case command of
+                            PowerOn -> do
+                              liftIO $ sendCommand webAddress (System TurnOn)
+                              controller env
+
+                            PowerOff -> do
+                              liftIO $ sendCommand webAddress (System TurnOff)
+                              controller env
+
+                            GetReadings -> do
+                              liftIO $ sendCommand webAddress (EMeter GetCurrentAndVoltageReadings)
+                              controller env
+
+                      , matchAny $ \m -> do
+                          say $ "[HS110] Received unexpected message" ++ show m
+                          controller env
+                      ]
 
 instance ToJSON HS110 where
   toJSON (HS110 webAddress) = object [ "model" .= String "HS110"
