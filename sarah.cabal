@@ -15,7 +15,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Graphics.UI.Bootstrap
+  exposed-modules:     Crypto
+                     , Graphics.UI.Bootstrap
                      , Graphics.UI.Bootstrap.Builder
                      , Graphics.UI.Bootstrap.Class
                      , Graphics.UI.Bootstrap.Glyphicon
@@ -86,6 +87,7 @@ library
                      , monad-logger
                      , mtl
                      , network
+                     , network-simple
                      , network-transport-tcp
                      , persistent
                      , persistent-template
