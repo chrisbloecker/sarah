@@ -9,21 +9,25 @@ module Sarah.Middleware.Device.Power.HS110
   where
 --------------------------------------------------------------------------------
 import Control.Distributed.Process
-import Control.Monad               (join)
-import Crypto                      (autokey, unautokey)
-import Data.Aeson                  (ToJSON (..), FromJSON (..), encode, decodeStrict')
-import Data.Aeson.Types            (Parser, Value (..), (.=), (.:), typeMismatch, object, withObject)
-import Data.ByteString             (ByteString)
-import Data.Char                   (chr, ord)
-import Data.Text                   (Text, pack, unpack)
-import Data.Text.Encoding          (encodeUtf8, decodeUtf8)
-import GHC.Generics                (Generic)
+import Control.Exception                  (IOException, handle)
+import Control.Monad                      (join)
+import Crypto                             (autokey, unautokey)
+import Data.Aeson                         (ToJSON (..), FromJSON (..), encode, decodeStrict')
+import Data.Aeson.Types                   (Parser, Value (..), (.=), (.:), typeMismatch, object, withObject)
+import Data.ByteString                    (ByteString)
+import Data.Char                          (chr, ord)
+import Data.Text                          (Text, pack, unpack)
+import Data.Text.Encoding                 (encodeUtf8, decodeUtf8)
+import GHC.Generics                       (Generic)
 import Raspberry.IP
 import Sarah.Middleware.Model
 import Sarah.Middleware.Slave.Messages
+import System.Timeout
 --------------------------------------------------------------------------------
-import qualified Data.ByteString.Lazy as LBS (toStrict, fromStrict)
-import qualified Network.Simple.TCP   as TCP (connect, recv, send)
+import qualified Data.ByteString.Lazy      as LBS        (toStrict, fromStrict)
+import qualified Network.Socket            as TCP hiding (send, sendTo, recv, recvFrom)
+import qualified Network.Socket.ByteString as TCP
+--import qualified Network.Simple.TCP   as TCP (connect, recv, send)
 --------------------------------------------------------------------------------
 
 data Month = January
@@ -121,9 +125,20 @@ decrypt = decodeStrict'
         . decodeUtf8
 
 sendCommand :: WebAddress -> HS110Command -> IO (Maybe HS110Reply)
-sendCommand webAddress command = TCP.connect (host webAddress) (show $ port webAddress) $ \(socket, remote) -> do
+sendCommand WebAddress{..} command = TCP.withSocketsDo $ handle errorHandler $ do
+  addrInfo <- TCP.getAddrInfo Nothing (Just host) (Just $ show port)
+  let serverAddr = head addrInfo
+  socket <- TCP.socket (TCP.addrFamily serverAddr) TCP.Stream TCP.defaultProtocol
+  TCP.connect socket (TCP.addrAddress serverAddr)
   TCP.send socket (encrypt command)
-  maybe Nothing decrypt <$> TCP.recv socket 2048
+  reply <- TCP.recv socket 2048
+  TCP.close socket
+  return . decrypt $ reply
+
+    where
+      errorHandler e = do
+        putStrLn $ "[HS110.sendCommand] Send failed: " ++ show (e :: IOException)
+        return Nothing
 
 
 newtype HS110 = HS110 WebAddress deriving (Show)
