@@ -12,7 +12,6 @@ import Data.Text                      (Text)
 import Data.UUID                      (toString)
 import Data.UUID.V4                   (nextRandom)
 import Graphics.UI.Material
-import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
 import Physics

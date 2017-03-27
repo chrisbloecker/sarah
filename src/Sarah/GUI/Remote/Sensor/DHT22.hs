@@ -10,7 +10,6 @@ import Control.Monad.Reader           (runReaderT, lift, ask)
 import Data.Foldable                  (traverse_)
 import Data.Text                      (Text)
 import Graphics.UI.Material
-import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
 import Physics

@@ -2,14 +2,17 @@ module Graphics.UI.Material
   ( module Graphics.UI.Material
   )
   where
-
+--------------------------------------------------------------------------------
 import Control.Monad                     (forM)
 import Data.UUID                         (toString)
 import Data.UUID.V4                      (nextRandom)
-import Graphics.UI.Material.Class as Graphics.UI.Material
-import Graphics.UI.Material.Icon  as Graphics.UI.Material
 import Graphics.UI.Threepenny     hiding (map)
 import Prelude                    hiding (div, span)
+--------------------------------------------------------------------------------
+import Graphics.UI.Material.Class    as Graphics.UI.Material
+import Graphics.UI.Material.Icon     as Graphics.UI.Material
+import Graphics.UI.Material.Reactive as Graphics.UI.Material
+--------------------------------------------------------------------------------
 
 newtype Style = Style { unStyle :: [(String, String)] }
 

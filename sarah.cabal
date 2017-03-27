@@ -16,13 +16,10 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Crypto
-                     , Graphics.UI.Bootstrap
-                     , Graphics.UI.Bootstrap.Builder
-                     , Graphics.UI.Bootstrap.Class
-                     , Graphics.UI.Bootstrap.Glyphicon
                      , Graphics.UI.Material
                      , Graphics.UI.Material.Class
                      , Graphics.UI.Material.Icon
+                     , Graphics.UI.Material.Reactive
                      , Graphics.UI.Threepenny.Extra
                      , Physics
                      , Raspberry.GPIO

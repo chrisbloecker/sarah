@@ -29,21 +29,23 @@ instance HasRemote HS110 where
       (eventPowerSwitch, handlerPowerSwitch) <- liftIO newEvent
       behaviourPowerSwitch                   <- stepper False eventPowerSwitch
 
-      newId <- toString <$> liftIO nextRandom
-      onOffButton <- reactiveCheckbox behaviourPowerSwitch
-      onOffToggle <- Material.toggle (element onOffButton)
-      element (getElement onOffToggle) # set id_ newId
+      --newId <- toString <$> liftIO nextRandom
+      --onOffButton <- reactiveCheckbox behaviourPowerSwitch
+      --onOffToggle <- Material.toggle (element onOffButton)
+      --element (getElement onOffToggle) # set id_ newId
+      onOffToggle <- Material.reactiveToggle behaviourPowerSwitch
 
       let eventStateChangedHandler :: Handler (DeviceState HS110)
           eventStateChangedHandler HS110.HS110State{..} = do
             putStrLn $ "[HS110.eventStateChangedHandler] " ++ show power
             handlerPowerSwitch power
-            runUI window . runFunction . ffi $ "$('#" ++ newId ++ "')[0].MaterialSwitch." ++ if power then "on()" else "off()"
+            --runUI window . runFunction . ffi $ "$('#" ++ newId ++ "')[0].MaterialSwitch." ++ if power then "on()" else "off()"
 
 
       unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
-      on checkedChange (getElement onOffButton) $ \state -> liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (if state then HS110.PowerOn else HS110.PowerOff)
+      --on checkedChange (getElement onOffButton) $ \state -> liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (if state then HS110.PowerOn else HS110.PowerOff)
+      on checkedChange (Material.getCheckbox onOffToggle) $ \state -> liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (if state then HS110.PowerOn else HS110.PowerOff)
 
       liftIO $ flip runReaderT remoteRunnerEnv $ withResponse HS110.GetStateRequest doNothing (\(HS110.GetStateReply state) -> eventStateChangedHandler state)
 
