@@ -89,7 +89,7 @@ library
                      , monad-logger
                      , mtl
                      , network
-                     , network-simple
+                     , network-socket-options
                      , network-transport-tcp
                      , persistent
                      , persistent-template

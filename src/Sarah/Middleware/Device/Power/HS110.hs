@@ -24,10 +24,10 @@ import Sarah.Middleware.Model
 import Sarah.Middleware.Slave.Messages
 import System.Timeout
 --------------------------------------------------------------------------------
-import qualified Data.ByteString.Lazy      as LBS        (toStrict, fromStrict)
-import qualified Network.Socket            as TCP hiding (send, sendTo, recv, recvFrom)
-import qualified Network.Socket.ByteString as TCP
---import qualified Network.Simple.TCP   as TCP (connect, recv, send)
+import qualified Data.ByteString.Lazy      as LBS           (toStrict, fromStrict)
+import qualified Network.Socket            as Socket hiding (send, recv)
+import qualified Network.Socket.ByteString as Socket        (send, recv)
+import qualified Network.Socket.Options    as Socket        (setSocketTimeouts)
 --------------------------------------------------------------------------------
 
 data Month = January
@@ -125,14 +125,16 @@ decrypt = decodeStrict'
         . decodeUtf8
 
 sendCommand :: WebAddress -> HS110Command -> IO (Maybe HS110Reply)
-sendCommand WebAddress{..} command = TCP.withSocketsDo $ handle errorHandler $ do
-  addrInfo <- TCP.getAddrInfo Nothing (Just host) (Just $ show port)
+sendCommand WebAddress{..} command = Socket.withSocketsDo $ handle errorHandler $ do
+  addrInfo <- Socket.getAddrInfo Nothing (Just host) (Just $ show port)
   let serverAddr = head addrInfo
-  socket <- TCP.socket (TCP.addrFamily serverAddr) TCP.Stream TCP.defaultProtocol
-  TCP.connect socket (TCP.addrAddress serverAddr)
-  TCP.send socket (encrypt command)
-  reply <- TCP.recv socket 2048
-  TCP.close socket
+  socket <- Socket.socket (Socket.addrFamily serverAddr) Socket.Stream Socket.defaultProtocol
+  -- set send and receive timeouts to 1s
+  Socket.setSocketTimeouts socket 1000000 1000000
+  Socket.connect socket (Socket.addrAddress serverAddr)
+  Socket.send socket (encrypt command)
+  reply <- Socket.recv socket 2048
+  Socket.close socket
   return . decrypt $ reply
 
     where
