@@ -20,7 +20,9 @@ library
                      , Graphics.UI.Bootstrap.Builder
                      , Graphics.UI.Bootstrap.Class
                      , Graphics.UI.Bootstrap.Glyphicon
-                     , Graphics.UI.Bootstrap.Style
+                     , Graphics.UI.Material
+                     , Graphics.UI.Material.Class
+                     , Graphics.UI.Material.Icon
                      , Graphics.UI.Threepenny.Extra
                      , Physics
                      , Raspberry.GPIO
@@ -98,6 +100,7 @@ library
                      , threepenny-gui
                      , time
                      , unordered-containers
+                     , uuid
                      , vector
                      , wai
                      , warp

@@ -5,22 +5,10 @@ module Sarah.GUI.Widgets
 --------------------------------------------------------------------------------
 import Control.Monad                 (when)
 import Data.Maybe                    (isJust)
-import Graphics.UI.Bootstrap
+import Graphics.UI.Material
 import Graphics.UI.Threepenny
 import Prelude                hiding (div)
 --------------------------------------------------------------------------------
-
-data ReactiveLabel = ReactiveLabel { _elementRL :: Element }
-
-instance Widget ReactiveLabel where
-  getElement = _elementRL
-
-reactiveLabel :: Behavior String -> UI ReactiveLabel
-reactiveLabel behaviour = do
-  display <- label
-  element display # sink text behaviour
-  return ReactiveLabel { _elementRL = display }
-
 
 data ReactiveButton = ReactiveButton { _elementRB :: Element }
 
@@ -37,31 +25,41 @@ reactiveButton behaviourClass behaviourStyle = do
   return ReactiveButton { _elementRB = display }
 
 
-data ReactiveProgressBar = ReactiveProgressBar { _elementRPB :: Element }
+data ReactiveCheckbox = ReactiveCheckbox { _elementCB :: Element }
 
-instance Widget ReactiveProgressBar where
-  getElement = _elementRPB
+instance Widget ReactiveCheckbox where
+  getElement = _elementCB
 
-reactiveProgressBar :: Behavior (Integer, String) -> UI ReactiveProgressBar
-reactiveProgressBar behaviour = do
-  display <- string ""
-  inner   <- div # set class_ "progress-bar progress-bar-info"
-                 # set (attr "role") "progressbar"
-                 # set (attr "aria-valuemin") "0"
-                 # set (attr "aria-valuemax") "100"
-                 #+ [ div # set class_ "text-center"
-                          #+ [ element display # set style [("color", "black")] ]
-                    ]
+reactiveCheckbox :: Behavior Bool -> UI ReactiveCheckbox
+reactiveCheckbox behaviour = do
+  display <- input # set type_ "checkbox"
 
-  progressBar <- div # set class_ "progress"
-                     #+ [ element inner ]
+  element display # sink checked behaviour
 
-  element inner   # sink (attr "aria-valuenow") (show . fst <$> behaviour)
-  element inner   # sink style                  (mkWidth . show . fst <$> behaviour)
-  element display # sink text                   (       snd <$> behaviour)
+  return ReactiveCheckbox { _elementCB = display }
 
-  return ReactiveProgressBar { _elementRPB = progressBar }
 
-    where
-      mkWidth :: String -> [(String, String)]
-      mkWidth w = [("width", w ++ "%")]
+data ReactiveLabel = ReactiveLabel { _elementRL :: Element }
+
+instance Widget ReactiveLabel where
+  getElement = _elementRL
+
+reactiveLabel :: Behavior String -> UI ReactiveLabel
+reactiveLabel behaviour = do
+  display <- label
+  element display # sink text behaviour
+  return ReactiveLabel { _elementRL = display }
+
+
+data ReactiveListItem = ReactiveListItem { _elementRLI :: Element }
+
+instance Widget ReactiveListItem where
+  getElement = _elementRLI
+
+reactiveListItem :: Behavior Class -> UI ReactiveListItem
+reactiveListItem behaviourClass = do
+  display <- li
+
+  element display # sink class_ (unClass <$> behaviourClass)
+
+  return ReactiveListItem { _elementRLI = display }

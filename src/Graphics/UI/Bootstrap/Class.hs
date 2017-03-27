@@ -1,10 +1,7 @@
 module Graphics.UI.Bootstrap.Class
   where
 
-newtype Class = Class { unClass :: String }
-
-buildClass :: [Class] -> Class
-buildClass = Class . unwords . map unClass
+import Graphics.UI.Material.Class
 
 -- a normal button
 btn = Class "btn"

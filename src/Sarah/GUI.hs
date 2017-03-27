@@ -11,6 +11,7 @@ import Control.Monad.Reader                (runReaderT, ask)
 import Data.Maybe                          (fromJust)
 import Data.Text                           (unpack)
 import Graphics.UI.Threepenny       hiding (map)
+import Graphics.UI.Threepenny.Core         (ffi, runFunction)
 import Graphics.UI.Threepenny.Extra
 import Prelude                      hiding (div, span)
 import Sarah.GUI.Model
@@ -20,13 +21,9 @@ import Sarah.GUI.Websocket                 (toMaster)
 import Sarah.Middleware
 import Servant.Client
 --------------------------------------------------------------------------------
-import qualified Data.HashMap.Strict as HM
+import qualified Data.HashMap.Strict  as HM
+import qualified Graphics.UI.Material as Material
 --------------------------------------------------------------------------------
-
-data Navbar = Navbar { remotesButton :: Element
-                     , devicesButton :: Element
-                     , navbar        :: Element
-                     }
 
 setup :: AppEnv -> Window -> UI ()
 setup appEnv@AppEnv{..} window = void $ do
@@ -64,92 +61,42 @@ setup appEnv@AppEnv{..} window = void $ do
               remote <- runUI window $ mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget
               liftIO . atomically $ modifyTVar remotes (HM.insert deviceAddress remote)
 
-  liftIO $ putStrLn "Finished building remotes"
-
   -- ToDo: where and when should we clean up events for devices that don't exist
   --       or are not connected anymore?
 
-  content <- div # set id_ "content"
-                 # set class_ "page-content"
+  mnavigation <- getElementById window "navigation"
+  mcontent    <- getElementById window "content"
 
-  remotesButton <- a # set class_ "mdl-navigation__link"
-                     # set href ""
-                     # set text "Remotes"
+  case (mnavigation, mcontent) of
+    (Just navigation, Just content) -> do
+      navRemotes <- button # set class_ "mdl-button mdl-js-button"
+                           # set text "Remotes"
 
-  page <- div # set class_ "mdl-layout mdl-js-layout mdl-layout--fixed-header"
-              #+ [ header # set class_ "mdl-layout__header"
-                          #+ [ div # set class_ "mdl-layout__header-row"
-                                   #+ [ span # set class_ "mdl-layout-title"
-                                             # set text "sarah"
-                                      , div # set class_ "mdl-layout-spacer"
-                                      , nav # set class_ "mdl-navigation mdl-layout--large-screen-only"
-                                            #+ [
-                                               ]
-                                      ]
-                             ]
-                 , div # set class_ "mdl-layout__drawer"
-                       #+ [ span # set class_ "mdl-layout-title"
-                                 # set text "Title"
-                          , nav # set class_ "mdl-navigation"
-                                #+ [ element remotesButton
-                                   ]
-                          ]
-                 , main # set class_ "mdl-layout__content"
-                        #+ [ element content
-                           ]
-                 ]
+      element navigation # set children [ navRemotes ]
 
-  getBody window #+ [ element page ]
+      on click navRemotes $ \_ -> do
+        remoteWidgets <- liftIO . atomically $ readTVar remotes
+        element content # set children (HM.elems remoteWidgets)
 
-  -- add the navbar and render the remotes by default
-  remoteWidgets <- liftIO . atomically $ readTVar remotes
-  element content # set children (HM.elems remoteWidgets)
+      -- add the navbar and render the remotes by default
+      remoteWidgets <- liftIO . atomically $ readTVar remotes
+      element content # set children (HM.elems remoteWidgets)
 
-  on click remotesButton $ \_ -> do
-    remoteWidgets <- liftIO . atomically $ readTVar remotes
-    element content # set children (HM.elems remoteWidgets)
+      Material.upgradeDom
 
-
-mkNavbar :: UI Navbar
-mkNavbar = do
-  remotesButton <- a # set text "Remotes"
-  devicesButton <- a # set text "Devices"
-  navbar <- nav # set class_ "navbar navbar-default"
-                #+ [ div # set class_ "container"
-                         #+ [ div # set class_ "navbar-header"
-                                  #+ [ button # set type_ "button"
-                                              # set class_ "navbar-toggle collapsed"
-                                              # set datatoggle "collapse"
-                                              # set datatarget "#the-navbar"
-                                              # set ariaexpanded "false"
-                                              #+ [ span # set class_ "icon-bar"
-                                                 , span # set class_ "icon-bar"
-                                                 , span # set class_ "icon-bar"
-                                                 ]
-                                     ]
-                            , div # set class_ "collapse navbar-collapse"
-                                  # set id_ "the-navbar"
-                                  #+ [ ul # set class_ "nav navbar-nav"
-                                          #+ [ li #+ [ element remotesButton ]
-                                             , li #+ [ element devicesButton ]
-                                             ]
-                                     ]
-                            ]
-                   ]
-  return Navbar{..}
+    (_, _) -> return ()
 
 
 mkTile :: String -> UI Element -> UI Element
-mkTile title content = div # set class_ "col-lg-4 col-md-4 col-sm-6"
-                           #+ [ div # set class_ "panel panel-default"
-                                    #+ [ div # set class_ "panel-heading"
-                                             #+ [ div # set class_ "panel-title"
-                                                      # set text title
-                                                ]
-                                       , div # set class_ "panel-body"
-                                             #+ [ content ]
+mkTile title content = div # set class_ "mdl-card mdl-card-margin mdl-shadow--2dp"
+                           #+ [ div # set class_ "mdl-card__title"
+                                    #+ [ h2 # set class_ "mdl-card__title-text"
+                                            # set text title
                                        ]
+                              , div # set class_ "mdl-card__actions mdl-card--border mdl-typography--text-center"
+                                    #+ [ content ]
                               ]
+
 
 listGroup :: String -> [UI Element] -> UI Element
 listGroup title contents = ul # set class_ "list-group"

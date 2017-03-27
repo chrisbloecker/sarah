@@ -20,6 +20,7 @@ import Data.Text.Encoding          (encodeUtf8, decodeUtf8)
 import GHC.Generics                (Generic)
 import Raspberry.IP
 import Sarah.Middleware.Model
+import Sarah.Middleware.Slave.Messages
 --------------------------------------------------------------------------------
 import qualified Data.ByteString.Lazy as LBS (toStrict, fromStrict)
 import qualified Network.Simple.TCP   as TCP (connect, recv, send)
@@ -133,45 +134,57 @@ data ControllerEnv = ControllerEnv { slave       :: Slave
                                    }
 
 instance IsDevice HS110 where
-  data DeviceState HS110 = HS110State
+  data DeviceState HS110 = HS110State { power :: Bool }
     deriving (Generic, ToJSON, FromJSON)
 
   data DeviceRequest HS110 = PowerOn
                            | PowerOff
+                           | GetStateRequest
                            | GetReadings
     deriving (Generic, ToJSON, FromJSON)
 
-  data DeviceReply HS110 = Empty
+  data DeviceReply HS110 = GetStateReply (DeviceState HS110)
     deriving (Generic, ToJSON, FromJSON)
 
   startDeviceController (HS110 webAddress) slave portManager = do
     say "[HS110.startDeviceController] starting controller for HS110"
-    DeviceController <$> spawnLocal (controller ControllerEnv{..})
+    DeviceController <$> spawnLocal (controller HS110State { power = False } ControllerEnv{..})
 
       where
-        controller :: ControllerEnv -> Process ()
-        controller env@ControllerEnv{..} =
+        controller :: DeviceState HS110 -> ControllerEnv -> Process ()
+        controller state@HS110State{..} env@ControllerEnv{..} =
           receiveWait [ match $ \(FromPid src (query :: Query)) -> case getCommand (queryCommand query) of
                           Left err -> do
                             say $ "[HS110.controller] Can't decode command: " ++ err
-                            controller env
+                            controller state env
 
                           Right command -> case command of
                             PowerOn -> do
+                              say "[HS110.controller] Switching on"
                               liftIO $ sendCommand webAddress (System TurnOn)
-                              controller env
+                              let state' = state { power = True }
+                              sendStateChanged slave state'
+                              controller state' env
 
                             PowerOff -> do
+                              say "[HS110.controller] Switching off"
                               liftIO $ sendCommand webAddress (System TurnOff)
-                              controller env
+                              let state' = state { power = False }
+                              sendStateChanged slave state'
+                              controller state' env
+
+                            GetStateRequest -> do
+                              send src (mkQueryResult $ GetStateReply state)
+                              controller state env
 
                             GetReadings -> do
+                              say "[HS110.controller] Getting readings"
                               liftIO $ sendCommand webAddress (EMeter GetCurrentAndVoltageReadings)
-                              controller env
+                              controller state env
 
                       , matchAny $ \m -> do
                           say $ "[HS110] Received unexpected message" ++ show m
-                          controller env
+                          controller state env
                       ]
 
 instance ToJSON HS110 where
