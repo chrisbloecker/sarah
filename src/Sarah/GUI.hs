@@ -16,7 +16,6 @@ import Graphics.UI.Threepenny.Extra
 import Prelude                      hiding (div, span)
 import Sarah.GUI.Model
 import Sarah.GUI.Remote                    (Remote (..), fromDeviceRep)
-import Sarah.GUI.Widgets
 import Sarah.GUI.Websocket                 (toMaster)
 import Sarah.Middleware
 import Servant.Client

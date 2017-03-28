@@ -310,6 +310,7 @@ instance IsDevice ToshibaAC where
                                   controller env config'
                                 -- if setting the new config fails, keep the old one
                                 Error -> do
+                                  sendStateChanged slave config
                                   send src (mkQueryResult Empty)
                                   controller env config
 

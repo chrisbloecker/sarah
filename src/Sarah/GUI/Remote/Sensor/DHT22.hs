@@ -14,7 +14,6 @@ import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
 import Physics
 import Sarah.GUI.Model
-import Sarah.GUI.Widgets
 import Sarah.GUI.Websocket            (withResponse)
 import Sarah.Middleware               (DeviceState, EncodedDeviceState, decodeDeviceState, mkCommand)
 import Sarah.Middleware.Device        (DHT22)
@@ -30,8 +29,8 @@ instance HasRemote DHT22 where
       (eventReadings, handlerReadings) <- liftIO newEvent
       behaviourReadings                <- stepper ("--", "--") eventReadings
 
-      temperatureDisplay <- reactiveLabel ((++ "°C") . fst <$> behaviourReadings)
-      humidityDisplay    <- reactiveLabel ((++ "%")  . snd <$> behaviourReadings)
+      temperatureDisplay <- Material.reactiveLabel ((++ "°C") . fst <$> behaviourReadings)
+      humidityDisplay    <- Material.reactiveLabel ((++ "%")  . snd <$> behaviourReadings)
 
       getTemperatureButton <- button # set class_ (Material.unClass $ Material.buildClass [Material.mdl_button, Material.mdl_js_button, mdl_button_icon]) #+ [Material.icon Material.refresh]
       getHumidityButton    <- button # set class_ (Material.unClass $ Material.buildClass [Material.mdl_button, Material.mdl_js_button, mdl_button_icon]) #+ [Material.icon Material.refresh]

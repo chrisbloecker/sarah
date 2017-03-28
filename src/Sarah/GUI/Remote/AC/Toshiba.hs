@@ -16,7 +16,6 @@ import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
 import Physics
 import Sarah.GUI.Model
-import Sarah.GUI.Widgets
 import Sarah.GUI.Websocket            (withResponse, withoutResponse)
 import Sarah.Middleware               (EncodedDeviceState, decodeDeviceState, QueryResult (..), mkCommand)
 import Sarah.Middleware.Device        (ToshibaAC)
@@ -46,10 +45,7 @@ instance HasRemote ToshibaAC where
       behaviourMode        <- stepper "Off" eventMode
       behaviourPowerMode   <- stepper "Normal" eventPowerMode
 
-      newId        <- toString <$> liftIO nextRandom
-      onOffButton  <- reactiveCheckbox behaviourPowerSwitch
-      onOffToggle  <- Material.toggle (element onOffButton)
-      element (getElement onOffToggle) # set id_ newId
+      onOffToggle  <- Material.reactiveToggle behaviourPowerSwitch
 
       displayTemperature <- reactiveLabel behaviourTemperature
       displayFanlevel    <- reactiveLabel behaviourFanlevel
@@ -102,24 +98,21 @@ instance HasRemote ToshibaAC where
       element (getElement hiButton)     # set text "High"
 
       let eventStateChangedHandler :: Handler (Toshiba.DeviceState ToshibaAC)
-          eventStateChangedHandler Toshiba.Config{..} = do
-            handlerTemperature  emptyTemperature
-            handlerFanlevel     emptyFanlevel
-            handlerAuto grey
-            handlerCool grey
-            handlerDry  grey
-            handlerFan  grey
-            handlerEco  grey
-            handlerHi   grey
-
+          eventStateChangedHandler Toshiba.Config{..} =
             if mode == Toshiba.ModeOff
               then do
                 handlerPowerSwitch False
-                runUI window . runFunction . ffi $ "$('#" ++ newId ++ "')[0].MaterialSwitch.off()"
+                handlerTemperature  emptyTemperature
+                handlerFanlevel     emptyFanlevel
+                handlerAuto grey
+                handlerCool grey
+                handlerDry  grey
+                handlerFan  grey
+                handlerEco  grey
+                handlerHi   grey
 
             else do
               handlerPowerSwitch True
-              runUI window . runFunction . ffi $ "$('#" ++ newId ++ "')[0].MaterialSwitch.on()"
 
               case temperature of
                 Temperature t -> handlerTemperature (show t ++ "°C")
@@ -134,11 +127,11 @@ instance HasRemote ToshibaAC where
                 Toshiba.FanVeryHigh -> "Very High"
 
               case mode of
-                Toshiba.ModeAuto -> handlerAuto accented >> handlerMode "Auto"
-                Toshiba.ModeCool -> handlerCool accented >> handlerMode "Cool"
-                Toshiba.ModeDry  -> handlerDry  accented >> handlerMode "Dry"
-                Toshiba.ModeFan  -> handlerFan  accented >> handlerMode "Fan"
-                Toshiba.ModeOff  -> handlerMode "Off"
+                Toshiba.ModeAuto -> handlerAuto accented >> handlerCool grey     >> handlerDry grey     >> handlerFan  grey     >> handlerMode "Auto"
+                Toshiba.ModeCool -> handlerAuto grey     >> handlerCool accented >> handlerDry grey     >> handlerFan  grey     >> handlerMode "Cool"
+                Toshiba.ModeDry  -> handlerAuto grey     >> handlerCool grey     >> handlerDry accented >> handlerFan  grey     >> handlerMode "Dry"
+                Toshiba.ModeFan  -> handlerAuto grey     >> handlerCool grey     >> handlerDry grey     >> handlerFan  accented >> handlerMode "Fan"
+                Toshiba.ModeOff  -> handlerAuto grey     >> handlerCool grey     >> handlerDry grey     >> handlerFan  grey     >> handlerMode "Off"
 
               handlerEco grey
               handlerHi  grey
@@ -149,18 +142,18 @@ instance HasRemote ToshibaAC where
 
       unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
-      on checkedChange (getElement onOffButton) $ \state -> liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write $ if state then Toshiba.PowerOn else Toshiba.PowerOff)
-      on click         (getElement tempUpButton)         $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.UpTemperature)
-      on click         (getElement tempDownButton)       $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.DownTemperature)
-      on click         (getElement fanUpButton)          $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.UpFan)
-      on click         (getElement fanDownButton)        $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.DownFan)
-      on click         (getElement autoButton)           $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeAuto))
-      on click         (getElement coolButton)           $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeCool))
-      on click         (getElement dryButton)            $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeDry))
-      on click         (getElement fanButton)            $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeFan))
-      on click         (getElement normalButton)         $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode Nothing))
-      on click         (getElement ecoButton)            $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerEco))
-      on click         (getElement hiButton)             $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerHigh))
+      on checkedChange (Material.getCheckbox onOffToggle) $ \state -> liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write $ if state then Toshiba.PowerOn else Toshiba.PowerOff)
+      on click         (getElement tempUpButton)                   $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.UpTemperature)
+      on click         (getElement tempDownButton)                 $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.DownTemperature)
+      on click         (getElement fanUpButton)                    $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.UpFan)
+      on click         (getElement fanDownButton)                  $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.DownFan)
+      on click         (getElement autoButton)                     $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeAuto))
+      on click         (getElement coolButton)                     $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeCool))
+      on click         (getElement dryButton)                      $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeDry))
+      on click         (getElement fanButton)                      $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeFan))
+      on click         (getElement normalButton)                   $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode Nothing))
+      on click         (getElement ecoButton)                      $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerEco))
+      on click         (getElement hiButton)                       $ embedUI $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerHigh))
 
       liftIO $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Read Toshiba.GetConfig) doNothing (\(Toshiba.DeviceState config) -> eventStateChangedHandler config)
 

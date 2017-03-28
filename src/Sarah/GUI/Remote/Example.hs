@@ -13,7 +13,6 @@ import Graphics.UI.Threepenny  hiding (map)
 import Graphics.UI.Threepenny.Core    (runFunction, ffi)
 import Prelude                 hiding (span, div)
 import Sarah.GUI.Model                (HasRemote (..), RemoteBuilder, RemoteBuilderEnv (..), embedUI, doNothing)
-import Sarah.GUI.Widgets
 import Sarah.GUI.Websocket            (withResponse, withoutResponse)
 import Sarah.Middleware               (EncodedDeviceState, decodeDeviceState, QueryResult (..), mkCommand)
 import Sarah.Middleware.Device        (ExampleDevice)
@@ -32,8 +31,8 @@ instance HasRemote ExampleDevice where
       behaviourDisplay <- stepper "foo"    eventDisplay
       behaviourMode    <- stepper "Normal" eventMode
 
-      display     <- reactiveLabel behaviourDisplay
-      displayMode <- reactiveLabel behaviourMode
+      display     <- Material.reactiveLabel behaviourDisplay
+      displayMode <- Material.reactiveLabel behaviourMode
 
       getRandomNumberButton <- button # set class_ (Material.unClass $ Material.buildClass [Material.mdl_button, Material.mdl_js_button]) #+ [ Material.icon Material.trending_up ]
       alwaysFailingButton   <- button # set class_ (Material.unClass $ Material.buildClass [Material.mdl_button, Material.mdl_js_button]) #+ [ Material.icon Material.bug_report  ]
@@ -52,9 +51,9 @@ instance HasRemote ExampleDevice where
       behaviourStarButton   <- stepper grey eventStarButton
       behaviourHeartButton  <- stepper grey eventHeartButton
 
-      minusButton <- reactiveListItem behaviourMinusButton
-      starButton  <- reactiveListItem behaviourStarButton
-      heartButton <- reactiveListItem behaviourHeartButton
+      minusButton <- Material.reactiveListItem behaviourMinusButton
+      starButton  <- Material.reactiveListItem behaviourStarButton
+      heartButton <- Material.reactiveListItem behaviourHeartButton
 
       element (getElement minusButton) # set text "Normal"
       element (getElement starButton)  # set text "Star"
