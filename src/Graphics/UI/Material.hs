@@ -45,3 +45,22 @@ listItem content action = do
                 ]
 
   return ListItem { _elementListItem = elem }
+
+
+data Slider = Slider { getSlider :: Element }
+
+instance Widget Slider where
+  getElement = getSlider
+
+slider :: Int -> Int -> Int -> Int -> UI Slider
+slider width min max value = do
+  elem <- p # set style [("width", show width ++ "px")]
+            #+ [ input # set class_ (unClass $ buildClass [mdl_slider, mdl_js_slider])
+                       # set type_ "range"
+                       # set (attr "min") (show min)
+                       # set (attr "max") (show max)
+                       # set (attr "value") (show value)
+                       # set (attr "step") "1"
+               ]
+
+  return Slider { getSlider = elem }

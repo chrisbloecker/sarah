@@ -29,10 +29,10 @@ import qualified Data.ByteString   as BS
 import qualified Language.C.Inline as C
 --------------------------------------------------------------------------------
 
-data Temp  = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30 deriving (Generic, Typeable, ToJSON, FromJSON, Eq, Ord, Enum, Bounded)
-data Fan   = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Generic, Typeable, ToJSON, FromJSON, Eq, Ord, Enum, Bounded)
-data Mode  = ModeAuto | ModeCool | ModeDry | ModeFan | ModeOff                                 deriving (Generic, Typeable, ToJSON, FromJSON, Eq)
-data Power = PowerHigh | PowerEco                                                              deriving (Generic, Typeable, ToJSON, FromJSON, Eq)
+data Temp  = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30 deriving (Generic, Typeable, ToJSON, FromJSON, Show, Eq, Ord, Enum, Bounded)
+data Fan   = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Generic, Typeable, ToJSON, FromJSON, Show, Eq, Ord, Enum, Bounded)
+data Mode  = ModeAuto | ModeCool | ModeDry | ModeFan | ModeOff                                 deriving (Generic, Typeable, ToJSON, FromJSON, Show, Eq)
+data Power = PowerHigh | PowerEco                                                              deriving (Generic, Typeable, ToJSON, FromJSON, Show, Eq)
 
 instance ToBits Temp where
   toBits T17 = 0x0
@@ -241,7 +241,7 @@ data Writing = PowerOn
              | SetFanMode     Fan
              | SetMode        Mode
              | SetPowerMode   (Maybe Power)
-  deriving (Generic, ToJSON, FromJSON)
+  deriving (Generic, ToJSON, FromJSON, Show)
 
 defaultConfig :: DeviceState ToshibaAC
 defaultConfig = Config { temperature = Temperature 20
@@ -284,9 +284,10 @@ instance IsDevice ToshibaAC where
                                 controller env config
 
                             Write writing -> do
+                              say $ "[Toshiba.controller] Received command: " ++ show writing
                               let config' = case writing of
-                                              PowerOn          -> defaultConfig
-                                              PowerOff         -> config { mode = ModeOff }
+                                              PowerOn          -> defaultConfig { mode = ModeAuto }
+                                              PowerOff         -> config        { mode = ModeOff  }
                                               UpTemperature    -> if temperature >= toTemperature maxBound
                                                                     then config
                                                                     else config { temperature = Temperature $ getTemperature temperature + 1 }
@@ -311,6 +312,7 @@ instance IsDevice ToshibaAC where
                                 -- if setting the new config fails, keep the old one
                                 Error -> do
                                   sendStateChanged slave config
+                                  say "[Toshiba.controller] Failed sending command to AC"
                                   send src (mkQueryResult Empty)
                                   controller env config
 

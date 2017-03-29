@@ -32,3 +32,6 @@ mdl_switch = Class "mdl-switch"
 mdl_js_switch = Class "mdl-js-switch"
 mdl_switch_input = Class "mdl-switch__input"
 mdl_switch_label = Class "mdl-switch__label"
+
+mdl_slider = Class "mdl-slider"
+mdl_js_slider = Class "mdl-js-slider"
