@@ -16,6 +16,7 @@ import Data.Aeson                         (ToJSON (..), FromJSON (..), encode, d
 import Data.Aeson.Types                   (Parser, Value (..), (.=), (.:), typeMismatch, object, withObject)
 import Data.ByteString                    (ByteString)
 import Data.Char                          (chr, ord)
+import Data.Int                           (Int8)
 import Data.Text                          (Text, pack, unpack)
 import Data.Text.Encoding                 (encodeUtf8, decodeUtf8)
 import GHC.Generics                       (Generic)
@@ -24,10 +25,11 @@ import Sarah.Middleware.Model
 import Sarah.Middleware.Slave.Messages
 import System.Timeout
 --------------------------------------------------------------------------------
-import qualified Data.ByteString.Lazy      as LBS           (toStrict, fromStrict)
-import qualified Network.Socket            as Socket hiding (send, recv)
-import qualified Network.Socket.ByteString as Socket        (send, recv)
-import qualified Network.Socket.Options    as Socket        (setSocketTimeouts)
+import qualified Data.ByteString.Char8      as BS            (pack, unpack)
+import qualified Data.ByteString.Lazy.Char8 as LBS           (unpack)
+import qualified Network.Socket             as Socket hiding (send, recv)
+import qualified Network.Socket.ByteString  as Socket        (send, recv)
+import qualified Network.Socket.Options     as Socket        (setSocketTimeouts)
 --------------------------------------------------------------------------------
 
 data Month = January
@@ -102,27 +104,22 @@ instance FromJSON HS110Reply where
 --------------------------------------------------------------------------------
 
 encrypt :: HS110Command -> ByteString
-encrypt = encodeUtf8
-        . pack
+encrypt = BS.pack
         . ("\0\0\0\0" ++)
         . map chr
         . autokey (171 :: Int)
         . map ord
-        . unpack
-        . decodeUtf8
-        . LBS.toStrict
+        . LBS.unpack
         . encode
 
 decrypt :: ByteString -> Maybe HS110Reply
 decrypt = decodeStrict'
-        . encodeUtf8
-        . pack
+        . BS.pack
         . map chr
         . unautokey (171 :: Int)
         . map ord
         . drop 4
-        . unpack
-        . decodeUtf8
+        . BS.unpack
 
 sendCommand :: WebAddress -> HS110Command -> IO (Maybe HS110Reply)
 sendCommand WebAddress{..} command = Socket.withSocketsDo $ handle errorHandler $ do
