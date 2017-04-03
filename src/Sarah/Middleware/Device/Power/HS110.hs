@@ -1,9 +1,11 @@
-{-# LANGUAGE DeriveAnyClass      #-}
-{-# LANGUAGE DeriveGeneric       #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies        #-}
+{-# LANGUAGE DeriveAnyClass           #-}
+{-# LANGUAGE DeriveGeneric            #-}
+{-# LANGUAGE DisambiguateRecordFields #-}
+{-# LANGUAGE LambdaCase               #-}
+{-# LANGUAGE OverloadedStrings        #-}
+{-# LANGUAGE RecordWildCards          #-}
+{-# LANGUAGE ScopedTypeVariables      #-}
+{-# LANGUAGE TypeFamilies             #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Device.Power.HS110
   where
@@ -28,7 +30,7 @@ import System.Timeout
 --------------------------------------------------------------------------------
 import qualified Data.ByteString.Char8      as BS            (pack, unpack)
 import qualified Data.ByteString.Lazy.Char8 as LBS           (unpack)
-import qualified Data.HashMap.Strict        as HM            (keys)
+import qualified Data.HashMap.Strict        as HM            ((!), keys)
 import qualified Network.Socket             as Socket hiding (send, recv)
 import qualified Network.Socket.ByteString  as Socket        (send, recv)
 import qualified Network.Socket.Options     as Socket        (setSocketTimeouts)
@@ -46,7 +48,36 @@ data Month = January
            | October
            | November
            | December
-  deriving (Generic, ToJSON)
+  deriving (Generic)
+
+instance ToJSON Month where
+  toJSON January   = toJSON ( 1 :: Integer)
+  toJSON February  = toJSON ( 2 :: Integer)
+  toJSON March     = toJSON ( 3 :: Integer)
+  toJSON April     = toJSON ( 4 :: Integer)
+  toJSON May       = toJSON ( 5 :: Integer)
+  toJSON June      = toJSON ( 6 :: Integer)
+  toJSON July      = toJSON ( 7 :: Integer)
+  toJSON August    = toJSON ( 8 :: Integer)
+  toJSON September = toJSON ( 9 :: Integer)
+  toJSON October   = toJSON (10 :: Integer)
+  toJSON November  = toJSON (11 :: Integer)
+  toJSON December  = toJSON (12 :: Integer)
+
+instance FromJSON Month where
+  parseJSON (Number  1) = return January
+  parseJSON (Number  2) = return February
+  parseJSON (Number  3) = return March
+  parseJSON (Number  4) = return April
+  parseJSON (Number  5) = return May
+  parseJSON (Number  6) = return June
+  parseJSON (Number  7) = return July
+  parseJSON (Number  8) = return August
+  parseJSON (Number  9) = return September
+  parseJSON (Number 10) = return October
+  parseJSON (Number 11) = return November
+  parseJSON (Number 12) = return December
+  parseJSON invalid    = fail $ "Invalid JSON: " ++ show invalid
 
 type Year = Integer
 
@@ -101,84 +132,174 @@ data HS110Result = SystemResult SystemResult
                  | EMeterResult EMeterResult
 
 instance FromJSON HS110Result where
-  parseJSON = withObject "HS110Result" $ \o -> SystemResult <$> o .: "system"
-                                           <|> TimeResult   <$> o .: "time"
-                                           <|> EMeterResult <$> o .: "emeter"
+  parseJSON = withObject "HS110Result" $ \o -> case HM.keys o of
+    ["system"] -> SystemResult <$> o .: "system"
+    ["time"]   -> TimeResult   <$> o .: "time"
+    ["emeter"] -> EMeterResult <$> o .: "emeter"
+    ks         -> fail $ "Unexpected keys in JSON object: " ++ show ks
 
-data SystemResult = SystemInfo     { errCode    :: ErrorCode
-                                   , swVersion  :: Text
-                                   , hwVersion  :: Text
-                                   , type_      :: Text
-                                   , model      :: Text
-                                   , mac        :: Text
-                                   , deviceId   :: Text
-                                   , hwId       :: Text
-                                   , fwId       :: Text
-                                   , oemId      :: Text
-                                   , alias      :: Text
-                                   , devName    :: Text
-                                   , iconHash   :: Text
-                                   , relayState :: Bool
-                                   , onTime     :: Integer
-                                   , activeMode :: ActiveMode
-                                   , feature    :: Text
-                                   , updating   :: Bool
-                                   , rssi       :: Integer
-                                   , ledOff     :: Bool
-                                   , latitude   :: Double
-                                   , longitude  :: Double
-                                   }
-                  | RebootResult   { errCode    :: ErrorCode }
-                  | SetRelayResult { relayState :: Bool      }
-                  | SetLEDResult   { ledState   :: Bool      }
+data SystemResult = SystemInfo { sysErr     :: Integer
+                               , swVersion  :: Text
+                               , hwVersion  :: Text
+                               , type_      :: Text
+                               , model      :: Text
+                               , mac        :: Text
+                               , deviceId   :: Text
+                               , hwId       :: Text
+                               , fwId       :: Text
+                               , oemId      :: Text
+                               , alias      :: Text
+                               , devName    :: Text
+                               , iconHash   :: Text
+                               , relayState :: Integer
+                               , onTime     :: Integer
+                               , activeMode :: ActiveMode
+                               , feature    :: Text
+                               , updating   :: Integer
+                               , rssi       :: Integer
+                               , ledOff     :: Integer
+                               , latitude   :: Double
+                               , longitude  :: Double
+                               }
+                  | RebootResult   { sysErr     :: Integer }
+                  | SetRelayResult { relayState :: Integer }
+                  | SetLEDResult   { ledState   :: Bool    }
 
-type ErrorCode = Integer
 data ActiveMode = Schedule
+
+instance FromJSON ActiveMode where
+  parseJSON = \case
+    String "schedule" -> return Schedule
+    invalid           -> fail $ "Invalid JSON: " ++ show invalid
+
 
 instance FromJSON SystemResult where
   parseJSON = withObject "SystemResult" $ \o -> case HM.keys o of
     ["get_sysinfo"] -> do
       sysinfo <- o .: "get_sysinfo"
       SystemInfo <$> sysinfo .: "err_code"
-                 <*> sysinfo .: "sw_version"
-                                  <*> o .: "get_sysinfo" .: "hw_version"
-                                  <*> o .: "get_sysinfo" .: "type"
-                                  <*> o .: "get_sysinfo" .: "model"
-                                  <*> o .: "get_sysinfo" .: "mac"
-                                  <*> o .: "get_sysinfo" .: "deviceId"
-                                  <*> o .: "get_sysinfo" .: "hwId"
-                                  <*> o .: "get_sysinfo" .: "fwId"
-                                  <*> o .: "get_sysinfo" .: "oemId"
-                                  <*> o .: "get_sysinfo" .: "alias"
-                                  <*> o .: "get_sysinfo" .: "dev_name"
-                                  <*> o .: "get_sysinfo" .: "icon_hash"
-                                  <*> o .: "get_sysinfo" .: "relay_state"
-                                  <*> o .: "get_sysinfo" .: "on_time"
-                                  <*> o .: "get_sysinfo" .: "active_mode"
-                                  <*> o .: "get_sysinfo" .: "feature"
-                                  <*> o .: "get_sysinfo" .: "updating"
-                                  <*> o .: "get_sysinfo" .: "rssi"
-                                  <*> o .: "get_sysinfo" .: "led_off"
-                                  <*> o .: "get_sysinfo" .: "latitude"
-                                  <*> o .: "get_sysinfo" .: "longitude"
+                 <*> sysinfo .: "sw_ver"
+                 <*> sysinfo .: "hw_ver"
+                 <*> sysinfo .: "type"
+                 <*> sysinfo .: "model"
+                 <*> sysinfo .: "mac"
+                 <*> sysinfo .: "deviceId"
+                 <*> sysinfo .: "hwId"
+                 <*> sysinfo .: "fwId"
+                 <*> sysinfo .: "oemId"
+                 <*> sysinfo .: "alias"
+                 <*> sysinfo .: "dev_name"
+                 <*> sysinfo .: "icon_hash"
+                 <*> sysinfo .: "relay_state"
+                 <*> sysinfo .: "on_time"
+                 <*> sysinfo .: "active_mode"
+                 <*> sysinfo .: "feature"
+                 <*> sysinfo .: "updating"
+                 <*> sysinfo .: "rssi"
+                 <*> sysinfo .: "led_off"
+                 <*> sysinfo .: "latitude"
+                 <*> sysinfo .: "longitude"
 
-  {-
-                                            <|> RebootResult   <$> o .: "reboot"
-                                            <|> SetRelayResult <$> o .: "set_relay_state"
-                                            <|> SetLEDResult   <$> o .: "set_led_off"-}
+    ["reboot"] -> do
+      reboot <- o .: "reboot"
+      RebootResult <$> reboot .: "err_code"
 
-data TimeResult = GetTimeResult
-                | GetTimeZoneResult
+    ["set_relay_state"] -> do
+      relay <- o .: "set_relay_state"
+      SetRelayResult <$> relay .: "err_code"
+
+    ["set_led_off"] -> do
+      led <- o .: "set_led_off"
+      SetLEDResult <$> led .: "err_code"
+
+    ks -> fail $ "[SystemResult] Unexpected keys in JSON object: " ++ show ks
+
+data TimeResult = GetTimeResult { timeErr :: Integer
+                                , year    :: Integer
+                                , month   :: Integer
+                                , mday    :: Integer
+                                , wday    :: Integer
+                                , hour    :: Integer
+                                , min     :: Integer
+                                , sec     :: Integer
+                                }
+                | GetTimeZoneResult { timeErr   :: Integer
+                                    , index     :: Integer
+                                    , zoneStr   :: Text
+                                    , tzStr     :: Text
+                                    , dstOffset :: Integer
+                                    }
 
 instance FromJSON TimeResult where
-  parseJSON = undefined
+  parseJSON = withObject "TimeResult" $ \o -> case HM.keys o of
+    ["get_time"] -> do
+      time <- o .: "get_time"
+      GetTimeResult <$> time .: "err_code"
+                    <*> time .: "year"
+                    <*> time .: "month"
+                    <*> time .: "mday"
+                    <*> time .: "wday"
+                    <*> time .: "hour"
+                    <*> time .: "min"
+                    <*> time .: "sec"
+    ["get_timezone"] -> do
+      timezone <- o .: "get_timezone"
+      GetTimeZoneResult <$> timezone .: "err_code"
+                        <*> timezone .: "index"
+                        <*> timezone .: "zone_str"
+                        <*> timezone .: "tz_str"
+                        <*> timezone .: "dst_offset"
 
-data EMeterResult = GetCurrentAndVoltageReadingsResult
-                  | GetDailyStatisticsResult
-                  | GetMonthlyStatisticsResult
+data EMeterResult = GetRealtimeReadingsResult { emeterErr :: Integer
+                                              , current   :: Double
+                                              , voltage   :: Double
+                                              , power     :: Double
+                                              , total     :: Double
+                                              }
+                  | GetDailyStatisticsResult { emeterErr :: Integer
+                                             , dayList   :: [DayStats]
+                                             }
+                  | GetMonthlyStatisticsResult { emeterErr :: Integer
+                                               , monthList :: [MonthStats]
+                                               }
 
 instance FromJSON EMeterResult where
-  parseJSON = undefined
+  parseJSON = withObject "EMeterResult" $ \o -> case HM.keys o of
+    ["get_realtime"] -> do
+      realtime <- o .: "get_realtime"
+      GetRealtimeReadingsResult <$> realtime .: "err_code"
+                                <*> realtime .: "current"
+                                <*> realtime .: "voltage"
+                                <*> realtime .: "power"
+                                <*> realtime .: "total"
+
+    ["get_daystat"] -> do
+      daystat <- o .: "get_daystat"
+      GetDailyStatisticsResult <$> daystat .: "err_code"
+                               <*> daystat .: "day_list"
+
+    ["get_monthstat"] -> do
+      monthstat <- o .: "get_monthstat"
+      GetMonthlyStatisticsResult <$> monthstat .: "err_code"
+                                 <*> monthstat .: "month_list"
+
+
+data DayStats = DayStats { dayYear   :: Integer
+                         , dayMonth  :: Integer
+                         , dayDay    :: Integer
+                         , dayEnergy :: Double
+                         }
+
+instance FromJSON DayStats where
+  parseJSON = withObject "DayStats" $ \o -> DayStats <$> o .: "day" <*> o .: "month" <*> o .: "year" <*> o .: "energy"
+
+data MonthStats = MonthStats { monthYear   :: Integer
+                             , monthMonth  :: Integer
+                             , monthEnergy :: Double
+                             }
+
+instance FromJSON MonthStats where
+  parseJSON = withObject "MonthStats" $ \o -> MonthStats <$> o .: "year" <*> o .: "month" <*> o .: "energy"
 
 --------------------------------------------------------------------------------
 
@@ -209,7 +330,7 @@ sendCommand WebAddress{..} command = Socket.withSocketsDo $ handle errorHandler 
   Socket.setSocketTimeouts socket 1000000 1000000
   Socket.connect socket (Socket.addrAddress serverAddr)
   Socket.send socket (encrypt command)
-  reply <- Socket.recv socket 2048
+  reply <- Socket.recv socket 9999
   Socket.close socket
   return . decrypt $ reply
 
@@ -227,7 +348,7 @@ data ControllerEnv = ControllerEnv { slave       :: Slave
                                    }
 
 instance IsDevice HS110 where
-  data DeviceState HS110 = HS110State { power :: Bool }
+  data DeviceState HS110 = HS110State { isOn :: Bool }
     deriving (Generic, ToJSON, FromJSON)
 
   data DeviceRequest HS110 = PowerOn
@@ -242,7 +363,7 @@ instance IsDevice HS110 where
 
   startDeviceController (HS110 webAddress) slave portManager = do
     say "[HS110.startDeviceController] starting controller for HS110"
-    DeviceController <$> spawnLocal (controller HS110State { power = False } ControllerEnv{..})
+    DeviceController <$> spawnLocal (controller HS110State { isOn = False } ControllerEnv{..})
 
       where
         controller :: DeviceState HS110 -> ControllerEnv -> Process ()
@@ -256,14 +377,14 @@ instance IsDevice HS110 where
                             PowerOn -> do
                               say "[HS110.controller] Switching on"
                               liftIO $ sendCommand webAddress (SystemCommand TurnOn)
-                              let state' = state { power = True }
+                              let state' = state { isOn = True }
                               sendStateChanged slave state'
                               controller state' env
 
                             PowerOff -> do
                               say "[HS110.controller] Switching off"
                               liftIO $ sendCommand webAddress (SystemCommand TurnOff)
-                              let state' = state { power = False }
+                              let state' = state { isOn = False }
                               sendStateChanged slave state'
                               controller state' env
 

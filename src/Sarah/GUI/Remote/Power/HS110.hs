@@ -32,8 +32,8 @@ instance HasRemote HS110 where
 
       let eventStateChangedHandler :: Handler (DeviceState HS110)
           eventStateChangedHandler HS110.HS110State{..} = do
-            putStrLn $ "[HS110.eventStateChangedHandler] " ++ show power
-            handlerPowerSwitch power
+            putStrLn $ "[HS110.eventStateChangedHandler] " ++ show isOn
+            handlerPowerSwitch isOn
 
       unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
