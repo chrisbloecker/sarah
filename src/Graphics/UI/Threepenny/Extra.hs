@@ -4,6 +4,7 @@ module Graphics.UI.Threepenny.Extra
 import Graphics.UI.Threepenny
 --------------------------------------------------------------------------------
 
+main         = mkElement "main"
 nav          = mkElement "nav"
 ariaexpanded = attr "aria-expanded"
 ariahaspopup = attr "aria-haspopup"

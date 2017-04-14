@@ -14,20 +14,6 @@
   padding-bottom: 0;
 }
 
-.btn-circle {
-  width: 32px;
-  height: 32px;
-  text-align: center;
-  padding: 6px 0;
-  font-size: 12px;
-  line-height: 1.428571429;
-  border-radius: 16px;
-  box-shadow: none;
-  margin: 2px;
-}
-
-.btn-no-border {
-  background: none;
-  border: none;
-  box-shadow: none;
+.mdl-card-margin {
+  margin: 1rem;
 }

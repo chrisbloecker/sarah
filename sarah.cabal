@@ -15,11 +15,11 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Graphics.UI.Bootstrap
-                     , Graphics.UI.Bootstrap.Builder
-                     , Graphics.UI.Bootstrap.Class
-                     , Graphics.UI.Bootstrap.Glyphicon
-                     , Graphics.UI.Bootstrap.Style
+  exposed-modules:     Crypto
+                     , Graphics.UI.Material
+                     , Graphics.UI.Material.Class
+                     , Graphics.UI.Material.Icon
+                     , Graphics.UI.Material.Reactive
                      , Graphics.UI.Threepenny.Extra
                      , Physics
                      , Raspberry.GPIO
@@ -34,7 +34,6 @@ library
                      , Sarah.GUI.Remote.Power.HS110
                      , Sarah.GUI.Remote.Sensor.DHT22
                      , Sarah.GUI.Websocket
-                     , Sarah.GUI.Widgets
                      , Sarah.Middleware
                      , Sarah.Middleware.Api
                      , Sarah.Middleware.Device
@@ -86,6 +85,7 @@ library
                      , monad-logger
                      , mtl
                      , network
+                     , network-socket-options
                      , network-transport-tcp
                      , persistent
                      , persistent-template
@@ -96,6 +96,7 @@ library
                      , threepenny-gui
                      , time
                      , unordered-containers
+                     , uuid
                      , vector
                      , wai
                      , warp

@@ -5,19 +5,19 @@
 module Sarah.GUI.Remote.Example
   where
 --------------------------------------------------------------------------------
+import Control.Monad                  (void)
 import Control.Monad.Reader           (lift, ask, runReaderT)
 import Data.Foldable                  (traverse_)
 import Data.Text                      (Text, unpack)
-import Graphics.UI.Bootstrap
 import Graphics.UI.Threepenny  hiding (map)
+import Graphics.UI.Threepenny.Core    (runFunction, ffi)
 import Prelude                 hiding (span, div)
 import Sarah.GUI.Model                (HasRemote (..), RemoteBuilder, RemoteBuilderEnv (..), embedUI, doNothing)
-import Sarah.GUI.Widgets
 import Sarah.GUI.Websocket            (withResponse, withoutResponse)
 import Sarah.Middleware               (EncodedDeviceState, decodeDeviceState, QueryResult (..), mkCommand)
 import Sarah.Middleware.Device        (ExampleDevice)
 --------------------------------------------------------------------------------
-import qualified Graphics.UI.Bootstrap.Glyphicon as Glyph
+import qualified Graphics.UI.Material            as Material
 import qualified Sarah.Middleware.Device.Example as ExampleDevice
 --------------------------------------------------------------------------------
 
@@ -26,14 +26,16 @@ instance HasRemote ExampleDevice where
     RemoteBuilderEnv{..} <- ask
     lift $ do
       (eventDisplay, handlerDisplay) <- liftIO newEvent
-      behaviourDisplay <- stepper "foo" eventDisplay
+      (eventMode,    handlerMode)    <- liftIO newEvent
 
-      display <- reactiveLabel behaviourDisplay
+      behaviourDisplay <- stepper "foo"    eventDisplay
+      behaviourMode    <- stepper "Normal" eventMode
 
-      let buttonClass = buildClass [ btn, btn_sm, btn_default, btn_circle ]
+      display     <- Material.reactiveLabel behaviourDisplay
+      displayMode <- Material.reactiveLabel behaviourMode
 
-      getRandomNumberButton <- bootstrapButton buttonClass Glyph.random
-      alwaysFailingButton   <- bootstrapButton buttonClass Glyph.flash
+      getRandomNumberButton <- button # set class_ (Material.unClass $ Material.buildClass [Material.mdl_button, Material.mdl_js_button]) #+ [ Material.icon Material.trending_up ]
+      alwaysFailingButton   <- button # set class_ (Material.unClass $ Material.buildClass [Material.mdl_button, Material.mdl_js_button]) #+ [ Material.icon Material.bug_report  ]
 
       on click getRandomNumberButton $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.RandomNumberRequest  doNothing (\(ExampleDevice.RandomNumberReply x) -> handlerDisplay $ show x)
       on click alwaysFailingButton   $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.AlwaysFailingRequest doNothing (\ExampleDevice.AlwaysFailingReply -> doNothing)
@@ -42,27 +44,26 @@ instance HasRemote ExampleDevice where
       (eventStarButton,  handlerStarButton)  <- liftIO newEvent
       (eventHeartButton, handlerHeartButton) <- liftIO newEvent
 
-      let greyButton   = buildClass [ btn, btn_sm, btn_default, btn_circle, btn_no_border ]
-          yellowButton = buildClass [ btn, btn_sm, btn_warning, btn_circle ]
-          redButton    = buildClass [ btn, btn_sm, btn_danger,  btn_circle ]
+      let grey     = Material.empty
+          accented = Material.mdl_color_text_accent
 
-      behaviourMinusButton  <- stepper greyButton eventMinusButton
-      behaviourStarButton   <- stepper greyButton eventStarButton
-      behaviourHeartButton  <- stepper greyButton eventHeartButton
+      behaviourMinusButton  <- stepper grey eventMinusButton
+      behaviourStarButton   <- stepper grey eventStarButton
+      behaviourHeartButton  <- stepper grey eventHeartButton
 
-      minusButton <- reactiveButton behaviourMinusButton (pure $ Style [])
-      starButton  <- reactiveButton behaviourStarButton  (pure $ Style [])
-      heartButton <- reactiveButton behaviourHeartButton (pure $ Style [])
+      minusButton <- Material.reactiveListItem behaviourMinusButton
+      starButton  <- Material.reactiveListItem behaviourStarButton
+      heartButton <- Material.reactiveListItem behaviourHeartButton
 
-      element (getElement minusButton) #+ [ span # set class_ (unGlyphicon Glyph.minus) ]
-      element (getElement starButton)  #+ [ span # set class_ (unGlyphicon Glyph.star)  ]
-      element (getElement heartButton) #+ [ span # set class_ (unGlyphicon Glyph.heart) ]
+      element (getElement minusButton) # set text "Normal"
+      element (getElement starButton)  # set text "Star"
+      element (getElement heartButton) # set text "Heart"
 
       let eventStateChangedHandler :: Handler (ExampleDevice.DeviceState ExampleDevice)
           eventStateChangedHandler = \case
-            ExampleDevice.Normal -> handlerStarButton greyButton   >> handlerHeartButton greyButton
-            ExampleDevice.Star   -> handlerStarButton yellowButton >> handlerHeartButton greyButton
-            ExampleDevice.Heart  -> handlerStarButton greyButton   >> handlerHeartButton redButton
+            ExampleDevice.Normal -> sequence_ [handlerMinusButton accented, handlerStarButton grey,     handlerHeartButton grey,     handlerMode "Normal"]
+            ExampleDevice.Star   -> sequence_ [handlerMinusButton grey,     handlerStarButton accented, handlerHeartButton grey,     handlerMode "Star"  ]
+            ExampleDevice.Heart  -> sequence_ [handlerMinusButton grey,     handlerStarButton grey,     handlerHeartButton accented, handlerMode "Heart" ]
 
       unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
@@ -80,10 +81,9 @@ instance HasRemote ExampleDevice where
 
       liftIO $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.GetStateRequest doNothing (\(ExampleDevice.GetStateReply state) -> eventStateChangedHandler state)
 
-      div #+ [ div # set class_ "row text-center"
-                   #+ [ element display ]
-             , div # set class_ "row text-center"
-                   #+ map element [getRandomNumberButton, alwaysFailingButton ]
-             , div # set class_ "row text-center"
-                   #+ map element [ minusButton, starButton, heartButton ]
-             ]
+      dropdown <- Material.dropdown (element displayMode) [element minusButton, element starButton, element heartButton]
+
+      getElement <$> Material.list [ Material.listItem (element display) (element getRandomNumberButton)
+                                   , Material.listItem div (element alwaysFailingButton)
+                                   , Material.listItem (label # set text "Mode") (element dropdown)
+                                   ]

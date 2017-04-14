@@ -9,18 +9,17 @@ import Control.Monad                  (forever)
 import Control.Monad.Reader           (runReaderT, lift, ask)
 import Data.Foldable                  (traverse_)
 import Data.Text                      (Text)
-import Graphics.UI.Bootstrap
+import Graphics.UI.Material
 import Graphics.UI.Threepenny  hiding (map)
 import Prelude                 hiding (span, div)
 import Physics
 import Sarah.GUI.Model
-import Sarah.GUI.Widgets
 import Sarah.GUI.Websocket            (withResponse)
 import Sarah.Middleware               (DeviceState, EncodedDeviceState, decodeDeviceState, mkCommand)
 import Sarah.Middleware.Device        (DHT22)
 --------------------------------------------------------------------------------
-import qualified Graphics.UI.Bootstrap.Glyphicon      as Glyph
 import qualified Sarah.Middleware.Device.Sensor.DHT22 as DHT22
+import qualified Graphics.UI.Material                 as Material
 --------------------------------------------------------------------------------
 
 instance HasRemote DHT22 where
@@ -30,13 +29,11 @@ instance HasRemote DHT22 where
       (eventReadings, handlerReadings) <- liftIO newEvent
       behaviourReadings                <- stepper ("--", "--") eventReadings
 
-      temperatureDisplay <- reactiveLabel ((++ "°C") . fst <$> behaviourReadings)
-      humidityDisplay    <- reactiveLabel ((++ "%")  . snd <$> behaviourReadings)
+      temperatureDisplay <- Material.reactiveLabel ((++ "°C") . fst <$> behaviourReadings)
+      humidityDisplay    <- Material.reactiveLabel ((++ "%")  . snd <$> behaviourReadings)
 
-      let buttonClass = buildClass [ btn, btn_sm, btn_default, btn_circle, btn_no_border ]
-
-      getTemperatureButton <- bootstrapButton buttonClass (Glyphicon "fa fa-thermometer-full")
-      getHumidityButton    <- bootstrapButton buttonClass Glyph.tint
+      getTemperatureButton <- button # set class_ (Material.unClass $ Material.buildClass [Material.mdl_button, Material.mdl_js_button, mdl_button_icon]) #+ [Material.icon Material.refresh]
+      getHumidityButton    <- button # set class_ (Material.unClass $ Material.buildClass [Material.mdl_button, Material.mdl_js_button, mdl_button_icon]) #+ [Material.icon Material.refresh]
 
       let eventStateChangedHandler :: Handler (DeviceState DHT22)
           eventStateChangedHandler DHT22.SensorState{..} = case readings of
@@ -50,8 +47,6 @@ instance HasRemote DHT22 where
 
       liftIO $ flip runReaderT remoteRunnerEnv $ withResponse DHT22.GetReadingsRequest doNothing (\(DHT22.GetReadingsReply state) -> eventStateChangedHandler state)
 
-      div #+ [ div # set class_ "row text-center"
-                 #+ [ string "Temperature: ", element temperatureDisplay, element getTemperatureButton ]
-             , div # set class_ "row text-center"
-                 #+ [ string "Humidity: ", element humidityDisplay, element getHumidityButton ]
-             ]
+      getElement <$> Material.list [ Material.listItem (string "Temperature") (div #+ [element temperatureDisplay, element getTemperatureButton])
+                                   , Material.listItem (string "Humidity")    (div #+ [element humidityDisplay,    element getHumidityButton])
+                                   ]
