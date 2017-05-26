@@ -300,10 +300,18 @@ instance IsDevice ToshibaAC where
                                               DownFan          -> if fan == minBound
                                                                     then config { fan = maxBound }
                                                                     else config { fan = pred fan }
-                                              SetTemperature t -> config { temperature = t }
-                                              SetFanMode     f -> config { fan         = f }
-                                              SetMode        m -> config { mode        = m }
-                                              SetPowerMode   p -> config { mpower      = p }
+                                              SetTemperature t -> if mode /= ModeOff
+                                                                    then config { temperature = t }
+                                                                    else config
+                                              SetFanMode     f -> if mode /= ModeOff
+                                                                    then config { fan = f }
+                                                                    else config
+                                              SetMode        m -> if mode /= ModeOff
+                                                                    then config { mode = m }
+                                                                    else config
+                                              SetPowerMode   p -> if mode /= ModeOff
+                                                                    then config { mpower = p }
+                                                                    else config
                               res <- liftIO $ setAC pin config'
                               case res of
                                 Ok -> do
