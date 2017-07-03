@@ -56,6 +56,7 @@ data SlaveSettings = SlaveSettings { nodeName      :: NodeName
                                    , nodeAddress   :: WebAddress
                                    , masterAddress :: WebAddress
                                    , devices       :: [DeviceDescription]
+                                   , timeout       :: Int
                                    }
   deriving (Show)
 deriveJSON jsonOptions ''SlaveSettings
@@ -64,6 +65,7 @@ data State = State { deviceControllers :: Map DeviceName DeviceController
                    , reverseLookup     :: Map ProcessId  DeviceName
                    , master            :: Master
                    , nodeName          :: NodeName
+                   , queryTimeout      :: Int
                    }
 
 --------------------------------------------------------------------------------
@@ -84,14 +86,18 @@ runSlave SlaveSettings{..} = do
   mmaster <- findMaster (host masterAddress) (show . port $ masterAddress) (seconds 1)
   case mmaster of
     Nothing -> do
-      say "No master found... Terminating..."
+      say "[slave] No master found, terminating"
       -- make sure there's enough time to print the message
       liftIO $ threadDelay 100000
     Just master -> do
+      say $ "[slave] found master at " ++ show master
       self              <- getSelfPid
       let slave         = mkSlave self
+          queryTimeout  = timeout
       portManager       <- startPortManager
-      deviceControllers <- fmap M.fromList <$> forM devices $ \(DeviceDescription name (Device model)) -> do pid <- startDeviceController model slave portManager
+      say "[slave] starting device controllers"
+      deviceControllers <- fmap M.fromList <$> forM devices $ \(DeviceDescription name (Device model)) -> do say $ "[slave] starting " ++ show name
+                                                                                                             pid <- startDeviceController model slave portManager
                                                                                                              return (name, pid)
 
       nodeUp master self (NodeInfo nodeName [ (name, toDeviceRep device) | (DeviceDescription name device) <- devices ])
@@ -105,13 +111,17 @@ loop state@State{..} =
   receiveWait [ match $ \(FromPid src (query :: Query)) -> do
                   -- ToDo: should we check if the query was intended for this node?
                   let deviceName' = deviceName (queryTarget query)
+                  say $ "[slave] Received query for " ++ show deviceName'
                   case M.lookup deviceName' deviceControllers of
                     Nothing                      -> say $ "[slave] Unknown device: " ++ unpack deviceName'
                     Just (DeviceController dest) -> void $ spawnLocal $ do
                       sendWithPid dest query
-                      receiveWait [ match    $ \(result :: QueryResult) -> send src result
-                                  , matchAny $ \m                       -> say $ "[slave] Unexpected message: " ++ show m
-                                  ]
+                      mr <- receiveTimeout queryTimeout [ match    $ \(result :: QueryResult) -> send src result
+                                                        , matchAny $ \m                       -> say $ "[slave] Unexpected message: " ++ show m
+                                                        ]
+                      case mr of
+                        Nothing -> say $ "[slave] Timeout on query to " ++ unpack deviceName'
+                        Just _ -> return ()
                   loop state
 
               , match $ \(FromPid src (StateChanged encodedState)) -> do

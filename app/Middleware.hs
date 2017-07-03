@@ -64,7 +64,7 @@ go Options{..} = case nodeRole of
             manager   <- newManager defaultManagerSettings
             let database = BaseUrl Http (host backend) (port backend) ""
             node      <- newLocalNode transport initRemoteTable
-            masterPid <- forkProcess node (runMaster (ClientEnv manager database) (subscribers serverState))
+            masterPid <- forkProcess node (runMaster (ClientEnv manager database) (subscribers serverState) timeout)
 
             let config = Config { master     = mkMaster masterPid
                                 , localNode  = node

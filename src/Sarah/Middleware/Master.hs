@@ -35,6 +35,7 @@ import qualified Sarah.Persist.Client as Persist
 data MasterSettings = MasterSettings { masterNode :: WebAddress
                                      , backend    :: WebAddress
                                      , webPort    :: Port
+                                     , timeout    :: Int
                                      }
   deriving (Generic, FromJSON)
 
@@ -42,12 +43,13 @@ data State = State { nodes          :: Map ProcessId NodeInfo
                    , nodeNames      :: Map NodeName  ProcessId
                    , backendClient  :: ClientEnv
                    , subscribers    :: TVar [(Integer, Connection)]
+                   , queryTimeout   :: Int
                    }
 
 --------------------------------------------------------------------------------
 
-runMaster :: ClientEnv -> TVar [(Integer, Connection)] -> Process ()
-runMaster backendClient subscribers = do
+runMaster :: ClientEnv -> TVar [(Integer, Connection)] -> Int -> Process ()
+runMaster backendClient subscribers queryTimeout = do
   self <- getSelfPid
   register masterName self
   say "Master up"
@@ -55,6 +57,7 @@ runMaster backendClient subscribers = do
              , nodeNames     = empty
              , backendClient = backendClient
              , subscribers   = subscribers
+             , queryTimeout  = queryTimeout
              }
 
 
@@ -74,12 +77,12 @@ loop state@State{..} =
                     --       could some data change or a process die?
                     Just dest -> void $ spawnLocal $ do
                       sendWithPid dest query
-                      mr <- receiveTimeout 500 [ match    $ \(result :: QueryResult) -> send src result
-                                               , matchAny $ \m                       -> say $ "[master] Unexpected message: " ++ show m
-                                               ]
+                      mr <- receiveTimeout queryTimeout [ match    $ \(result :: QueryResult) -> send src result
+                                                        , matchAny $ \m                       -> say $ "[master] Unexpected message: " ++ show m
+                                                        ]
                       case mr of
                         Nothing -> say $ "[master] Timeout on query to " ++ unpack nodeName
-                        Just _ -> return ()
+                        Just _  -> return ()
                   loop state
 
                 -- whenever the state of a device changes, we inform all subscribers

@@ -389,6 +389,7 @@ instance IsDevice HS110 where
                               controller state' env
 
                             GetStateRequest -> do
+                              say "[HS110.controller] Getting state"
                               send src (mkQueryResult $ GetStateReply state)
                               controller state env
 

@@ -30,12 +30,9 @@ setup appEnv@AppEnv{..} window = void $ do
   remotes <- liftIO $ atomically $ newTVar HM.empty
 
   -- get the status of the middleware, i.e. the connected nodes and their info
-  --mStatus <- liftIO $ runClientM Middleware.getStatus clientEnv
   liftIO $ putStrLn "[setup] Requesting status from master..."
   status <- liftIO $ toMaster middleware GetStatusRequest
   liftIO $ case status of
-    --Nothing -> void . putStrLn $ "[setup] Couldn't get status from master"
-    --Just (GetStatusReply Status{..}) -> do
     GetStatusReply Status{..} -> do
       putStrLn "[setup] Received status from master, building remotes..."
       forM_ connectedNodes $ \NodeInfo{..} ->
