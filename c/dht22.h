@@ -77,7 +77,7 @@ static inline int readDHT22(uint32_t pin, double* humidity, double* temperature)
   // Wait a tiny amount of time for DHT22 to be ready
   for (i = 0; i < 50; ++i);
 
-  unsigned waiting;
+  unsigned waiting = 0;
   while (gpioRead(pin))
     if (++waiting >= DHT_MAXCOUNT)
     {

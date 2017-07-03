@@ -10,6 +10,7 @@ import Control.Monad                       (forM_, unless, void)
 import Control.Monad.Reader                (runReaderT, ask)
 import Data.Maybe                          (fromJust)
 import Data.Text                           (unpack)
+import Data.Time                           (getZonedTime)
 import Graphics.UI.Threepenny       hiding (map)
 import Graphics.UI.Threepenny.Core         (ffi, runFunction)
 import Graphics.UI.Threepenny.Extra
@@ -24,21 +25,29 @@ import qualified Data.HashMap.Strict  as HM
 import qualified Graphics.UI.Material as Material
 --------------------------------------------------------------------------------
 
+printWithTime :: String -> IO ()
+printWithTime msg = do
+  now <- show <$> getZonedTime
+  putStrLn . unwords $ [now, msg]
+
+
 setup :: AppEnv -> Window -> UI ()
 setup appEnv@AppEnv{..} window = void $ do
   -- a place to store the remotes
   remotes <- liftIO $ atomically $ newTVar HM.empty
 
   -- get the status of the middleware, i.e. the connected nodes and their info
-  liftIO $ putStrLn "[setup] Requesting status from master..."
+  liftIO $ printWithTime "Requesting status from master"
   status <- liftIO $ toMaster middleware GetStatusRequest
   liftIO $ case status of
     GetStatusReply Status{..} -> do
-      putStrLn "[setup] Received status from master, building remotes..."
-      forM_ connectedNodes $ \NodeInfo{..} ->
-        forM_ nodeDevices $ \(deviceName, deviceRep) ->
+      printWithTime "Received status from master, building remotes"
+      forM_ connectedNodes $ \NodeInfo{..} -> do
+        printWithTime $ "Setting up node " ++ unpack nodeName
+        forM_ nodeDevices $ \(deviceName, deviceRep) -> do
+          printWithTime $ "Setting up device " ++ unpack deviceName
           case fromDeviceRep deviceRep of
-            Left err -> return ()
+            Left err -> printWithTime $ "Can't decode device " ++ show deviceName
             Right (Remote model) -> do
               let deviceAddress = DeviceAddress nodeName deviceName
               -- create new gui update event for the device or reuse an existing one
@@ -56,6 +65,7 @@ setup appEnv@AppEnv{..} window = void $ do
                   widget           = runReaderT (buildRemote model) remoteBuilderEnv
               remote <- runUI window $ mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget
               liftIO . atomically $ modifyTVar remotes (HM.insert deviceAddress remote)
+              printWithTime $ "Setup for " ++ unpack deviceName ++ " complete"
 
   -- ToDo: where and when should we clean up events for devices that don't exist
   --       or are not connected anymore?
@@ -92,7 +102,6 @@ mkTile title content = div # set class_ "mdl-card mdl-card-margin mdl-shadow--2d
                               , div # set class_ "mdl-card__actions mdl-card--border mdl-typography--text-center"
                                     #+ [ content ]
                               ]
-
 
 listGroup :: String -> [UI Element] -> UI Element
 listGroup title contents = ul # set class_ "list-group"

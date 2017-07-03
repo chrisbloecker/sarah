@@ -54,6 +54,7 @@ run Options{..} = do
                              , jsPort       = Just $ fromMaybe 8023      appPort
                              , jsStatic     = Just "static"
                              , jsCustomHTML = Just "sarah.html"
+                             , jsLog        = \_ -> return ()
                              }
       middlewareHost   = fromMaybe "192.168.0.7" midHost
       middlewarePort   = fromMaybe 8090          midPort
