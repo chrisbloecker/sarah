@@ -363,7 +363,11 @@ instance IsDevice HS110 where
 
   startDeviceController (HS110 webAddress) slave portManager = do
     say "[HS110.startDeviceController] starting controller for HS110"
-    DeviceController <$> spawnLocal (controller HS110State { isOn = False } ControllerEnv{..})
+    msystemInfo <- liftIO $ sendCommand webAddress (SystemCommand GetSystemInfo)
+    let state = case msystemInfo of
+                  Just (SystemResult SystemInfo{..}) -> HS110State { isOn = relayState == 1 }
+                  _                                  -> HS110State { isOn = False }
+    DeviceController <$> spawnLocal (controller state ControllerEnv{..})
 
       where
         controller :: DeviceState HS110 -> ControllerEnv -> Process ()
