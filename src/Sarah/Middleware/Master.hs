@@ -74,9 +74,12 @@ loop state@State{..} =
                     --       could some data change or a process die?
                     Just dest -> void $ spawnLocal $ do
                       sendWithPid dest query
-                      receiveWait [ match    $ \(result :: QueryResult) -> send src result
-                                  , matchAny $ \m                       -> say $ "[master] Unexpected message: " ++ show m
-                                  ]
+                      mr <- receiveTimeout 500 [ match    $ \(result :: QueryResult) -> send src result
+                                               , matchAny $ \m                       -> say $ "[master] Unexpected message: " ++ show m
+                                               ]
+                      case mr of
+                        Nothing -> say $ "[master] Timeout on query to " ++ unpack nodeName
+                        Just _ -> return ()
                   loop state
 
                 -- whenever the state of a device changes, we inform all subscribers
