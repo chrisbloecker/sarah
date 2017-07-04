@@ -1,8 +1,9 @@
 webPort: 8090
 masterNode:
-  host: 10.10.220.111
+  host: 192.168.0.4
   port: 50000
 nodeRole: master
 backend:
   host: 192.168.0.2
   port: 8080
+timeout: 500000

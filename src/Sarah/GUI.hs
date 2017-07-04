@@ -17,6 +17,7 @@ import Graphics.UI.Threepenny.Core         (ffi, runFunction)
 import Graphics.UI.Threepenny.Extra
 import Prelude                      hiding (div, span)
 import Sarah.GUI.Model
+import Sarah.GUI.Reactive
 import Sarah.GUI.Remote                    (Remote (..), fromDeviceRep)
 import Sarah.GUI.Websocket                 (toMaster)
 import Sarah.Middleware
@@ -77,30 +78,25 @@ setup appEnv@AppEnv{..} window = void $ do
     -- ToDo: where and when should we clean up events for devices that don't exist
     --       or are not connected anymore?
 
+    remotesButtonId <- newIdent
+    let navButtons = H.div $
+                         H.button H.! A.class_ "mdl-button mdl-js-button"
+                                  H.! A.id (H.toValue remotesButtonId) $
+                             H.text "Remotes"
+
+    -- add the nav buttons to the page
+    liftIO $ printWithTime "Adding nav buttons"
+    runFunction $ ffi "document.getElementById('navigation').innterHTML = %1" (renderHtml navButtons)
+
+    -- add the remotes by default
+    liftIO $ printWithTime "Adding remotes"
     tilesHtml <- fmap (renderHtml . sequence_) <$> liftIO . atomically $ readTVar pageTiles
-    runFunction $ ffi "document.getElementById('lights').innerHTML = %1" tilesHtml
+    runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
 
-    mnavigation <- getElementById window "navigation"
-    mcontent    <- getElementById window "content"
+    onElementIDClick remotesButtonId $ runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
 
-    case (mnavigation, mcontent) of
-        (Just navigation, Just content) -> do
-            navRemotes <- button # set class_ "mdl-button mdl-js-button"
-                                 # set text "Remotes"
-
-            element navigation # set children [ navRemotes ]
-
-            on click navRemotes $ \_ -> do
-                remoteWidgets <- liftIO . atomically $ readTVar remotes
-                element content # set children (HM.elems remoteWidgets)
-
-            -- add the navbar and render the remotes by default
-            remoteWidgets <- liftIO . atomically $ readTVar remotes
-            element content # set children (HM.elems remoteWidgets)
-
-            Material.upgradeDom
-
-        (_, _) -> return ()
+    liftIO $ printWithTime "Upgrading DOM for Material"
+    Material.upgradeDom
 
 
 mkTile :: Text -> H.Html -> H.Html
@@ -149,7 +145,7 @@ listGroupItem :: [UI Element] -> UI Element
 listGroupItem es = li # set class_ "list-group-item"
                       #+ es
 -}
-
+{-
 renderStatus :: Status -> [H.Html]
 renderStatus Status{..} = map renderNodeInfo connectedNodes -- $ \nodeInfo -> mkTile (nodeInfo^.nodeName & unpack) (nodeInfo^.nodeDevices & map )
   where
@@ -158,3 +154,4 @@ renderStatus Status{..} = map renderNodeInfo connectedNodes -- $ \nodeInfo -> mk
 
     showDevice :: DeviceName -> DeviceRep -> UI Element
     showDevice deviceName deviceRep = listGroupItem [ string ("a device: " ++ unpack deviceName) ]
+-}

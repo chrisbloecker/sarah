@@ -47,7 +47,11 @@ reactiveLabel behaviour = do
   let display = H.label H.! A.id (H.toValue labelId) $
                     H.text initialText
 
-  sink text (fmap unpack behaviour) <$$> getElementById window labelId
+  -- ToDo: add sink
+  --sink text (fmap unpack behaviour) <$$> getElementById window labelId
+  onChanges behaviour $ \newText -> do
+    liftIO $ putStrLn "Label changed"
+    runFunction $ ffi "$(%1).innerHtml = %2" labelId newText
 
   return ReactiveLabel { _elementRL = display }
 
@@ -75,7 +79,11 @@ reactiveToggle behaviour = do
                            checkbox
                            H.span H.! A.class_ "mdl-switch__label" $ ""
 
-  sink checked behaviour <$$> getElementById window checkboxId
+  -- ToDo: add sink
+  --sink checked behaviour <$$> getElementById window checkboxId
+  onChanges behaviour $ \newChecked -> do
+    liftIO $ putStrLn "Toggle changed"
+    runFunction $ ffi "$(%1).checked = %2" checkboxId newChecked
 
   onChanges behaviour $ \checked -> runFunction . ffi $ if checked
                                                           then "$('#" ++ labelId ++ "')[0].MaterialSwitch.on()"
@@ -98,7 +106,11 @@ reactiveButton behaviour = do
                          H.! A.id (H.toValue buttonId) $
                              ""
 
-  sink class_ (fmap unpack behaviour) <$$> getElementById window buttonId
+  -- ToDo: add sink
+  --sink class_ (fmap unpack behaviour) <$$> getElementById window buttonId
+  onChanges behaviour $ \newClass -> do
+    liftIO $ putStrLn "Button changed"
+    runFunction $ ffi "$(%1).class = %2" buttonId newClass
 
   return ReactiveButton { _elementRB = display }
 
@@ -115,7 +127,11 @@ reactiveCheckbox behaviour = do
                         H.! A.id (H.toValue checkboxId)
                         H.! A.checked (H.toValue initialChecked)
 
-  sink checked behaviour <$$> getElementById window checkboxId
+  -- ToDo: add sink
+  --sink checked behaviour <$$> getElementById window checkboxId
+  onChanges behaviour $ \newChecked -> do
+    liftIO $ putStrLn "Checkbox changed"
+    runFunction $ ffi "$(%1).checked = %2" checkboxId newChecked
 
   return ReactiveCheckbox { _elementCB = display }
 
@@ -134,7 +150,11 @@ reactiveListItem label behaviour = do
                      H.! A.class_ (H.toValue initialClass) $
                          H.text label
 
-  sink class_ (fmap unpack behaviour) <$$> getElementById window listItemId
+  -- ToDo: add sink
+  --sink class_ (fmap unpack behaviour) <$$> getElementById window listItemId
+  onChanges behaviour $ \newClass -> do
+    liftIO $ putStrLn "ListItem changed"
+    runFunction $ ffi "$(%1).class = %2" listItemId newClass
 
   return ReactiveListItem { item   = display
                           , itemId = listItemId

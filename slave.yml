@@ -1,23 +1,27 @@
 nodeAddress:
-  host: 10.10.220.111
+  host: 192.168.0.4
   port: 50001
 masterAddress:
-  host: 10.10.220.111
+  host: 192.168.0.4
   port: 50000
 devices:
-- name: AC
-  model: ToshibaAC
-  gpio: 23
-- name: DHT22
-  model: DHT22
-  gpio: 4
-- name: Test
+- name: Example
   model: ExampleDevice
   gpio: 42
-- name: Power
-  model: HS110
-  ip:
-    host: 10.10.220.111
-    port: 9999
+#- name: AC
+#  model: ToshibaAC
+#  gpio: 23
+#- name: DHT22
+#  model: DHT22
+#  gpio: 4
+#- name: Test
+#  model: ExampleDevice
+#  gpio: 42
+#- name: Power
+#  model: HS110
+#  ip:
+#    host: 10.10.220.111
+#    port: 9999
 nodeName: Node One
 room: Livingroom
+timeout: 500000
