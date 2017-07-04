@@ -1,8 +1,8 @@
 nodeAddress:
-  host: localhost
+  host: 10.10.220.111
   port: 50001
 masterAddress:
-  host: 192.168.0.4
+  host: 10.10.220.111
   port: 50000
 devices:
 - name: AC
@@ -14,5 +14,10 @@ devices:
 - name: Test
   model: ExampleDevice
   gpio: 42
+- name: Power
+  model: HS110
+  ip:
+    host: 10.10.220.111
+    port: 9999
 nodeName: Node One
 room: Livingroom

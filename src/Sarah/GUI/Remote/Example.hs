@@ -1,17 +1,20 @@
 {-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Remote.Example
   where
 --------------------------------------------------------------------------------
+import Control.Concurrent.STM         (atomically, modifyTVar)
 import Control.Monad                  (void)
 import Control.Monad.Reader           (lift, ask, runReaderT)
 import Data.Foldable                  (traverse_)
-import Data.Text                      (Text, unpack)
+import Data.Text                      (Text, pack, unpack)
 import Graphics.UI.Threepenny  hiding (map)
 import Graphics.UI.Threepenny.Core    (runFunction, ffi)
 import Prelude                 hiding (span, div)
+import Sarah.GUI.Reactive
 import Sarah.GUI.Model                (HasRemote (..), RemoteBuilder, RemoteBuilderEnv (..), embedUI, doNothing)
 import Sarah.GUI.Websocket            (withResponse, withoutResponse)
 import Sarah.Middleware               (EncodedDeviceState, decodeDeviceState, QueryResult (..), mkCommand)
@@ -19,6 +22,9 @@ import Sarah.Middleware.Device        (ExampleDevice)
 --------------------------------------------------------------------------------
 import qualified Graphics.UI.Material            as Material
 import qualified Sarah.Middleware.Device.Example as ExampleDevice
+--------------------------------------------------------------------------------
+import qualified Text.Blaze.Html5            as H
+import qualified Text.Blaze.Html5.Attributes as A
 --------------------------------------------------------------------------------
 
 instance HasRemote ExampleDevice where
@@ -34,30 +40,33 @@ instance HasRemote ExampleDevice where
       display     <- Material.reactiveLabel behaviourDisplay
       displayMode <- Material.reactiveLabel behaviourMode
 
-      getRandomNumberButton <- button # set class_ (Material.unClass $ Material.buildClass [Material.mdl_button, Material.mdl_js_button]) #+ [ Material.icon Material.trending_up ]
-      alwaysFailingButton   <- button # set class_ (Material.unClass $ Material.buildClass [Material.mdl_button, Material.mdl_js_button]) #+ [ Material.icon Material.bug_report  ]
+      getRandomNumberButtonId <- newIdent
+      alwaysFailingButtonId   <- newIdent
 
-      on click getRandomNumberButton $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.RandomNumberRequest  doNothing (\(ExampleDevice.RandomNumberReply x) -> handlerDisplay $ show x)
-      on click alwaysFailingButton   $ embedUI $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.AlwaysFailingRequest doNothing (\ExampleDevice.AlwaysFailingReply -> doNothing)
+      let getRandomNumberButton = H.button H.! A.class_ (H.toValue . unwords $ [Material.mdl_button, Material.mdl_js_button])
+                                           H.! A.id (H.toValue getRandomNumberButtonId) $
+                                      Material.icon Material.trending_up
+          alwaysFailingButton   = H.button H.! A.class_ (H.toValue . unwords $ [Material.mdl_button, Material.mdl_js_button])
+                                           H.! A.id (H.toValue alwaysFailingButtonId) $
+                                      Material.icon Material.bug_report
+
+      onElementIDClick getRandomNumberButtonId $ liftIO $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.RandomNumberRequest  doNothing (\(ExampleDevice.RandomNumberReply x) -> handlerDisplay (pack . show $ x))
+      onElementIDClick alwaysFailingButtonId   $ liftIO $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.AlwaysFailingRequest doNothing (\ExampleDevice.AlwaysFailingReply -> doNothing)
 
       (eventMinusButton, handlerMinusButton) <- liftIO newEvent
       (eventStarButton,  handlerStarButton)  <- liftIO newEvent
       (eventHeartButton, handlerHeartButton) <- liftIO newEvent
 
-      let grey     = Material.empty
-          accented = Material.mdl_color_text_accent
+      let grey     = ""
+          accented = "mdl-color-text--accent"
 
-      behaviourMinusButton  <- stepper grey eventMinusButton
-      behaviourStarButton   <- stepper grey eventStarButton
-      behaviourHeartButton  <- stepper grey eventHeartButton
+      behaviourMinusButton <- stepper grey eventMinusButton
+      behaviourStarButton  <- stepper grey eventStarButton
+      behaviourHeartButton <- stepper grey eventHeartButton
 
-      minusButton <- Material.reactiveListItem behaviourMinusButton
-      starButton  <- Material.reactiveListItem behaviourStarButton
-      heartButton <- Material.reactiveListItem behaviourHeartButton
-
-      element (getElement minusButton) # set text "Normal"
-      element (getElement starButton)  # set text "Star"
-      element (getElement heartButton) # set text "Heart"
+      minusButton <- Material.reactiveListItem "Normal" behaviourMinusButton
+      starButton  <- Material.reactiveListItem "Star"   behaviourStarButton
+      heartButton <- Material.reactiveListItem "Heart"  behaviourHeartButton
 
       let eventStateChangedHandler :: Handler (ExampleDevice.DeviceState ExampleDevice)
           eventStateChangedHandler = \case
@@ -67,23 +76,25 @@ instance HasRemote ExampleDevice where
 
       unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
-      on click (getElement minusButton) $ embedUI $ do
+      onElementIDClick (Material.itemId minusButton) $ liftIO $ do
         putStrLn "[Example.minusButton.click]"
         flip runReaderT remoteRunnerEnv $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Normal)
 
-      on click (getElement starButton)  $ embedUI $ do
+      onElementIDClick (Material.itemId starButton) $ liftIO $ do
         putStrLn "[Example.starButton.click]"
         flip runReaderT remoteRunnerEnv $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Star)
 
-      on click (getElement heartButton) $ embedUI $ do
+      onElementIDClick (Material.itemId heartButton) $ liftIO $ do
         putStrLn "[Example.heartButton.click]"
         flip runReaderT remoteRunnerEnv $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Heart)
 
       liftIO $ flip runReaderT remoteRunnerEnv $ withResponse ExampleDevice.GetStateRequest doNothing (\(ExampleDevice.GetStateReply state) -> eventStateChangedHandler state)
 
-      dropdown <- Material.dropdown (element displayMode) [element minusButton, element starButton, element heartButton]
+      dropdown <- Material.dropdown (Material._elementRL displayMode) [Material.item minusButton, Material.item starButton, Material.item heartButton]
 
-      getElement <$> Material.list [ Material.listItem (element display) (element getRandomNumberButton)
-                                   , Material.listItem div (element alwaysFailingButton)
-                                   , Material.listItem (label # set text "Mode") (element dropdown)
-                                   ]
+      let widget = Material.list [ Material.listItem (Material._elementRL display) getRandomNumberButton
+                                 , Material.listItem (H.div $ H.text "") alwaysFailingButton
+                                 , Material.listItem (H.label $ H.text "Mode") (Material._elementDropdown dropdown)
+                                 ]
+
+      liftIO $ atomically . modifyTVar pageTiles $ (widget :)

@@ -1,12 +1,19 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Graphics.UI.Material.Icon
   where
 
-import Graphics.UI.Threepenny
+--------------------------------------------------------------------------------
+import Data.Text (Text)
+--------------------------------------------------------------------------------
+import qualified Text.Blaze.Html5            as H
+import qualified Text.Blaze.Html5.Attributes as A
+--------------------------------------------------------------------------------
 
-newtype Icon = Icon { unIcon :: String }
+newtype Icon = Icon { unIcon :: Text }
 
-icon :: Icon -> UI Element
-icon i = mkElement "i" # set class_ "material-icons" # set text (unIcon i)
+icon :: Icon -> H.Html
+icon i = H.i H.! A.class_ "material-icons" $ H.text (unIcon i)
 
 arrow_drop_down = Icon "arrow_drop_down"
 arrow_drop_up = Icon "arrow_drop_up"

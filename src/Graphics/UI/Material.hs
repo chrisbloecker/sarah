@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Graphics.UI.Material
   ( module Graphics.UI.Material
   )
@@ -13,54 +15,33 @@ import Graphics.UI.Material.Class    as Graphics.UI.Material
 import Graphics.UI.Material.Icon     as Graphics.UI.Material
 import Graphics.UI.Material.Reactive as Graphics.UI.Material
 --------------------------------------------------------------------------------
+import qualified Text.Blaze.Html5            as H
+import qualified Text.Blaze.Html5.Attributes as A
+--------------------------------------------------------------------------------
 
 upgradeDom :: UI ()
 upgradeDom = runFunction $ ffi "componentHandler.upgradeDom();console.log('component upgrade ok.')"
 
 
-data List = List { _elementList :: Element }
-
-instance Widget List where
-  getElement = _elementList
-
-list :: [UI ListItem] -> UI List
-list items = do
-  elem <- div #+ [ ul # set class_ (unClass mdl_list)
-                     #+ map (fmap getElement) items
-                 ]
-
-  return List { _elementList = elem }
+list :: [H.Html] -> H.Html
+list items = H.div $
+                 H.ul H.! A.class_ "mdl-list" $
+                     sequence_ items
 
 
-data ListItem = ListItem { _elementListItem :: Element }
-
-instance Widget ListItem where
-  getElement = _elementListItem
-
-listItem :: (Widget widget0, Widget widget1) => UI widget0 -> UI widget1 -> UI ListItem
-listItem content action = do
-  elem <- li # set class_ (unClass mdl_list_item)
-             #+ [ span # set class_ (unClass mdl_list_item_primary_content)  #+ [ getElement <$> content ]
-                , span # set class_ (unClass mdl_list_item_secondary_action) #+ [ getElement <$> action  ]
-                ]
-
-  return ListItem { _elementListItem = elem }
+listItem :: H.Html -> H.Html -> H.Html
+listItem content action = H.li H.! A.class_ "mdl-list__item" $ do
+                              H.span H.! A.class_ "mdl-list__item-primary-content" $
+                                  content
+                              H.span H.! A.class_ "mdl-list__item-secondary-action" $
+                                  action
 
 
-data Slider = Slider { getSlider :: Element }
-
-instance Widget Slider where
-  getElement = getSlider
-
-slider :: Int -> Int -> Int -> Int -> UI Slider
-slider width min max value = do
-  elem <- p # set style [("width", show width ++ "px")]
-            #+ [ input # set class_ (unClass $ buildClass [mdl_slider, mdl_js_slider])
-                       # set type_ "range"
-                       # set (attr "min") (show min)
-                       # set (attr "max") (show max)
-                       # set (attr "value") (show value)
-                       # set (attr "step") "1"
-               ]
-
-  return Slider { getSlider = elem }
+slider :: Int -> Int -> Int -> Int -> H.Html
+slider width min max value = H.p H.! A.style (H.toValue . unwords $ ["width:", show width ++ "px"]) $
+                                 H.input H.! A.class_ "mdl-slider mdl-js-slider"
+                                         H.! A.type_ "range"
+                                         H.! A.min (H.toValue min)
+                                         H.! A.max (H.toValue max)
+                                         H.! A.value (H.toValue value)
+                                         H.! A.step (H.toValue (1 :: Int))

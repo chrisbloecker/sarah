@@ -1,20 +1,146 @@
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings     #-}
+
 module Graphics.UI.Material.Reactive
   where
 --------------------------------------------------------------------------------
-import Control.Monad                      (forM)
-import Data.UUID                          (toString)
-import Data.UUID.V4                       (nextRandom)
+import Control.Monad                      (forM, void)
+import Data.Text                          (Text, pack, unpack)
 import Graphics.UI.Material.Class
 import Graphics.UI.Material.Icon
 import Graphics.UI.Threepenny      hiding (map, empty)
 import Graphics.UI.Threepenny.Core        (runFunction, ffi)
 import Prelude                     hiding (span, div)
+import Sarah.GUI.Reactive
+--------------------------------------------------------------------------------
+import qualified Text.Blaze.Html5            as H
+import qualified Text.Blaze.Html5.Attributes as A
 --------------------------------------------------------------------------------
 
-newIdent :: MonadIO m => m String
-newIdent = toString <$> liftIO nextRandom
+f <$$> e = fmap (f . element) <$> e
+
+newtype Dropdown = Dropdown { _elementDropdown :: H.Html }
+
+dropdown :: H.Html -> [H.Html] -> UI Dropdown
+dropdown label items = do
+  buttonId <- H.toValue <$> newIdent
+  let elem = H.div $ do
+                 label
+                 H.button H.! A.class_ "mdl-button mdl-js-button mdl-button--icon"
+                          H.! A.id buttonId $
+                              icon arrow_drop_up
+                 H.ul H.! A.class_ "mdl-menu mdl-menu--top-right mdl-js-menu mdl-js-ripple-effect"
+                      H.! A.for buttonId $
+                          sequence_ items
+
+  return Dropdown { _elementDropdown = elem }
 
 
+newtype ReactiveLabel = ReactiveLabel { _elementRL :: H.Html }
+
+reactiveLabel :: Behavior Text -> UI ReactiveLabel
+reactiveLabel behaviour = do
+  window      <- askWindow
+  labelId     <- newIdent
+  initialText <- currentValue behaviour
+
+  let display = H.label H.! A.id (H.toValue labelId) $
+                    H.text initialText
+
+  sink text (fmap unpack behaviour) <$$> getElementById window labelId
+
+  return ReactiveLabel { _elementRL = display }
+
+
+-- A toggle is a decorator for a checkbox
+data ReactiveToggle = ReactiveToggle { getToggle   :: H.Html
+                                     , getCheckbox :: H.Html
+                                     }
+
+reactiveToggle :: Behavior Bool -> UI ReactiveToggle
+reactiveToggle behaviour = do
+  window         <- askWindow
+  labelId        <- newIdent
+  checkboxId     <- newIdent
+  initialChecked <- currentValue behaviour
+
+  let checkbox = H.input H.! A.class_ "mdl-switch__input"
+                     H.! A.type_ "checkbox"
+                     H.! A.id (H.toValue checkboxId)
+                     H.! A.checked (H.toValue initialChecked)
+
+      toggle = H.label H.! A.class_ "mdl-switch mdl-js-switch mdl-js-ripple-effect"
+                       H.! A.id (H.toValue labelId)
+                       H.! A.for (H.toValue checkboxId) $ do
+                           checkbox
+                           H.span H.! A.class_ "mdl-switch__label" $ ""
+
+  sink checked behaviour <$$> getElementById window checkboxId
+
+  onChanges behaviour $ \checked -> runFunction . ffi $ if checked
+                                                          then "$('#" ++ labelId ++ "')[0].MaterialSwitch.on()"
+                                                          else "$('#" ++ labelId ++ "')[0].MaterialSwitch.off()"
+
+  return ReactiveToggle { getToggle   = toggle
+                        , getCheckbox = checkbox
+                        }
+
+
+newtype ReactiveButton = ReactiveButton { _elementRB :: H.Html }
+
+reactiveButton :: Behavior Text -> UI ReactiveButton
+reactiveButton behaviour = do
+  window       <- askWindow
+  buttonId     <- newIdent
+  initialClass <- currentValue behaviour
+
+  let display = H.button H.! A.class_ (H.toValue initialClass)
+                         H.! A.id (H.toValue buttonId) $
+                             ""
+
+  sink class_ (fmap unpack behaviour) <$$> getElementById window buttonId
+
+  return ReactiveButton { _elementRB = display }
+
+
+newtype ReactiveCheckbox = ReactiveCheckbox { _elementCB :: H.Html }
+
+reactiveCheckbox :: Behavior Bool -> UI ReactiveCheckbox
+reactiveCheckbox behaviour = do
+  window         <- askWindow
+  checkboxId     <- newIdent
+  initialChecked <- currentValue behaviour
+
+  let display = H.input H.! A.type_ "checkbox"
+                        H.! A.id (H.toValue checkboxId)
+                        H.! A.checked (H.toValue initialChecked)
+
+  sink checked behaviour <$$> getElementById window checkboxId
+
+  return ReactiveCheckbox { _elementCB = display }
+
+
+data ReactiveListItem = ReactiveListItem { item   :: H.Html
+                                         , itemId :: String
+                                         }
+
+reactiveListItem :: Text -> Behavior Text -> UI ReactiveListItem
+reactiveListItem label behaviour = do
+  window       <- askWindow
+  listItemId   <- newIdent
+  initialClass <- currentValue behaviour
+
+  let display = H.li H.! A.id (H.toValue listItemId)
+                     H.! A.class_ (H.toValue initialClass) $
+                         H.text label
+
+  sink class_ (fmap unpack behaviour) <$$> getElementById window listItemId
+
+  return ReactiveListItem { item   = display
+                          , itemId = listItemId
+                          }
+
+{-
 data Dropdown = Dropdown { _elementDropdown :: Element }
 
 instance Widget Dropdown where
@@ -121,3 +247,4 @@ reactiveListItem behaviourClass = do
   element display # sink class_ (unClass <$> behaviourClass)
 
   return ReactiveListItem { _elementRLI = display }
+-}

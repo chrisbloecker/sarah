@@ -1,6 +1,6 @@
 webPort: 8090
 masterNode:
-  host: 192.168.0.4
+  host: 10.10.220.111
   port: 50000
 nodeRole: master
 backend:

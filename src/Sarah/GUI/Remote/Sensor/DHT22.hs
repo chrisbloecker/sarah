@@ -25,6 +25,8 @@ import qualified Graphics.UI.Material                 as Material
 instance HasRemote DHT22 where
   buildRemote _ = do
     RemoteBuilderEnv{..} <- ask
+    return ()
+    {-
     lift $ do
       (eventReadings, handlerReadings) <- liftIO newEvent
       behaviourReadings                <- stepper ("--", "--") eventReadings
@@ -50,3 +52,4 @@ instance HasRemote DHT22 where
       getElement <$> Material.list [ Material.listItem (string "Temperature") (div #+ [element temperatureDisplay, element getTemperatureButton])
                                    , Material.listItem (string "Humidity")    (div #+ [element humidityDisplay,    element getHumidityButton])
                                    ]
+      -}

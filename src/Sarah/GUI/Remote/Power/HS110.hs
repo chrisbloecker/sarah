@@ -22,6 +22,8 @@ import qualified Graphics.UI.Material                as Material
 instance HasRemote HS110 where
   buildRemote _ = do
     RemoteBuilderEnv{..} <- ask
+    return ()
+    {-
     lift $ do
       window <- askWindow
 
@@ -42,3 +44,4 @@ instance HasRemote HS110 where
       liftIO $ flip runReaderT remoteRunnerEnv $ withResponse HS110.GetStateRequest doNothing (\(HS110.GetStateReply state) -> eventStateChangedHandler state)
 
       getElement <$> Material.list [ Material.listItem (string "Power") (element onOffToggle) ]
+      -}

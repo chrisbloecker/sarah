@@ -27,6 +27,8 @@ import qualified Sarah.Middleware.Device.AC.Toshiba as Toshiba
 instance HasRemote ToshibaAC where
   buildRemote _ = do
     RemoteBuilderEnv{..} <- ask
+    return ()
+    {-
     lift $ do
       window <- askWindow
 
@@ -166,3 +168,4 @@ instance HasRemote ToshibaAC where
                                    , Material.listItem (string "Mode") (element dropdownMode)
                                    , Material.listItem (string "Power Mode") (element dropdownPowerMode)
                                    ]
+-}

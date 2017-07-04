@@ -28,6 +28,7 @@ library
                      , Raspberry.IP
                      , Sarah.GUI
                      , Sarah.GUI.Model
+                     , Sarah.GUI.Reactive
                      , Sarah.GUI.Remote
                      , Sarah.GUI.Remote.AC.Toshiba
                      , Sarah.GUI.Remote.Example
@@ -70,6 +71,7 @@ library
   build-depends:       aeson
                      , base >= 4.7 && < 5
                      , binary
+                     , blaze-html
                      , bytestring
                      , clock
                      , constraints

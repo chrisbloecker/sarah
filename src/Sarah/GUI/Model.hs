@@ -15,6 +15,8 @@ import Raspberry.IP                (WebAddress)
 import Servant.Client
 import Sarah.Middleware
 --------------------------------------------------------------------------------
+import qualified Text.Blaze.Html5 as H
+--------------------------------------------------------------------------------
 
 -- ToDo: Tidings?
 -- ToDo: wrap this into some type that represents device events? Maybe together
@@ -37,10 +39,13 @@ data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , deviceAddress      :: DeviceAddress
                                          , eventStateChanged  :: Event EncodedDeviceState
                                          , remoteRunnerEnv    :: RemoteRunnerEnv
+                                         , pageTiles          :: TVar [H.Html]
+                                         , pageActions        :: TVar [UI ()]
                                          }
 
 type RemoteBuilder = ReaderT RemoteBuilderEnv UI
 
+-- for running remotes so they know what device they control and where to find it
 data RemoteRunnerEnv = RemoteRunnerEnv { deviceAddress :: DeviceAddress
                                        , middleware    :: WebAddress
                                        }
@@ -54,7 +59,7 @@ class IsDevice model => HasRemote model where
   --  - The AppEnv, so we know how to talk to the device
   --  - A DeviceAddress, so we know where the device is. Potentially, there can be
   --    many devices of the same kind available, even at the same node.
-  buildRemote :: model -> RemoteBuilder Element
+  buildRemote :: model -> RemoteBuilder ()
 
 doNothing :: IO ()
 doNothing = return ()
