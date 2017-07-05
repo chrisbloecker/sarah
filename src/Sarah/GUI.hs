@@ -93,22 +93,21 @@ setup appEnv@AppEnv{..} window = void $ do
     tilesHtml <- fmap (renderHtml . sequence_) <$> liftIO . atomically $ readTVar pageTiles
     runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
 
-    onElementIDClick remotesButtonId $ runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
-
     liftIO $ printWithTime "Upgrading DOM for Material"
     Material.upgradeDom
 
+    onElementIDClick remotesButtonId $ runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
 
-mkTile :: Text -> H.Html -> H.Html
-mkTile title content = H.div H.! A.class_ "mdl-card mdl-card-margin mld-shadow--2dp" $ do
-                           H.div H.! A.class_ "mdl-card__title" $
-                               H.h2 H.! A.class_ "mdl-card__title-text" $
-                               H.text title
-                           H.div H.! A.class_ "mdl-card__actions mdl-card--border mdl-typography--text-center" $
-                               content
+    -- register UI actions
+    setCallBufferMode BufferRun
+    actions <- liftIO . atomically $ readTVar pageActions
+    sequence_ actions
+    flushCallBuffer
+    setCallBufferMode NoBuffering
 
-listGroup_ :: Text -> [H.Html] -> H.Html
-listGroup_ title contents = H.ul H.! A.class_ "list-group" $
+
+listGroup :: Text -> [H.Html] -> H.Html
+listGroup title contents = H.ul H.! A.class_ "list-group" $
                                 H.li H.! A.class_ "list-group-item" $ do
                                     H.span H.! A.class_ "glyphicon glyphicon-chevron-right" $
                                         H.text title

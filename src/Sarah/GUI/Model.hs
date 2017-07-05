@@ -1,10 +1,11 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE RecordWildCards       #-}
 {-# LANGUAGE ScopedTypeVariables   #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Model
   where
 --------------------------------------------------------------------------------
-import Control.Concurrent.STM      (TVar)
+import Control.Concurrent.STM      (TVar, atomically, modifyTVar)
 import Control.Monad.Reader        (ReaderT, ask, lift)
 import Data.Aeson                  (ToJSON, FromJSON)
 import Data.HashMap.Strict         (HashMap)
@@ -42,6 +43,18 @@ data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , pageTiles          :: TVar [H.Html]
                                          , pageActions        :: TVar [UI ()]
                                          }
+
+addPageTile :: H.Html -> RemoteBuilder ()
+addPageTile tile = do
+  RemoteBuilderEnv{..} <- ask
+  liftIO . atomically $ modifyTVar pageTiles (tile :)
+
+
+addPageAction :: UI () -> RemoteBuilder ()
+addPageAction action = do
+  RemoteBuilderEnv{..} <- ask
+  liftIO . atomically $ modifyTVar pageActions (action :)
+
 
 type RemoteBuilder = ReaderT RemoteBuilderEnv UI
 

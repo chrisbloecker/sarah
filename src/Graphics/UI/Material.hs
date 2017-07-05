@@ -6,6 +6,7 @@ module Graphics.UI.Material
   where
 --------------------------------------------------------------------------------
 import Control.Monad                     (forM)
+import Data.Text                         (Text)
 import Data.UUID                         (toString)
 import Data.UUID.V4                      (nextRandom)
 import Graphics.UI.Threepenny     hiding (map)
@@ -21,6 +22,15 @@ import qualified Text.Blaze.Html5.Attributes as A
 
 upgradeDom :: UI ()
 upgradeDom = runFunction $ ffi "componentHandler.upgradeDom();console.log('component upgrade ok.')"
+
+
+mkTile :: Text -> H.Html -> H.Html
+mkTile title content = H.div H.! A.class_ "mdl-card mdl-card-margin mdl-card--border mdl-shadow--2dp" $ do
+                           H.div H.! A.class_ "mdl-card__title" $
+                               H.h2 H.! A.class_ "mdl-card__title-text" $
+                               H.text title
+                           H.div H.! A.class_ "mdl-card__actions mdl-card--border" $
+                               content
 
 
 list :: [H.Html] -> H.Html
