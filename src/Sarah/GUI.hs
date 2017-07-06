@@ -67,7 +67,7 @@ setup appEnv@AppEnv{..} window = void $ do
                                     -- fromJust should really not fail now...
                                     fromJust . HM.lookup deviceAddress <$> readTVar remoteEvents
 
-                            let remoteRunnerEnv  = RemoteRunnerEnv{..}
+                            let runRemote        = liftIO . flip runReaderT RemoteRunnerEnv{..}
                                 remoteBuilderEnv = RemoteBuilderEnv{..}
                             --    widget           = runReaderT (buildRemote model) remoteBuilderEnv
                             --remote <- runUI window $ mkTile (unpack nodeName ++ ":" ++ unpack deviceName) widget

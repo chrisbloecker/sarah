@@ -20,7 +20,6 @@ import Sarah.GUI.Websocket            (withResponse, withoutResponse)
 import Sarah.Middleware               (EncodedDeviceState, decodeDeviceState, QueryResult (..), mkCommand, DeviceAddress (..))
 import Sarah.Middleware.Device        (ToshibaAC)
 --------------------------------------------------------------------------------
-import qualified Graphics.UI.Material               as Material
 import qualified Sarah.Middleware.Device.AC.Toshiba as Toshiba
 --------------------------------------------------------------------------------
 import qualified Text.Blaze.Html5            as H
@@ -31,31 +30,16 @@ instance HasRemote ToshibaAC where
   buildRemote _ = do
     RemoteBuilderEnv{..} <- ask
 
-    let emptyTemperature = "--"
-        emptyFanlevel    = "--"
+    let emptyTemperature = "--"                     :: Text
+        emptyFanlevel    = "--"                     :: Text
+        grey             = ""                       :: Text
+        accented         = "mdl-color-text--accent" :: Text
 
-    (eventPowerSwitch, handlerPowerSwitch) <- liftIO newEvent
-    (eventTemperature, handlerTemperature) <- liftIO newEvent
-    (eventFanlevel,    handlerFanlevel)    <- liftIO newEvent
-    (eventMode,        handlerMode)        <- liftIO newEvent
-    (eventPowerMode,   handlerPowerMode)   <- liftIO newEvent
-
-    behaviourPowerSwitch <- stepper False eventPowerSwitch
-    behaviourTemperature <- stepper emptyTemperature eventTemperature
-    behaviourFanlevel    <- stepper emptyFanlevel eventFanlevel
-    behaviourMode        <- stepper "Off" eventMode
-    behaviourPowerMode   <- stepper "Normal" eventPowerMode
-
-    (toggle, toggleId) <- lift $ Material.reactiveToggle behaviourPowerSwitch
-
-    displayTemperature <- lift $ reactiveLabel behaviourTemperature
-    displayFanlevel    <- lift $ reactiveLabel behaviourFanlevel
-    displayMode        <- lift $ reactiveLabel behaviourMode
-    displayPowerMode   <- lift $ reactiveLabel behaviourPowerMode
-
-    -- styles for differently coloured buttons
-    let grey     = ""
-        accented = "mdl-color-text--accent"
+    powerSwitch  <- lift $ reactiveToggle False
+    temperature' <- lift $ reactiveLabel  emptyTemperature
+    fanlevel'    <- lift $ reactiveLabel  emptyFanlevel
+    mode'        <- lift $ reactiveLabel  "Off"
+    powerMode'   <- lift $ reactiveLabel  "Normal"
 
     tempDownButtonId <- newIdent
     tempUpButtonId   <- newIdent
@@ -64,120 +48,104 @@ instance HasRemote ToshibaAC where
 
     let tempDownButton = H.button H.! A.class_ "mdl-button mdl-js-button"
                                   H.! A.id (H.toValue tempDownButtonId) $
-                             Material.icon Material.chevron_left
+                             icon chevron_left
         tempUpButton   = H.button H.! A.class_ "mdl-button mdl-js-button"
                                   H.! A.id (H.toValue tempUpButtonId) $
-                             Material.icon Material.chevron_right
+                             icon chevron_right
         fanDownButton  = H.button H.! A.class_ "mdl-button mdl-js-button"
                                   H.! A.id (H.toValue fanDownButtonId) $
-                             Material.icon Material.chevron_left
+                             icon chevron_left
         fanUpButton    = H.button H.! A.class_ "mdl-button mdl-js-button"
                                   H.! A.id (H.toValue fanUpButtonId) $
-                             Material.icon Material.chevron_right
+                             icon chevron_right
 
-    (eventAuto, handlerAuto) <- liftIO newEvent
-    (eventCool, handlerCool) <- liftIO newEvent
-    (eventDry,  handlerDry)  <- liftIO newEvent
-    (eventFan,  handlerFan)  <- liftIO newEvent
 
-    behaviourAuto <- stepper grey eventAuto
-    behaviourCool <- stepper grey eventCool
-    behaviourDry  <- stepper grey eventDry
-    behaviourFan  <- stepper grey eventFan
-
-    (autoButton, autoButtonId) <- lift $ reactiveListItem "Auto" behaviourAuto
-    (coolButton, coolButtonId) <- lift $ reactiveListItem "Cool" behaviourCool
-    (dryButton,  dryButtonId)  <- lift $ reactiveListItem "Dry"  behaviourDry
-    (fanButton,  fanButtonId)  <- lift $ reactiveListItem "Fan"  behaviourFan
-
-    (eventNormal, handlerNormal) <- liftIO newEvent
-    (eventEco,    handlerEco)    <- liftIO newEvent
-    (eventHi,     handlerHi)     <- liftIO newEvent
-
-    behaviourNormal <- stepper grey eventNormal
-    behaviourEco    <- stepper grey eventEco
-    behaviourHi     <- stepper grey eventHi
-
-    (normalButton, normalButtonId) <- lift $ reactiveListItem "Normal" behaviourNormal
-    (ecoButton,    ecoButtonId)    <- lift $ reactiveListItem "Eco"    behaviourEco
-    (hiButton,     hiButtonId)     <- lift $ reactiveListItem "High"   behaviourHi
+    autoButton   <- lift $ reactiveListItem "Auto"   grey
+    coolButton   <- lift $ reactiveListItem "Cool"   grey
+    dryButton    <- lift $ reactiveListItem "Dry"    grey
+    fanButton    <- lift $ reactiveListItem "Fan"    grey
+    normalButton <- lift $ reactiveListItem "Normal" grey
+    ecoButton    <- lift $ reactiveListItem "Eco"    grey
+    hiButton     <- lift $ reactiveListItem "High"   grey
 
     let eventStateChangedHandler :: Handler (Toshiba.DeviceState ToshibaAC)
         eventStateChangedHandler Toshiba.Config{..} =
           if mode == Toshiba.ModeOff
             then do
-              handlerPowerSwitch False
-              handlerTemperature  emptyTemperature
-              handlerFanlevel     emptyFanlevel
-              handlerAuto grey
-              handlerCool grey
-              handlerDry  grey
-              handlerFan  grey
-              handlerEco  grey
-              handlerHi   grey
+              getHandler powerSwitch False
+              getHandler temperature' emptyTemperature
+              getHandler fanlevel'    emptyFanlevel
+              getHandler autoButton   grey
+              getHandler coolButton   grey
+              getHandler dryButton    grey
+              getHandler fanButton    grey
+              getHandler ecoButton    grey
+              getHandler hiButton     grey
 
           else do
-            handlerPowerSwitch True
+            getHandler powerSwitch True
 
             case temperature of
-              Temperature t -> handlerTemperature (pack $ show t ++ "°C")
+              Temperature t -> getHandler temperature' (pack $ show t ++ "°C")
 
-            handlerFanlevel $ case fan of
-              Toshiba.FanAuto     -> "Auto"
-              Toshiba.FanQuiet    -> "Quiet"
-              Toshiba.FanVeryLow  -> "Very Low"
-              Toshiba.FanLow      -> "Low"
-              Toshiba.FanNormal   -> "Normal"
-              Toshiba.FanHigh     -> "High"
-              Toshiba.FanVeryHigh -> "Very High"
+            getHandler fanlevel' $ case fan of
+              Toshiba.FanAuto     -> "Auto"      :: Text
+              Toshiba.FanQuiet    -> "Quiet"     :: Text
+              Toshiba.FanVeryLow  -> "Very Low"  :: Text
+              Toshiba.FanLow      -> "Low"       :: Text
+              Toshiba.FanNormal   -> "Normal"    :: Text
+              Toshiba.FanHigh     -> "High"      :: Text
+              Toshiba.FanVeryHigh -> "Very High" :: Text
 
             case mode of
-              Toshiba.ModeAuto -> handlerAuto accented >> handlerCool grey     >> handlerDry grey     >> handlerFan  grey     >> handlerMode "Auto"
-              Toshiba.ModeCool -> handlerAuto grey     >> handlerCool accented >> handlerDry grey     >> handlerFan  grey     >> handlerMode "Cool"
-              Toshiba.ModeDry  -> handlerAuto grey     >> handlerCool grey     >> handlerDry accented >> handlerFan  grey     >> handlerMode "Dry"
-              Toshiba.ModeFan  -> handlerAuto grey     >> handlerCool grey     >> handlerDry grey     >> handlerFan  accented >> handlerMode "Fan"
-              Toshiba.ModeOff  -> handlerAuto grey     >> handlerCool grey     >> handlerDry grey     >> handlerFan  grey     >> handlerMode "Off"
+              Toshiba.ModeAuto -> getHandler autoButton accented >> getHandler coolButton grey     >> getHandler dryButton grey     >> getHandler fanButton grey     >> getHandler mode' ("Auto" :: Text)
+              Toshiba.ModeCool -> getHandler autoButton grey     >> getHandler coolButton accented >> getHandler dryButton grey     >> getHandler fanButton grey     >> getHandler mode' ("Cool" :: Text)
+              Toshiba.ModeDry  -> getHandler autoButton grey     >> getHandler coolButton grey     >> getHandler dryButton accented >> getHandler fanButton grey     >> getHandler mode' ("Dry"  :: Text)
+              Toshiba.ModeFan  -> getHandler autoButton grey     >> getHandler coolButton grey     >> getHandler dryButton grey     >> getHandler fanButton accented >> getHandler mode' ("Fan"  :: Text)
+              Toshiba.ModeOff  -> getHandler autoButton grey     >> getHandler coolButton grey     >> getHandler dryButton grey     >> getHandler fanButton grey     >> getHandler mode' ("Off"  :: Text)
 
-            handlerEco grey
-            handlerHi  grey
+            getHandler ecoButton grey
+            getHandler hiButton  grey
             case mpower of
-              Nothing                -> handlerPowerMode "Normal"
-              Just Toshiba.PowerEco  -> handlerEco accented >> handlerPowerMode "Eco"
-              Just Toshiba.PowerHigh -> handlerHi  accented >> handlerPowerMode "High"
+              Nothing                ->                                  getHandler powerMode' ("Normal" :: Text)
+              Just Toshiba.PowerEco  -> getHandler ecoButton accented >> getHandler powerMode' ("Eco"    :: Text)
+              Just Toshiba.PowerHigh -> getHandler hiButton  accented >> getHandler powerMode' ("High"   :: Text)
 
     unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
-    addPageAction $ onElementIDCheckedChange toggleId $ \state -> liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write $ if state then Toshiba.PowerOn else Toshiba.PowerOff)
-    addPageAction $ onElementIDClick         tempUpButtonId $     liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.UpTemperature)
-    addPageAction $ onElementIDClick         tempDownButtonId $   liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.DownTemperature)
-    addPageAction $ onElementIDClick         fanUpButtonId $      liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.UpFan)
-    addPageAction $ onElementIDClick         fanDownButtonId $    liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write Toshiba.DownFan)
-    addPageAction $ onElementIDClick         autoButtonId $       liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeAuto))
-    addPageAction $ onElementIDClick         coolButtonId $       liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeCool))
-    addPageAction $ onElementIDClick         dryButtonId $        liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeDry))
-    addPageAction $ onElementIDClick         fanButtonId $        liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeFan))
-    addPageAction $ onElementIDClick         normalButtonId $     liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode Nothing))
-    addPageAction $ onElementIDClick         ecoButtonId $        liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerEco))
-    addPageAction $ onElementIDClick         hiButtonId $         liftIO $ flip runReaderT remoteRunnerEnv $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerHigh))
+    addPageAction $ onElementIDCheckedChange (getItemId powerSwitch) $ \state -> runRemote $ withoutResponse (Toshiba.Write $ if state then Toshiba.PowerOn else Toshiba.PowerOff)
+    addPageAction $ onElementIDClick         tempUpButtonId $     runRemote $ withoutResponse (Toshiba.Write Toshiba.UpTemperature)
+    addPageAction $ onElementIDClick         tempDownButtonId $   runRemote $ withoutResponse (Toshiba.Write Toshiba.DownTemperature)
+    addPageAction $ onElementIDClick         fanUpButtonId $      runRemote $ withoutResponse (Toshiba.Write Toshiba.UpFan)
+    addPageAction $ onElementIDClick         fanDownButtonId $    runRemote $ withoutResponse (Toshiba.Write Toshiba.DownFan)
+    addPageAction $ onElementIDClick (getItemId autoButton)   $ runRemote $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeAuto))
+    addPageAction $ onElementIDClick (getItemId coolButton)   $ runRemote $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeCool))
+    addPageAction $ onElementIDClick (getItemId dryButton)    $ runRemote $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeDry))
+    addPageAction $ onElementIDClick (getItemId fanButton)    $ runRemote $ withoutResponse (Toshiba.Write (Toshiba.SetMode Toshiba.ModeFan))
+    addPageAction $ onElementIDClick (getItemId normalButton) $ runRemote $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode Nothing))
+    addPageAction $ onElementIDClick (getItemId ecoButton)    $ runRemote $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerEco))
+    addPageAction $ onElementIDClick (getItemId hiButton)     $ runRemote $ withoutResponse (Toshiba.Write (Toshiba.SetPowerMode $ Just Toshiba.PowerHigh))
 
-    liftIO $ flip runReaderT remoteRunnerEnv $ withResponse (Toshiba.Read Toshiba.GetConfig) doNothing (\(Toshiba.DeviceState config) -> eventStateChangedHandler config)
+    dropdownMode <- lift $ dropdown (getItem mode') [ getItem autoButton
+                                                    , getItem coolButton
+                                                    , getItem dryButton
+                                                    , getItem fanButton
+                                                    ]
+    dropdownPowerMode <- lift $ dropdown (getItem powerMode') [ getItem normalButton
+                                                              , getItem ecoButton
+                                                              , getItem hiButton
+                                                              ]
 
-    dropdownMode      <- lift $ Material.dropdown displayMode      [autoButton, coolButton, dryButton, fanButton]
-    dropdownPowerMode <- lift $ Material.dropdown displayPowerMode [normalButton, ecoButton, hiButton]
+    addPageTile $
+      let title  = unwords [deviceNode deviceAddress, deviceName deviceAddress]
+      in mkTile title $ list [ listItem (H.text "Power") (getItem powerSwitch)
+                             , listItem (H.text "Temperature") (H.div $ tempDownButton >> getItem temperature' >> tempUpButton)
+                             , listItem (H.text "Fan") (H.div $ fanDownButton >> getItem fanlevel' >> fanUpButton)
+                             , listItem (H.text "Mode")       $ getItem dropdownMode
+                             , listItem (H.text "Power Mode") $ getItem dropdownPowerMode
+                             ]
 
-    let title  = unwords [deviceNode deviceAddress, deviceName deviceAddress]
-        widget = Material.mkTile title $
-                     Material.list [ Material.listItem (H.text "Power") toggle
-                                   , Material.listItem (H.text "Temperature") (H.div $ do
-                                                                                   tempDownButton
-                                                                                   displayTemperature
-                                                                                   tempUpButton)
-                                   , Material.listItem (H.text "Fan") (H.div $ do
-                                                                           fanDownButton
-                                                                           displayFanlevel
-                                                                           fanUpButton)
-                                   , Material.listItem (H.text "Mode") dropdownMode
-                                   , Material.listItem (H.text "Power Mode") dropdownPowerMode
-                                   ]
-
-    addPageTile widget
+    lift $ runRemote $
+      withResponse (Toshiba.Read Toshiba.GetConfig)
+        doNothing
+        (\(Toshiba.DeviceState config) -> eventStateChangedHandler config)

@@ -39,9 +39,9 @@ type SuccessHandler a = a -> IO ()
 data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , deviceAddress      :: DeviceAddress
                                          , eventStateChanged  :: Event EncodedDeviceState
-                                         , remoteRunnerEnv    :: RemoteRunnerEnv
                                          , pageTiles          :: TVar [H.Html]
                                          , pageActions        :: TVar [UI ()]
+                                         , runRemote          :: RemoteRunner () -> UI ()
                                          }
 
 addPageTile :: H.Html -> RemoteBuilder ()

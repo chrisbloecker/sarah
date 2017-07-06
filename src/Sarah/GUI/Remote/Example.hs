@@ -11,16 +11,16 @@ import Control.Monad                  (void)
 import Control.Monad.Reader           (lift, ask, runReaderT)
 import Data.Foldable                  (traverse_)
 import Data.Text                      (Text, pack, unpack, unwords)
+import Graphics.UI.Material
 import Graphics.UI.Threepenny  hiding (map)
 import Graphics.UI.Threepenny.Core    (runFunction, ffi)
 import Prelude                 hiding (span, div, unwords)
 import Sarah.GUI.Reactive
-import Sarah.GUI.Model                (HasRemote (..), RemoteBuilder, RemoteBuilderEnv (..), doNothing, addPageTile, addPageAction)
+import Sarah.GUI.Model                (HasRemote (..), RemoteBuilder, RemoteBuilderEnv (..), RemoteRunner, doNothing, addPageTile, addPageAction)
 import Sarah.GUI.Websocket            (withResponse, withoutResponse)
 import Sarah.Middleware               (EncodedDeviceState, decodeDeviceState, QueryResult (..), mkCommand, DeviceAddress (..))
 import Sarah.Middleware.Device        (ExampleDevice)
 --------------------------------------------------------------------------------
-import qualified Graphics.UI.Material            as Material
 import qualified Sarah.Middleware.Device.Example as ExampleDevice
 --------------------------------------------------------------------------------
 import qualified Text.Blaze.Html5            as H
@@ -31,87 +31,75 @@ instance HasRemote ExampleDevice where
   buildRemote _ = do
     env@RemoteBuilderEnv{..} <- ask
 
-    (eventDisplay, handlerDisplay) <- liftIO newEvent
-    (eventMode,    handlerMode)    <- liftIO newEvent
-
-    behaviourDisplay <- stepper "foo"    eventDisplay
-    behaviourMode    <- stepper "Normal" eventMode
-
-    display     <- lift $ Material.reactiveLabel behaviourDisplay
-    displayMode <- lift $ Material.reactiveLabel behaviourMode
+    display <- lift $ reactiveLabel "foo"
+    mode    <- lift $ reactiveLabel "Normal"
 
     getRandomNumberButtonId <- newIdent
     alwaysFailingButtonId   <- newIdent
 
     let getRandomNumberButton = H.button H.! A.class_ (H.toValue ("mdl-button mdl-js-button" :: Text))
                                          H.! A.id (H.toValue getRandomNumberButtonId) $
-                                             Material.icon Material.trending_up
+                                             icon trending_up
         alwaysFailingButton   = H.button H.! A.class_ (H.toValue ("mdl-button mdl-js-button" :: Text))
                                          H.! A.id (H.toValue alwaysFailingButtonId) $
-                                             Material.icon Material.bug_report
+                                             icon bug_report
 
     addPageAction $
-      onElementIDClick getRandomNumberButtonId $ liftIO $ flip runReaderT remoteRunnerEnv $
+      onElementIDClick getRandomNumberButtonId $ runRemote $
         withResponse ExampleDevice.RandomNumberRequest
           doNothing
-          (\(ExampleDevice.RandomNumberReply x) -> handlerDisplay (pack . show $ x))
+          (\(ExampleDevice.RandomNumberReply x) -> getHandler display (pack . show $ x))
 
     addPageAction $
-      onElementIDClick alwaysFailingButtonId $ liftIO $ flip runReaderT remoteRunnerEnv $
+      onElementIDClick alwaysFailingButtonId $ runRemote $
         withResponse ExampleDevice.AlwaysFailingRequest
           doNothing
           (\ExampleDevice.AlwaysFailingReply -> doNothing)
 
-    (eventNormalButton, handlerNormalButton) <- liftIO newEvent
-    (eventStarButton,   handlerStarButton)   <- liftIO newEvent
-    (eventHeartButton,  handlerHeartButton)  <- liftIO newEvent
-
     let grey     = ""
         accented = "mdl-color-text--accent"
 
-    behaviourNormalButton <- stepper accented eventNormalButton
-    behaviourStarButton   <- stepper grey     eventStarButton
-    behaviourHeartButton  <- stepper grey     eventHeartButton
-
-    (normalButton, normalButtonId) <- lift $ Material.reactiveListItem "Normal" behaviourNormalButton
-    (starButton,   starButtonId)   <- lift $ Material.reactiveListItem "Star"   behaviourStarButton
-    (heartButton,  heartButtonId)  <- lift $ Material.reactiveListItem "Heart"  behaviourHeartButton
+    normalButton <- lift $ reactiveListItem "Normal" accented
+    starButton   <- lift $ reactiveListItem "Star"   grey
+    heartButton  <- lift $ reactiveListItem "Heart"  grey
 
     let eventStateChangedHandler :: Handler (ExampleDevice.DeviceState ExampleDevice)
         eventStateChangedHandler = \case
-          ExampleDevice.Normal -> sequence_ [handlerNormalButton accented, handlerStarButton grey,     handlerHeartButton grey,     handlerMode "Normal"]
-          ExampleDevice.Star   -> sequence_ [handlerNormalButton grey,     handlerStarButton accented, handlerHeartButton grey,     handlerMode "Star"  ]
-          ExampleDevice.Heart  -> sequence_ [handlerNormalButton grey,     handlerStarButton grey,     handlerHeartButton accented, handlerMode "Heart" ]
+          ExampleDevice.Normal -> sequence_ [getHandler normalButton accented, getHandler starButton grey,     getHandler heartButton grey,     getHandler mode ("Normal" :: Text)]
+          ExampleDevice.Star   -> sequence_ [getHandler normalButton grey,     getHandler starButton accented, getHandler heartButton grey,     getHandler mode ("Star"   :: Text)]
+          ExampleDevice.Heart  -> sequence_ [getHandler normalButton grey,     getHandler starButton grey,     getHandler heartButton accented, getHandler mode ("Heart"  :: Text)]
 
     unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
     addPageAction $
-      onElementIDClick normalButtonId $ liftIO $ do
-        putStrLn "[Example.minusButton.click]"
-        flip runReaderT remoteRunnerEnv $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Normal)
+      onElementIDClick (getItemId normalButton) $ do
+        liftIO $ putStrLn "[Example.minusButton.click]"
+        runRemote $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Normal)
 
     addPageAction $
-      onElementIDClick starButtonId $ liftIO $ do
-        putStrLn "[Example.starButton.click]"
-        flip runReaderT remoteRunnerEnv $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Star)
+      onElementIDClick (getItemId starButton) $ do
+        liftIO $ putStrLn "[Example.starButton.click]"
+        runRemote $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Star)
 
     addPageAction $
-      onElementIDClick heartButtonId $ liftIO $ do
-        putStrLn "[Example.heartButton.click]"
-        flip runReaderT remoteRunnerEnv $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Heart)
+      onElementIDClick (getItemId heartButton) $ do
+        liftIO $ putStrLn "[Example.heartButton.click]"
+        runRemote $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Heart)
 
-    liftIO $ flip runReaderT remoteRunnerEnv $
+    dropdown <- lift $ dropdown (getItem mode) [ getItem normalButton
+                                               , getItem starButton
+                                               , getItem heartButton
+                                               ]
+
+    addPageTile $
+      let title  = unwords [deviceNode deviceAddress, deviceName deviceAddress]
+      in mkTile title $ list [ listItem (getItem display) getRandomNumberButton
+                             , listItem (H.div $ H.text "") alwaysFailingButton
+                             , listItem (H.label $ H.text "Mode") (getItem dropdown)
+                             ]
+
+    -- get the current state and set it
+    lift $ runRemote $
       withResponse ExampleDevice.GetStateRequest
         doNothing
         (\(ExampleDevice.GetStateReply state) -> eventStateChangedHandler state)
-
-    dropdown <- lift $ Material.dropdown displayMode [normalButton, starButton, heartButton]
-
-    let title  = unwords [deviceNode deviceAddress, deviceName deviceAddress]
-        widget = Material.mkTile title $
-                     Material.list [ Material.listItem display getRandomNumberButton
-                                   , Material.listItem (H.div $ H.text "") alwaysFailingButton
-                                   , Material.listItem (H.label $ H.text "Mode") dropdown
-                                   ]
-
-    addPageTile widget

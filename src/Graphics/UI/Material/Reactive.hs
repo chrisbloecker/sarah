@@ -1,5 +1,7 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
 
 module Graphics.UI.Material.Reactive
   where
@@ -17,9 +19,21 @@ import qualified Text.Blaze.Html5            as H
 import qualified Text.Blaze.Html5.Attributes as A
 --------------------------------------------------------------------------------
 
-f <$$> e = fmap (f . element) <$> e
+type Behaviour = Behavior
 
-dropdown :: H.Html -> [H.Html] -> UI H.Html
+class HasItem      a   where getItem      :: a -> H.Html
+class HasItemId    a   where getItemId    :: a -> String
+class HasEvent     a t where getEvent     :: a -> Event     t
+class HasHandler   a t where getHandler   :: a -> Handler   t
+class HasBehaviour a t where getBehaviour :: a -> Behaviour t
+
+--------------------------------------------------------------------------------
+
+newtype Dropdown = Dropdown { item :: H.Html }
+
+instance HasItem Dropdown where getItem = item
+
+dropdown :: H.Html -> [H.Html] -> UI Dropdown
 dropdown label items = do
   buttonId <- H.toValue <$> newIdent
   let item = H.div $ do
@@ -31,14 +45,27 @@ dropdown label items = do
                       H.! A.for buttonId $
                           sequence_ items
 
-  return item
+  return Dropdown{..}
 
 
-reactiveLabel :: Behavior Text -> UI H.Html
-reactiveLabel behaviour = do
-  window      <- askWindow
-  labelId     <- newIdent
-  initialText <- currentValue behaviour
+data ReactiveLabel = ReactiveLabel { item      :: H.Html
+                                   , event     :: Event    Text
+                                   , handler   :: Handler  Text
+                                   , behaviour :: Behavior Text
+                                   }
+
+instance HasItem      ReactiveLabel      where getItem      = item
+instance HasEvent     ReactiveLabel Text where getEvent     = event
+instance HasHandler   ReactiveLabel Text where getHandler   = handler
+instance HasBehaviour ReactiveLabel Text where getBehaviour = behaviour
+
+reactiveLabel :: Text -> UI ReactiveLabel
+reactiveLabel initial = do
+  (event, handler) <- liftIO newEvent
+  behaviour        <- stepper initial event
+  window           <- askWindow
+  labelId          <- newIdent
+  initialText      <- currentValue behaviour
 
   let item = H.label H.! A.id (H.toValue labelId) $
                  H.text initialText
@@ -46,57 +73,76 @@ reactiveLabel behaviour = do
   onChanges behaviour $ \newText ->
     runFunction $ ffi "$(%1).text(%2);" ('#':labelId) newText
 
-  return item
+  return ReactiveLabel{..}
 
 
-reactiveToggle :: Behavior Bool -> UI (H.Html, String)
-reactiveToggle behaviour = do
-  window         <- askWindow
-  labelId        <- newIdent
-  checkboxId     <- newIdent
-  initialChecked <- currentValue behaviour
+data ReactiveToggle = ReactiveToggle { item      :: H.Html
+                                     , itemId    :: String
+                                     , event     :: Event Bool
+                                     , handler   :: Handler Bool
+                                     , behaviour :: Behaviour Bool
+                                     }
+
+instance HasItem      ReactiveToggle      where getItem      = item
+instance HasItemId    ReactiveToggle      where getItemId    = itemId
+instance HasEvent     ReactiveToggle Bool where getEvent     = event
+instance HasHandler   ReactiveToggle Bool where getHandler   = handler
+instance HasBehaviour ReactiveToggle Bool where getBehaviour = behaviour
+
+reactiveToggle :: Bool -> UI ReactiveToggle
+reactiveToggle initial = do
+  (event, handler) <- liftIO newEvent
+  behaviour        <- stepper initial event
+  window           <- askWindow
+  labelId          <- newIdent
+  itemId           <- newIdent
+  initialChecked   <- currentValue behaviour
 
   let checkbox = H.input H.! A.class_ "mdl-switch__input"
                      H.! A.type_ "checkbox"
-                     H.! A.id (H.toValue checkboxId)
+                     H.! A.id (H.toValue itemId)
                      H.! A.checked (H.toValue initialChecked)
 
-      toggle = H.label H.! A.class_ "mdl-switch mdl-js-switch mdl-js-ripple-effect"
-                       H.! A.id (H.toValue labelId)
-                       H.! A.for (H.toValue checkboxId) $ do
-                           checkbox
-                           H.span H.! A.class_ "mdl-switch__label" $ ""
+      item = H.label H.! A.class_ "mdl-switch mdl-js-switch mdl-js-ripple-effect"
+                     H.! A.id (H.toValue labelId)
+                     H.! A.for (H.toValue itemId) $ do
+                         checkbox
+                         H.span H.! A.class_ "mdl-switch__label" $ ""
 
-  onChanges behaviour $ \newChecked ->
-    runFunction $ ffi "$(%1).prop('checked', %2);" ('#':checkboxId) newChecked
-    {- For some reason, this kills the browser
+  onChanges behaviour $ \newChecked -> do
+    runFunction $ ffi "$(%1).prop('checked', %2);" ('#':itemId) newChecked
     if newChecked
-      then runFunction $ ffi "$(%1)[0].MaterialSwitch.on();"  ('#':labelId)
-      else runFunction $ ffi "$(%1)[0].MaterialSwitch.off();" ('#':labelId)
-    -}
+      then runFunction $ ffi "var elem = $(%1); if (elem && elem.hasClass('is-upgraded')) elem[0].MaterialSwitch.on();"  ('#':labelId)
+      else runFunction $ ffi "var elem = $(%1); if (elem && elem.hasClass('is-upgraded')) elem[0].MaterialSwitch.off();" ('#':labelId)
 
-  return (toggle, checkboxId)
+  return ReactiveToggle {..}
 
 
-newtype ReactiveButton = ReactiveButton { _elementRB :: H.Html }
+newtype ReactiveButton = ReactiveButton { item :: H.Html }
 
-reactiveButton :: Behavior Text -> UI ReactiveButton
-reactiveButton behaviour = do
+instance HasItem ReactiveButton where
+  getItem = item
+
+reactiveButton :: Text -> Behavior Text -> UI ReactiveButton
+reactiveButton label behaviour = do
   window       <- askWindow
   buttonId     <- newIdent
   initialClass <- currentValue behaviour
 
-  let display = H.button H.! A.class_ (H.toValue initialClass)
-                         H.! A.id (H.toValue buttonId) $
-                             ""
+  let item = H.button H.! A.class_ (H.toValue initialClass)
+                      H.! A.id (H.toValue buttonId) $
+                 H.text label
 
   onChanges behaviour $ \newClass ->
     runFunction $ ffi "$(%1).prop('class',%2);" ('#':buttonId) newClass
 
-  return ReactiveButton { _elementRB = display }
+  return ReactiveButton{..}
 
 
-newtype ReactiveCheckbox = ReactiveCheckbox { _elementCB :: H.Html }
+newtype ReactiveCheckbox = ReactiveCheckbox { item :: H.Html }
+
+instance HasItem ReactiveCheckbox where
+  getItem = item
 
 reactiveCheckbox :: Behavior Bool -> UI ReactiveCheckbox
 reactiveCheckbox behaviour = do
@@ -104,21 +150,36 @@ reactiveCheckbox behaviour = do
   checkboxId     <- newIdent
   initialChecked <- currentValue behaviour
 
-  let display = H.input H.! A.type_ "checkbox"
-                        H.! A.id (H.toValue checkboxId)
-                        H.! A.checked (H.toValue initialChecked)
+  let item = H.input H.! A.type_ "checkbox"
+                     H.! A.id (H.toValue checkboxId)
+                     H.! A.checked (H.toValue initialChecked)
 
   onChanges behaviour $ \newChecked ->
     runFunction $ ffi "$(%1).prop('checked',%2);" ('#':checkboxId) newChecked
 
-  return ReactiveCheckbox { _elementCB = display }
+  return ReactiveCheckbox{..}
 
 
-reactiveListItem :: Text -> Behavior Text -> UI (H.Html, String)
-reactiveListItem label behaviour = do
-  window       <- askWindow
-  itemId       <- newIdent
-  initialClass <- currentValue behaviour
+data ReactiveListItem = ReactiveListItem { item      :: H.Html
+                                         , itemId    :: String
+                                         , event     :: Event   Text
+                                         , handler   :: Handler Text
+                                         , behaviour :: Behaviour Text
+                                         }
+
+instance HasItem      ReactiveListItem      where getItem      = item
+instance HasItemId    ReactiveListItem      where getItemId    = itemId
+instance HasEvent     ReactiveListItem Text where getEvent     = event
+instance HasHandler   ReactiveListItem Text where getHandler   = handler
+instance HasBehaviour ReactiveListItem Text where getBehaviour = behaviour
+
+reactiveListItem :: Text -> Text -> UI ReactiveListItem
+reactiveListItem label initial = do
+  (event, handler) <- liftIO newEvent
+  behaviour        <- stepper initial event
+  window           <- askWindow
+  itemId           <- newIdent
+  initialClass     <- currentValue behaviour
 
   let item = H.li H.! A.class_ "mdl-list__item" $
                  H.div H.! A.id (H.toValue itemId)
@@ -128,4 +189,4 @@ reactiveListItem label behaviour = do
   onChanges behaviour $ \newClass ->
     runFunction $ ffi "$(%1).prop('class',%2);" ('#':itemId) newClass
 
-  return (item, itemId)
+  return ReactiveListItem{..}

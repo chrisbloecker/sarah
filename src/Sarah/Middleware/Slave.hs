@@ -15,7 +15,7 @@ module Sarah.Middleware.Slave
 --------------------------------------------------------------------------------
 import Control.Concurrent                       (threadDelay)
 import Control.Distributed.Process
-import Control.Monad                            (forM, void)
+import Control.Monad                            (forM, void, forever)
 import Data.Aeson.Types                         (Value (..))
 import Data.List                                ((\\), elem, notElem)
 import Data.Map.Strict                          (Map)
@@ -82,11 +82,11 @@ startPortManager = do
                                 ]
 
 runSlave :: SlaveSettings -> Process ()
-runSlave SlaveSettings{..} = do
+runSlave SlaveSettings{..} = forever $ do -- "reconnect" when the connection is lost
   mmaster <- findMaster (host masterAddress) (show . port $ masterAddress) (seconds 1)
   case mmaster of
     Nothing -> do
-      say "[slave] No master found, terminating"
+      say "[slave] No master found, retrying"
       -- make sure there's enough time to print the message
       liftIO $ threadDelay 100000
     Just master -> do
@@ -101,7 +101,7 @@ runSlave SlaveSettings{..} = do
                                                                                                              return (name, pid)
 
       nodeUp master self (NodeInfo nodeName [ (name, toDeviceRep device) | (DeviceDescription name device) <- devices ])
-      link (unMaster master)
+      monitor (unMaster master)
 
       let reverseLookup = M.foldrWithKey (\deviceName (DeviceController pid) -> M.insert pid deviceName) M.empty deviceControllers
       loop State{..}
@@ -136,6 +136,9 @@ loop state@State{..} =
 
               , match $ \Terminate ->
                   say "[slave] Terminating slave"
+
+              , match $ \(ProcessMonitorNotification monRef pid reason) ->
+                  say "[slave] Master went down, terminating"
 
               , matchAny $ \message -> do
                   say $ "[slave] Received unexpected message: " ++ show message

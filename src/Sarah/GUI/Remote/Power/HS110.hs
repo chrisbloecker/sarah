@@ -7,6 +7,7 @@ module Sarah.GUI.Remote.Power.HS110
 import Control.Monad.Reader           (runReaderT, lift, ask)
 import Data.Foldable                  (traverse_)
 import Data.Text                      (unwords)
+import Graphics.UI.Material
 import Graphics.UI.Threepenny  hiding (map)
 import Graphics.UI.Threepenny.Core    (ffi, runFunction)
 import Prelude                 hiding (div, unwords)
@@ -17,40 +18,35 @@ import Sarah.Middleware               (DeviceState, decodeDeviceState, DeviceAdd
 import Sarah.Middleware.Device        (HS110)
 --------------------------------------------------------------------------------
 import qualified Sarah.Middleware.Device.Power.HS110 as HS110
-import qualified Graphics.UI.Material                as Material
---------------------------------------------------------------------------------
 import qualified Text.Blaze.Html5                    as H
 --------------------------------------------------------------------------------
+
 instance HasRemote HS110 where
   buildRemote _ = do
     RemoteBuilderEnv{..} <- ask
 
-    (eventPowerSwitch, handlerPowerSwitch) <- liftIO newEvent
-    behaviourPowerSwitch                   <- stepper False eventPowerSwitch
-
-    (toggle, toggleId) <- lift $ Material.reactiveToggle behaviourPowerSwitch
+    powerSwitch <- lift $ reactiveToggle False
 
     let eventStateChangedHandler :: Handler (DeviceState HS110)
-        eventStateChangedHandler HS110.HS110State{..} = do
-          putStrLn $ "[HS110.eventStateChangedHandler] " ++ show isOn
-          handlerPowerSwitch isOn
+        eventStateChangedHandler HS110.HS110State{..} = getHandler powerSwitch isOn
 
     unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
     addPageAction $
-      onElementIDCheckedChange toggleId $ \state -> liftIO $ flip runReaderT remoteRunnerEnv $
+      onElementIDCheckedChange (getItemId powerSwitch) $ \state -> runRemote $
         withoutResponse $
           if state
             then HS110.PowerOn
             else HS110.PowerOff
 
-    liftIO $ flip runReaderT remoteRunnerEnv $
+    let title  = unwords [deviceNode deviceAddress, deviceName deviceAddress]
+        widget = mkTile title $
+                     list [ listItem (H.text "Power") $ getItem powerSwitch ]
+
+    addPageTile widget
+
+    -- get the state of the device
+    lift $ runRemote $
       withResponse HS110.GetStateRequest
       doNothing
       (\(HS110.GetStateReply state) -> eventStateChangedHandler state)
-
-    let title  = unwords [deviceNode deviceAddress, deviceName deviceAddress]
-        widget = Material.mkTile title $
-                     Material.list [ Material.listItem (H.text "Power") toggle ]
-
-    addPageTile widget
