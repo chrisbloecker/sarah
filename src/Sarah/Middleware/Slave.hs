@@ -120,7 +120,7 @@ loop state@State{..} =
                                                         , matchAny $ \m                       -> say $ "[slave] Unexpected message: " ++ show m
                                                         ]
                       case mr of
-                        Nothing -> say $ "[slave] Timeout on query to " ++ unpack deviceName'
+                        Nothing -> say $ "[slave] Timeout on query to " ++ unpack deviceName' ++ ". Query was " ++ show (queryCommand query)
                         Just _ -> return ()
                   loop state
 

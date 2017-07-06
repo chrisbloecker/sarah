@@ -81,7 +81,7 @@ loop state@State{..} =
                                                         , matchAny $ \m                       -> say $ "[master] Unexpected message: " ++ show m
                                                         ]
                       case mr of
-                        Nothing -> say $ "[master] Timeout on query to " ++ unpack nodeName
+                        Nothing -> say $ "[master] Timeout on query to " ++ unpack nodeName ++ ". Query was " ++ show (queryCommand query)
                         Just _  -> return ()
                   loop state
 
