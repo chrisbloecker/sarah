@@ -110,18 +110,19 @@ loop :: State -> Process ()
 loop state@State{..} =
   receiveWait [ match $ \(FromPid src (query :: Query)) -> do
                   -- ToDo: should we check if the query was intended for this node?
-                  let deviceName' = deviceName (queryTarget query)
-                  say $ "[slave] Received query for " ++ show deviceName'
-                  case M.lookup deviceName' deviceControllers of
-                    Nothing                      -> say $ "[slave] Unknown device: " ++ unpack deviceName'
-                    Just (DeviceController dest) -> void $ spawnLocal $ do
-                      sendWithPid dest query
-                      mr <- receiveTimeout queryTimeout [ match    $ \(result :: QueryResult) -> send src result
-                                                        , matchAny $ \m                       -> say $ "[slave] Unexpected message: " ++ show m
-                                                        ]
-                      case mr of
-                        Nothing -> say $ "[slave] Timeout on query to " ++ unpack deviceName' ++ ". Query was " ++ show (queryCommand query)
-                        Just _ -> return ()
+                  void $ spawnLocal $ do
+                    let deviceName' = deviceName (queryTarget query)
+                    say $ "[slave] Received query for " ++ show deviceName'
+                    case M.lookup deviceName' deviceControllers of
+                      Nothing                      -> say $ "[slave] Unknown device: " ++ unpack deviceName'
+                      Just (DeviceController dest) -> void $ spawnLocal $ do
+                        sendWithPid dest query
+                        mr <- receiveTimeout queryTimeout [ match    $ \(result :: QueryResult) -> send src result
+                                                          , matchAny $ \m                       -> say $ "[slave] Unexpected message: " ++ show m
+                                                          ]
+                        case mr of
+                          Nothing -> say $ "[slave] Timeout on query to " ++ unpack deviceName' ++ ". Query was " ++ show (queryCommand query)
+                          Just _ -> return ()
                   loop state
 
               , match $ \(FromPid src (StateChanged encodedState)) -> do

@@ -69,20 +69,21 @@ loop state@State{..} =
                   loop state
 
               , match $ \(FromPid src (query :: Query)) -> do
-                  say "[master] Received Query"
-                  let nodeName = deviceNode (queryTarget query)
-                  case M.lookup nodeName nodeNames of
-                    Nothing   -> say $ "[master] Unknown node name " ++ unpack nodeName
-                    -- ToDo: is it safe to spawn a process and continue there?
-                    --       could some data change or a process die?
-                    Just dest -> void $ spawnLocal $ do
-                      sendWithPid dest query
-                      mr <- receiveTimeout queryTimeout [ match    $ \(result :: QueryResult) -> send src result
-                                                        , matchAny $ \m                       -> say $ "[master] Unexpected message: " ++ show m
-                                                        ]
-                      case mr of
-                        Nothing -> say $ "[master] Timeout on query to " ++ unpack nodeName ++ ". Query was " ++ show (queryCommand query)
-                        Just _  -> return ()
+                  void $ spawnLocal $ do
+                    say "[master] Received Query"
+                    let nodeName = deviceNode (queryTarget query)
+                    case M.lookup nodeName nodeNames of
+                      Nothing   -> say $ "[master] Unknown node name " ++ unpack nodeName
+                      -- ToDo: is it safe to spawn a process and continue there?
+                      --       could some data change or a process die?
+                      Just dest -> void $ spawnLocal $ do
+                        sendWithPid dest query
+                        mr <- receiveTimeout queryTimeout [ match    $ \(result :: QueryResult) -> send src result
+                                                          , matchAny $ \m                       -> say $ "[master] Unexpected message: " ++ show m
+                                                          ]
+                        case mr of
+                          Nothing -> say $ "[master] Timeout on query to " ++ unpack nodeName ++ ". Query was " ++ show (queryCommand query)
+                          Just _  -> return ()
                   loop state
 
                 -- whenever the state of a device changes, we inform all subscribers
