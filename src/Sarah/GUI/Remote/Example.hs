@@ -99,7 +99,8 @@ instance HasRemote ExampleDevice where
                              ]
 
     -- get the current state and set it
-    lift $ runRemote $
-      withResponse ExampleDevice.GetStateRequest
-        doNothing
-        (\(ExampleDevice.GetStateReply state) -> eventStateChangedHandler state)
+    addPageAction $
+      runRemote $
+        withResponse ExampleDevice.GetStateRequest
+          doNothing
+          (\(ExampleDevice.GetStateReply state) -> eventStateChangedHandler state)

@@ -145,7 +145,8 @@ instance HasRemote ToshibaAC where
                              , listItem (H.text "Power Mode") $ getItem dropdownPowerMode
                              ]
 
-    lift $ runRemote $
-      withResponse (Toshiba.Read Toshiba.GetConfig)
-        doNothing
-        (\(Toshiba.DeviceState config) -> eventStateChangedHandler config)
+    addPageAction $
+      runRemote $
+        withResponse (Toshiba.Read Toshiba.GetConfig)
+          doNothing
+          (\(Toshiba.DeviceState config) -> eventStateChangedHandler config)

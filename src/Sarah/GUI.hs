@@ -101,7 +101,7 @@ setup appEnv@AppEnv{..} window = void $ do
     -- register UI actions
     setCallBufferMode BufferRun
     actions <- liftIO . atomically $ readTVar pageActions
-    sequence_ actions
+    sequence_ . reverse $ actions
     flushCallBuffer
     setCallBufferMode NoBuffering
 

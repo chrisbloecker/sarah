@@ -71,7 +71,8 @@ instance HasRemote DHT22 where
                              , listItem (H.text "Humidity")    (H.div $ getItem humidity >> getHumidityButton)
                              ]
 
-    lift $ runRemote $
-      withResponse DHT22.GetReadingsRequest
-        doNothing
-        (\(DHT22.GetReadingsReply state) -> eventStateChangedHandler state)
+    addPageAction $
+      runRemote $
+        withResponse DHT22.GetReadingsRequest
+          doNothing
+          (\(DHT22.GetReadingsReply state) -> eventStateChangedHandler state)

@@ -46,7 +46,8 @@ instance HasRemote HS110 where
     addPageTile widget
 
     -- get the state of the device
-    lift $ runRemote $
-      withResponse HS110.GetStateRequest
-      doNothing
-      (\(HS110.GetStateReply state) -> eventStateChangedHandler state)
+    addPageAction $
+      runRemote $
+        withResponse HS110.GetStateRequest
+        doNothing
+        (\(HS110.GetStateReply state) -> eventStateChangedHandler state)
