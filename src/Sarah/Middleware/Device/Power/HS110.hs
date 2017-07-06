@@ -359,6 +359,7 @@ instance IsDevice HS110 where
 
   data DeviceReply HS110 = GetStateReply (DeviceState HS110)
                          | GetReadingsReply
+                         | EmptyReply
     deriving (Generic, ToJSON, FromJSON)
 
   startDeviceController (HS110 webAddress) slave portManager = do
@@ -382,6 +383,7 @@ instance IsDevice HS110 where
                               say "[HS110.controller] Switching on"
                               liftIO $ sendCommand webAddress (SystemCommand TurnOn)
                               let state' = state { isOn = True }
+                              send src (mkQueryResult EmptyReply)
                               sendStateChanged slave state'
                               controller state' env
 
@@ -389,6 +391,7 @@ instance IsDevice HS110 where
                               say "[HS110.controller] Switching off"
                               liftIO $ sendCommand webAddress (SystemCommand TurnOff)
                               let state' = state { isOn = False }
+                              send src (mkQueryResult EmptyReply)
                               sendStateChanged slave state'
                               controller state' env
 

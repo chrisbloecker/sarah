@@ -58,7 +58,7 @@ readDHT22 (Pin pin) = do
       int retry = 0;
       int res   = 0;
 
-      while (retry++ < 3 && (res = readDHT22(4, &$(double * ptr)[0], &$(double * ptr)[1])));
+      while (retry++ < 10 && (res = readDHT22(4, &$(double * ptr)[0], &$(double * ptr)[1])));
 
       return res;
     }

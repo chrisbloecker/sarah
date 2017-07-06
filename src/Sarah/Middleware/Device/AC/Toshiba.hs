@@ -315,6 +315,7 @@ instance IsDevice ToshibaAC where
                               res <- liftIO $ setAC pin config'
                               case res of
                                 Ok -> do
+                                  send src (mkQueryResult Empty)
                                   sendStateChanged slave config'
                                   controller env config'
                                 -- if setting the new config fails, keep the old one

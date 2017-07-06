@@ -112,7 +112,7 @@ loop state@State{..} =
                   -- ToDo: should we check if the query was intended for this node?
                   let deviceName' = deviceName (queryTarget query)
                   say $ "[slave] Received query for " ++ show deviceName'
-                  void $ spawnLocal $
+                  spawnLocal $
                     case M.lookup deviceName' deviceControllers of
                       Nothing                      -> say $ "[slave] Unknown device: " ++ unpack deviceName'
                       Just (DeviceController dest) -> void $ spawnLocal $ do
