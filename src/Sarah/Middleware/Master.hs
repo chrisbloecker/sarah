@@ -69,9 +69,9 @@ loop state@State{..} =
                   loop state
 
               , match $ \(FromPid src (query :: Query)) -> do
-                  void $ spawnLocal $ do
-                    say "[master] Received Query"
-                    let nodeName = deviceNode (queryTarget query)
+                  let nodeName = deviceNode (queryTarget query)
+                  say $ "[master] Received Query for " ++ show nodeName
+                  void $ spawnLocal $
                     case M.lookup nodeName nodeNames of
                       Nothing   -> say $ "[master] Unknown node name " ++ unpack nodeName
                       -- ToDo: is it safe to spawn a process and continue there?

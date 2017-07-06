@@ -52,6 +52,7 @@ instance IsDevice ExampleDevice where
                                  | SetStateReply
                                  | GetStateReply (DeviceState ExampleDevice)
                                  | AlwaysFailingReply
+                                 | EmptyReply
     deriving (Generic, ToJSON, FromJSON)
 
   -- setup the device and start a server that listens for commands
@@ -77,6 +78,7 @@ instance IsDevice ExampleDevice where
 
                             SetStateRequest state' -> do
                               say "[Example.controller] Setting state"
+                              send src (mkQueryResult EmptyReply)
                               sendStateChanged slave state'
                               controller state' slave portManager pin
 

@@ -110,9 +110,9 @@ loop :: State -> Process ()
 loop state@State{..} =
   receiveWait [ match $ \(FromPid src (query :: Query)) -> do
                   -- ToDo: should we check if the query was intended for this node?
-                  void $ spawnLocal $ do
-                    let deviceName' = deviceName (queryTarget query)
-                    say $ "[slave] Received query for " ++ show deviceName'
+                  let deviceName' = deviceName (queryTarget query)
+                  say $ "[slave] Received query for " ++ show deviceName'
+                  void $ spawnLocal $
                     case M.lookup deviceName' deviceControllers of
                       Nothing                      -> say $ "[slave] Unknown device: " ++ unpack deviceName'
                       Just (DeviceController dest) -> void $ spawnLocal $ do
