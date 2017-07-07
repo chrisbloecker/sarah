@@ -6,25 +6,20 @@
 module Sarah.GUI.Remote.Example
   where
 --------------------------------------------------------------------------------
-import Control.Concurrent.STM         (atomically, modifyTVar)
-import Control.Monad                  (void)
-import Control.Monad.Reader           (lift, ask, runReaderT)
-import Data.Foldable                  (traverse_)
-import Data.Text                      (Text, pack, unpack, unwords)
+import Control.Monad.IO.Class          (liftIO)
+import Control.Monad.Reader            (lift, ask)
+import Data.Foldable                   (traverse_)
+import Data.Text                       (Text, pack, unwords)
 import Graphics.UI.Material
-import Graphics.UI.Threepenny  hiding (map)
-import Graphics.UI.Threepenny.Core    (runFunction, ffi)
-import Prelude                 hiding (span, div, unwords)
+import Graphics.UI.Threepenny          (Handler, register)
+import Prelude                  hiding (unwords)
 import Sarah.GUI.Reactive
-import Sarah.GUI.Model                (HasRemote (..), RemoteBuilder, RemoteBuilderEnv (..), RemoteRunner, doNothing, addPageTile, addPageAction)
-import Sarah.GUI.Websocket            (withResponse, withoutResponse)
-import Sarah.Middleware               (EncodedDeviceState, decodeDeviceState, QueryResult (..), mkCommand, DeviceAddress (..))
-import Sarah.Middleware.Device        (ExampleDevice)
+import Sarah.GUI.Model                 (HasRemote (..), RemoteBuilderEnv (..), doNothing, addPageTile, addPageAction)
+import Sarah.GUI.Websocket             (withResponse, withoutResponse)
+import Sarah.Middleware                (decodeDeviceState, DeviceAddress (..))
+import Sarah.Middleware.Device.Example
 --------------------------------------------------------------------------------
-import qualified Sarah.Middleware.Device.Example as ExampleDevice
---------------------------------------------------------------------------------
-import qualified Text.Blaze.Html5            as H
-import qualified Text.Blaze.Html5.Attributes as A
+import qualified Text.Blaze.Html5 as H
 --------------------------------------------------------------------------------
 
 instance HasRemote ExampleDevice where
@@ -34,27 +29,20 @@ instance HasRemote ExampleDevice where
     display <- lift $ reactiveLabel "foo"
     mode    <- lift $ reactiveLabel "Normal"
 
-    getRandomNumberButtonId <- newIdent
-    alwaysFailingButtonId   <- newIdent
-
-    let getRandomNumberButton = H.button H.! A.class_ (H.toValue ("mdl-button mdl-js-button" :: Text))
-                                         H.! A.id (H.toValue getRandomNumberButtonId) $
-                                             icon trending_up
-        alwaysFailingButton   = H.button H.! A.class_ (H.toValue ("mdl-button mdl-js-button" :: Text))
-                                         H.! A.id (H.toValue alwaysFailingButtonId) $
-                                             icon bug_report
+    getRandomNumberButton <- button trending_up
+    alwaysFailingButton   <- button bug_report
 
     addPageAction $
-      onElementIDClick getRandomNumberButtonId $ runRemote $
-        withResponse ExampleDevice.RandomNumberRequest
+      onElementIDClick (getItemId getRandomNumberButton) $ runRemote $
+        withResponse RandomNumberRequest
           doNothing
-          (\(ExampleDevice.RandomNumberReply x) -> getHandler display (pack . show $ x))
+          (\(RandomNumberReply x) -> getHandler display (pack . show $ x))
 
     addPageAction $
-      onElementIDClick alwaysFailingButtonId $ runRemote $
-        withResponse ExampleDevice.AlwaysFailingRequest
+      onElementIDClick (getItemId alwaysFailingButton) $ runRemote $
+        withResponse AlwaysFailingRequest
           doNothing
-          (\ExampleDevice.AlwaysFailingReply -> doNothing)
+          (\AlwaysFailingReply -> doNothing)
 
     let grey     = ""
         accented = "mdl-color-text--accent"
@@ -63,28 +51,28 @@ instance HasRemote ExampleDevice where
     starButton   <- lift $ reactiveListItem "Star"   grey
     heartButton  <- lift $ reactiveListItem "Heart"  grey
 
-    let eventStateChangedHandler :: Handler (ExampleDevice.DeviceState ExampleDevice)
+    let eventStateChangedHandler :: Handler (DeviceState ExampleDevice)
         eventStateChangedHandler = \case
-          ExampleDevice.Normal -> sequence_ [getHandler normalButton accented, getHandler starButton grey,     getHandler heartButton grey,     getHandler mode ("Normal" :: Text)]
-          ExampleDevice.Star   -> sequence_ [getHandler normalButton grey,     getHandler starButton accented, getHandler heartButton grey,     getHandler mode ("Star"   :: Text)]
-          ExampleDevice.Heart  -> sequence_ [getHandler normalButton grey,     getHandler starButton grey,     getHandler heartButton accented, getHandler mode ("Heart"  :: Text)]
+          Normal -> sequence_ [getHandler normalButton accented, getHandler starButton grey,     getHandler heartButton grey,     getHandler mode ("Normal" :: Text)]
+          Star   -> sequence_ [getHandler normalButton grey,     getHandler starButton accented, getHandler heartButton grey,     getHandler mode ("Star"   :: Text)]
+          Heart  -> sequence_ [getHandler normalButton grey,     getHandler starButton grey,     getHandler heartButton accented, getHandler mode ("Heart"  :: Text)]
 
     unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
     addPageAction $
       onElementIDClick (getItemId normalButton) $ do
         liftIO $ putStrLn "[Example.minusButton.click]"
-        runRemote $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Normal)
+        runRemote $ withoutResponse (SetStateRequest Normal)
 
     addPageAction $
       onElementIDClick (getItemId starButton) $ do
         liftIO $ putStrLn "[Example.starButton.click]"
-        runRemote $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Star)
+        runRemote $ withoutResponse (SetStateRequest Star)
 
     addPageAction $
       onElementIDClick (getItemId heartButton) $ do
         liftIO $ putStrLn "[Example.heartButton.click]"
-        runRemote $ withoutResponse (ExampleDevice.SetStateRequest ExampleDevice.Heart)
+        runRemote $ withoutResponse (SetStateRequest Heart)
 
     dropdown <- lift $ dropdown (getItem mode) [ getItem normalButton
                                                , getItem starButton
@@ -93,14 +81,14 @@ instance HasRemote ExampleDevice where
 
     addPageTile $
       let title  = unwords [deviceNode deviceAddress, deviceName deviceAddress]
-      in mkTile title $ list [ listItem (getItem display) getRandomNumberButton
-                             , listItem (H.div $ H.text "") alwaysFailingButton
+      in mkTile title $ list [ listItem (getItem display) (getItem getRandomNumberButton)
+                             , listItem (H.div $ H.text "") (getItem alwaysFailingButton)
                              , listItem (H.label $ H.text "Mode") (getItem dropdown)
                              ]
 
     -- get the current state and set it
     addPageAction $
       runRemote $
-        withResponse ExampleDevice.GetStateRequest
+        withResponse GetStateRequest
           doNothing
-          (\(ExampleDevice.GetStateReply state) -> eventStateChangedHandler state)
+          (\(GetStateReply state) -> eventStateChangedHandler state)

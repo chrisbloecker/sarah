@@ -9,6 +9,7 @@ import Control.Concurrent.STM      (TVar, atomically, modifyTVar)
 import Control.Monad.Reader        (ReaderT, ask, lift)
 import Data.Aeson                  (ToJSON, FromJSON)
 import Data.HashMap.Strict         (HashMap)
+import Data.Sequence               (Seq, (|>))
 import Data.Text                   (Text, unpack)
 import Graphics.UI.Threepenny.Core
 import Network.HTTP.Client         (Manager)
@@ -39,21 +40,21 @@ type SuccessHandler a = a -> IO ()
 data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , deviceAddress      :: DeviceAddress
                                          , eventStateChanged  :: Event EncodedDeviceState
-                                         , pageTiles          :: TVar [H.Html]
-                                         , pageActions        :: TVar [UI ()]
+                                         , pageTiles          :: TVar (Seq H.Html)
+                                         , pageActions        :: TVar (Seq (UI ()))
                                          , runRemote          :: RemoteRunner () -> UI ()
                                          }
 
 addPageTile :: H.Html -> RemoteBuilder ()
 addPageTile tile = do
   RemoteBuilderEnv{..} <- ask
-  liftIO . atomically $ modifyTVar pageTiles (tile :)
+  liftIO . atomically $ modifyTVar pageTiles (|> tile)
 
 
 addPageAction :: UI () -> RemoteBuilder ()
 addPageAction action = do
   RemoteBuilderEnv{..} <- ask
-  liftIO . atomically $ modifyTVar pageActions (action :)
+  liftIO . atomically $ modifyTVar pageActions (|> action)
 
 
 type RemoteBuilder = ReaderT RemoteBuilderEnv UI
@@ -76,7 +77,3 @@ class IsDevice model => HasRemote model where
 
 doNothing :: IO ()
 doNothing = return ()
-
--- just a liftIO for UI
-embedUI :: IO a -> b -> UI a
-embedUI = const . liftIO

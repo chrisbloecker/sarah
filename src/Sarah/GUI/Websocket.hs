@@ -62,7 +62,8 @@ withoutResponse command = do
     WS.sendTextData connection query
 
 
-toMaster :: (IsMasterCommand command) => WebAddress -> MRequest command -> IO (MReply command)
+toMaster :: (IsMasterCommand command)
+         => WebAddress -> MRequest command -> IO (MReply command)
 toMaster middleware request =
   WS.runClient (host middleware) (port middleware) "/" $ \connection -> do
     WS.sendBinaryData connection ModeMaster

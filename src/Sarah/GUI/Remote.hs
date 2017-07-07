@@ -21,8 +21,8 @@ import Sarah.GUI.Remote.Sensor.DHT22 ()
 --------------------------------------------------------------------------------
 
 -- A Remote works similar to a Device: it stores a value that has an instance of Remote.
--- We don't need to require that models have an instance of IsDevice, that's in
--- the class definition for Remote.
+-- We don't need to require that models have an instance of IsDevice here, that's
+-- already in the class definition for Remote.
 data Remote = forall model. (HasRemote model)
             => Remote model
 
@@ -36,6 +36,7 @@ instance FromJSON Remote where
             <|> Remote <$> (parseJSON v :: Parser ExampleDevice)
             <|> fail ("Can't parse Remote from JSON: " ++ show v)
 
--- For turning DeviceReps into Remotes. However, this will only work
+-- For turning DeviceReps into Remotes. However, this will only work for those
+-- devices that we list in the FromJSON instance for Remote above.
 fromDeviceRep :: DeviceRep -> Either String Remote
 fromDeviceRep = eitherDecode' . BS.fromStrict . encodeUtf8 . unDeviceRep

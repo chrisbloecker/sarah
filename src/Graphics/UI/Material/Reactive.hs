@@ -8,7 +8,7 @@ module Graphics.UI.Material.Reactive
 --------------------------------------------------------------------------------
 import Control.Monad                      (forM, void)
 import Data.Text                          (Text, pack, unpack)
-import Graphics.UI.Material.Class
+import Graphics.UI.Material.Types
 import Graphics.UI.Material.Icon
 import Graphics.UI.Threepenny      hiding (map, empty)
 import Graphics.UI.Threepenny.Core        (runFunction, ffi)
@@ -19,21 +19,11 @@ import qualified Text.Blaze.Html5            as H
 import qualified Text.Blaze.Html5.Attributes as A
 --------------------------------------------------------------------------------
 
-type Behaviour = Behavior
-
-class HasItem      a   where getItem      :: a -> H.Html
-class HasItemId    a   where getItemId    :: a -> String
-class HasEvent     a t where getEvent     :: a -> Event     t
-class HasHandler   a t where getHandler   :: a -> Handler   t
-class HasBehaviour a t where getBehaviour :: a -> Behaviour t
-
---------------------------------------------------------------------------------
-
 newtype Dropdown = Dropdown { item :: H.Html }
 
 instance HasItem Dropdown where getItem = item
 
-dropdown :: H.Html -> [H.Html] -> UI Dropdown
+dropdown :: MonadIO m => H.Html -> [H.Html] -> m Dropdown
 dropdown label items = do
   buttonId <- H.toValue <$> newIdent
   let item = H.div $ do
@@ -63,7 +53,6 @@ reactiveLabel :: Text -> UI ReactiveLabel
 reactiveLabel initial = do
   (event, handler) <- liftIO newEvent
   behaviour        <- stepper initial event
-  window           <- askWindow
   labelId          <- newIdent
   initialText      <- currentValue behaviour
 
@@ -93,7 +82,6 @@ reactiveToggle :: Bool -> UI ReactiveToggle
 reactiveToggle initial = do
   (event, handler) <- liftIO newEvent
   behaviour        <- stepper initial event
-  window           <- askWindow
   labelId          <- newIdent
   itemId           <- newIdent
   initialChecked   <- currentValue behaviour
@@ -125,7 +113,6 @@ instance HasItem ReactiveButton where
 
 reactiveButton :: Text -> Behavior Text -> UI ReactiveButton
 reactiveButton label behaviour = do
-  window       <- askWindow
   buttonId     <- newIdent
   initialClass <- currentValue behaviour
 
@@ -146,7 +133,6 @@ instance HasItem ReactiveCheckbox where
 
 reactiveCheckbox :: Behavior Bool -> UI ReactiveCheckbox
 reactiveCheckbox behaviour = do
-  window         <- askWindow
   checkboxId     <- newIdent
   initialChecked <- currentValue behaviour
 
@@ -177,7 +163,6 @@ reactiveListItem :: Text -> Text -> UI ReactiveListItem
 reactiveListItem label initial = do
   (event, handler) <- liftIO newEvent
   behaviour        <- stepper initial event
-  window           <- askWindow
   itemId           <- newIdent
   initialClass     <- currentValue behaviour
 

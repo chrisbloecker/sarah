@@ -1,6 +1,7 @@
 module Sarah.GUI.Reactive
   where
 --------------------------------------------------------------------------------
+import Control.Monad               (void)
 import Control.Monad.IO.Class      (MonadIO, liftIO)
 import Data.UUID                   (toString)
 import Data.UUID.V4                (nextRandom)
@@ -19,12 +20,12 @@ toBool _      = False
 onElementIDClick :: String -> UI () -> UI ()
 onElementIDClick elementID handler = do
     window   <- askWindow
-    exported <- ffiExport $ runUI window handler >> return ()
+    exported <- ffiExport $ void $ runUI window handler
     runFunction $ ffi "$(%1).on('click', %2);" ('#':elementID) exported
 
 -- event that occurs when the user changed the checked state of a checkbox
 onElementIDCheckedChange :: String -> (Bool -> UI ()) -> UI ()
 onElementIDCheckedChange elementId handler = do
   window   <- askWindow
-  exported <- ffiExport (\s -> runUI window (handler . toBool $ s) >> return ())
+  exported <- ffiExport $ \s -> void $ runUI window (handler . toBool $ s)
   runFunction $ ffi "$(%1).on('change', function(e) { var checked = $(%1).prop('checked').toString(); %2(checked) } )" ('#':elementId) exported

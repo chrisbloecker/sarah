@@ -36,7 +36,6 @@ library
                      , Sarah.GUI.Remote.Sensor.DHT22
                      , Sarah.GUI.Websocket
                      , Sarah.Middleware
-                     , Sarah.Middleware.Api
                      , Sarah.Middleware.Device
                      , Sarah.Middleware.Distributed
                      , Sarah.Middleware.Device.AC.Toshiba

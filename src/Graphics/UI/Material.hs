@@ -1,20 +1,20 @@
-{-# LANGUAGE OverloadedStrings #-}
-
+{-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE RecordWildCards       #-}
+--------------------------------------------------------------------------------
 module Graphics.UI.Material
   ( module Graphics.UI.Material
   )
   where
 --------------------------------------------------------------------------------
-import Control.Monad                     (forM)
-import Data.Text                         (Text)
-import Data.UUID                         (toString)
-import Data.UUID.V4                      (nextRandom)
-import Graphics.UI.Threepenny     hiding (map)
-import Prelude                    hiding (div, span)
+import Data.Text              (Text)
+import Graphics.UI.Threepenny
+import Sarah.GUI.Reactive
 --------------------------------------------------------------------------------
 import Graphics.UI.Material.Class    as Graphics.UI.Material
 import Graphics.UI.Material.Icon     as Graphics.UI.Material
 import Graphics.UI.Material.Reactive as Graphics.UI.Material
+import Graphics.UI.Material.Types    as Graphics.UI.Material
 --------------------------------------------------------------------------------
 import qualified Text.Blaze.Html5            as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -22,6 +22,24 @@ import qualified Text.Blaze.Html5.Attributes as A
 
 upgradeDom :: UI ()
 upgradeDom = runFunction $ ffi "componentHandler.upgradeDom();console.log('component upgrade ok.')"
+
+
+data Button = Button { item   :: H.Html
+                     , itemId :: String
+                     }
+
+instance HasItem   Button where getItem   = item
+instance HasItemId Button where getItemId = itemId
+
+button :: MonadIO m => Icon -> m Button
+button theIcon = do
+  itemId <- newIdent
+
+  let item = H.button H.! A.class_ (H.toValue ("mdl-button mdl-js-button" :: Text))
+                      H.! A.id (H.toValue itemId) $
+                 icon theIcon
+
+  return Button {..}
 
 
 mkTile :: Text -> H.Html -> H.Html
