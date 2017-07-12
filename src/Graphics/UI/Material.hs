@@ -7,6 +7,7 @@ module Graphics.UI.Material
   )
   where
 --------------------------------------------------------------------------------
+import Control.Monad          (forM_)
 import Data.Text              (Text)
 import Graphics.UI.Threepenny
 import Sarah.GUI.Reactive
@@ -31,13 +32,14 @@ data Button = Button { item   :: H.Html
 instance HasItem   Button where getItem   = item
 instance HasItemId Button where getItemId = itemId
 
-button :: MonadIO m => Icon -> m Button
-button theIcon = do
+button :: MonadIO m => Maybe Icon -> Maybe Text -> m Button
+button micon mtext = do
   itemId <- newIdent
 
   let item = H.button H.! A.class_ (H.toValue ("mdl-button mdl-js-button" :: Text))
-                      H.! A.id (H.toValue itemId) $
-                 icon theIcon
+                      H.! A.id (H.toValue itemId) $ do
+                 forM_ micon icon
+                 forM_ mtext H.text
 
   return Button {..}
 

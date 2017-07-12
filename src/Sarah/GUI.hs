@@ -9,12 +9,14 @@ module Sarah.GUI
 import Control.Concurrent                  (forkIO)
 import Control.Concurrent.STM              (atomically, newTVar, readTVar, modifyTVar)
 import Control.Monad                       (forM_, unless, void)
+import Control.Monad.IO.Class              (liftIO)
 import Control.Monad.Reader                (runReaderT, ask)
 import Data.Maybe                          (fromJust)
 import Data.Text                           (Text, unpack)
-import Data.Sequence                       (empty)
+import Data.Sequence                       (empty, (|>))
 import Data.Time                           (getZonedTime)
-import Graphics.UI.Threepenny       hiding (map, empty)
+import Graphics.UI.Material                (button, getItem, getItemId)
+import Graphics.UI.Threepenny              (UI, Window, CallBufferMode (..), newEvent, runUI, setCallBufferMode, flushCallBuffer)
 import Graphics.UI.Threepenny.Core         (ffi, runFunction)
 import Prelude                      hiding (div, span)
 import Raspberry.IP
@@ -78,14 +80,12 @@ setup appEnv@AppEnv{..} window = void $ do
     liftIO $ forkIO $
         WS.runClient (host middleware) (port middleware) "/" (subscribeDeviceStateChanges remoteEvents)
 
-    remotesButtonId <- newIdent
-    let navButtons = H.div $
-                         H.button H.! A.class_ "mdl-button mdl-js-button"
-                                  H.! A.id (H.toValue remotesButtonId) $
-                             H.text "Remotes"
+    remotesButton <- button Nothing (Just "Remotes")
+
+    let navButtons = H.div $ do
+                         getItem remotesButton
 
     -- add the nav buttons to the page
-    liftIO $ printWithTime "Adding nav buttons"
     runFunction $ ffi "document.getElementById('navigation').innterHTML = %1" (renderHtml navButtons)
 
     -- add the remotes by default
@@ -93,10 +93,13 @@ setup appEnv@AppEnv{..} window = void $ do
     tilesHtml <- fmap (renderHtml . sequence_) <$> liftIO . atomically $ readTVar pageTiles
     runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
 
+    -- when the remotes button is clicked, show the remotes
+    let remotesButtonClickAction = onElementIDClick (getItemId remotesButton) $
+                                     runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
+    liftIO . atomically $ modifyTVar pageActions (|> remotesButtonClickAction)
+
     liftIO $ printWithTime "Upgrading DOM for Material"
     Material.upgradeDom
-
-    onElementIDClick remotesButtonId $ runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
 
     -- register UI actions
     liftIO $ printWithTime "Registering UI actions"

@@ -28,13 +28,10 @@ subscribeDeviceStateChanges listeners connection = do
 
   forever $ do
     StateChangeEvent deviceAddress encodedState <- WS.receiveData connection
-    putStrLn $ "[subscribeDeviceStateChanges] The state of a device has changed: " ++ unpack (deviceNode deviceAddress) ++ ":" ++ unpack (deviceName deviceAddress)
     mhandler <- atomically $ fmap snd . HM.lookup deviceAddress <$> readTVar listeners
     case mhandler of
-      Nothing -> putStrLn "[subscribeDeviceStateChanges] No handler registered"
-      Just handler -> do
-        putStrLn "[subscribeDeviceStateChanges] Updating display"
-        handler encodedState
+      Nothing      -> doNothing
+      Just handler -> handler encodedState
 
 
 withResponse :: (IsDevice model, reply ~ DeviceReply model)

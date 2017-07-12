@@ -29,8 +29,8 @@ instance HasRemote ExampleDevice where
     display <- lift $ reactiveLabel "foo"
     mode    <- lift $ reactiveLabel "Normal"
 
-    getRandomNumberButton <- button trending_up
-    alwaysFailingButton   <- button bug_report
+    getRandomNumberButton <- button (Just trending_up) Nothing
+    alwaysFailingButton   <- button (Just bug_report)  Nothing
 
     addPageAction $
       onElementIDClick (getItemId getRandomNumberButton) $ runRemote $ do

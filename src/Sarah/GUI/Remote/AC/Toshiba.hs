@@ -37,10 +37,10 @@ instance HasRemote ToshibaAC where
     mode'        <- lift $ reactiveLabel  "Off"
     powerMode'   <- lift $ reactiveLabel  "Normal"
 
-    tempDownButton <- button chevron_left
-    tempUpButton   <- button chevron_right
-    fanDownButton  <- button chevron_left
-    fanUpButton    <- button chevron_right
+    tempDownButton <- button (Just chevron_left)  Nothing
+    tempUpButton   <- button (Just chevron_right) Nothing
+    fanDownButton  <- button (Just chevron_left)  Nothing
+    fanUpButton    <- button (Just chevron_right) Nothing
     autoButton     <- lift $ reactiveListItem "Auto"   grey
     coolButton     <- lift $ reactiveListItem "Cool"   grey
     dryButton      <- lift $ reactiveListItem "Dry"    grey

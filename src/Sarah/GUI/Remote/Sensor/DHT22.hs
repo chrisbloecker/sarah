@@ -29,8 +29,8 @@ instance HasRemote DHT22 where
     temperature <- lift $ reactiveLabel "--°C"
     humidity    <- lift $ reactiveLabel "--%"
 
-    getTemperatureButton <- button refresh
-    getHumidityButton    <- button refresh
+    getTemperatureButton <- button (Just refresh) Nothing
+    getHumidityButton    <- button (Just refresh) Nothing
 
     let eventStateChangedHandler :: Handler (DeviceState DHT22)
         eventStateChangedHandler SensorState{..} = case readings of
