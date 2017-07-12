@@ -91,11 +91,10 @@ loop state@State{..} =
               , match $ \(FromPid src (DeviceStateChanged deviceAddress@DeviceAddress{..} encodedState)) -> do
                   say $ "[master] A device changed its state: " ++ unpack deviceNode ++ ":" ++ unpack deviceName
                   spawnLocal $ do
-                    say "[master] Broadcasting new device state"
-                    liftIO $ do
-                      connections <- atomically $ readTVar subscribers
-                      forM_ connections $ \(_, connection) ->
-                        sendTextData connection $ StateChangeEvent deviceAddress encodedState
+                    connections <- liftIO . atomically $ readTVar subscribers
+                    say $ "[master] Broadcasting new device state to " ++ show (length connections) ++ " listeners"
+                    liftIO $ forM_ connections $ \(_, connection) ->
+                      sendTextData connection $ StateChangeEvent deviceAddress encodedState
                   loop state
 
               , match $ \(Log nodeName message logLevel) -> do

@@ -33,13 +33,15 @@ instance HasRemote ExampleDevice where
     alwaysFailingButton   <- button bug_report
 
     addPageAction $
-      onElementIDClick (getItemId getRandomNumberButton) $ runRemote $
+      onElementIDClick (getItemId getRandomNumberButton) $ runRemote $ do
+        liftIO $ putStrLn "[Example.getRandomNumberButton.click]"
         withResponse RandomNumberRequest
           doNothing
           (\(RandomNumberReply x) -> getHandler display (pack . show $ x))
 
     addPageAction $
-      onElementIDClick (getItemId alwaysFailingButton) $ runRemote $
+      onElementIDClick (getItemId alwaysFailingButton) $ runRemote $ do
+        liftIO $ putStrLn "[Example.alwaysFailingButton.click]"
         withResponse AlwaysFailingRequest
           doNothing
           (\AlwaysFailingReply -> doNothing)
@@ -61,7 +63,7 @@ instance HasRemote ExampleDevice where
 
     addPageAction $
       onElementIDClick (getItemId normalButton) $ do
-        liftIO $ putStrLn "[Example.minusButton.click]"
+        liftIO $ putStrLn "[Example.normalButton.click]"
         runRemote $ withoutResponse (SetStateRequest Normal)
 
     addPageAction $
@@ -88,7 +90,8 @@ instance HasRemote ExampleDevice where
 
     -- get the current state and set it
     addPageAction $
-      runRemote $
+      runRemote $ do
+        liftIO $ putStrLn "[Example] Getting state"
         withResponse GetStateRequest
           doNothing
           (\(GetStateReply state) -> eventStateChangedHandler state)

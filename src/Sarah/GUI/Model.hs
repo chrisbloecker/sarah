@@ -25,10 +25,7 @@ import qualified Text.Blaze.Html5 as H
 --       with a device representation, so we can deserialise it properly?
 type RemoteEvent = (Event EncodedDeviceState, Handler EncodedDeviceState)
 
-data AppEnv = AppEnv { remoteEvents :: TVar (HashMap DeviceAddress RemoteEvent)
-                     , counter      :: TVar Integer
-                     , middleware   :: WebAddress
-                     }
+data AppEnv = AppEnv { middleware :: WebAddress }
 
 type App = ReaderT AppEnv UI
 

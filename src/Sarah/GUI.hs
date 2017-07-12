@@ -6,6 +6,7 @@ module Sarah.GUI
   ( setup
   ) where
 --------------------------------------------------------------------------------
+import Control.Concurrent                  (forkIO)
 import Control.Concurrent.STM              (atomically, newTVar, readTVar, modifyTVar)
 import Control.Monad                       (forM_, unless, void)
 import Control.Monad.Reader                (runReaderT, ask)
@@ -16,10 +17,11 @@ import Data.Time                           (getZonedTime)
 import Graphics.UI.Threepenny       hiding (map, empty)
 import Graphics.UI.Threepenny.Core         (ffi, runFunction)
 import Prelude                      hiding (div, span)
+import Raspberry.IP
 import Sarah.GUI.Model
 import Sarah.GUI.Reactive
 import Sarah.GUI.Remote                    (Remote (..), fromDeviceRep)
-import Sarah.GUI.Websocket                 (toMaster)
+import Sarah.GUI.Websocket                 (toMaster, subscribeDeviceStateChanges)
 import Sarah.Middleware
 import Servant.Client
 import Text.Blaze.Html.Renderer.String
@@ -28,6 +30,7 @@ import qualified Text.Blaze.Html5            as H
 import qualified Text.Blaze.Html5.Attributes as A
 import qualified Data.HashMap.Strict         as HM
 import qualified Graphics.UI.Material        as Material
+import qualified Network.WebSockets          as WS
 --------------------------------------------------------------------------------
 
 printWithTime :: String -> IO ()
@@ -41,6 +44,10 @@ setup appEnv@AppEnv{..} window = void $ do
     -- for building up the page tiles and UI actions
     pageTiles   <- liftIO . atomically $ newTVar empty
     pageActions <- liftIO . atomically $ newTVar empty
+
+    -- a place to store the events for the remotes. let's use a TVar in case
+    -- we want to add more events later on
+    remoteEvents <- liftIO . atomically $ newTVar HM.empty
 
     -- get the status of the middleware, i.e. the connected nodes and their info
     liftIO $ printWithTime "Requesting status from master"
@@ -56,15 +63,9 @@ setup appEnv@AppEnv{..} window = void $ do
                         Left err -> printWithTime $ "Can't decode device " ++ show deviceName
                         Right (Remote model) -> do
                             let deviceAddress = DeviceAddress nodeName deviceName
-                            -- create new gui update event for the device or reuse an existing one
-                            (eventStateChanged, notifyStateChanged) <- do
-                                behaviour <- newEvent
-                                liftIO $ atomically $ do
-                                    events <- readTVar remoteEvents
-                                    unless (deviceAddress `HM.member` events) $
-                                        modifyTVar remoteEvents (HM.insert deviceAddress behaviour)
-                                    -- fromJust should really not fail now...
-                                    fromJust . HM.lookup deviceAddress <$> readTVar remoteEvents
+
+                            behaviour@(eventStateChanged, notifyStateChanged) <- newEvent
+                            atomically $ modifyTVar remoteEvents (HM.insert deviceAddress behaviour)
 
                             let runRemote        = liftIO . flip runReaderT RemoteRunnerEnv{..}
                                 remoteBuilderEnv = RemoteBuilderEnv{..}
@@ -73,6 +74,9 @@ setup appEnv@AppEnv{..} window = void $ do
 
     -- ToDo: where and when should we clean up events for devices that don't exist
     --       or are not connected anymore?
+
+    liftIO $ forkIO $
+        WS.runClient (host middleware) (port middleware) "/" (subscribeDeviceStateChanges remoteEvents)
 
     remotesButtonId <- newIdent
     let navButtons = H.div $
@@ -95,7 +99,9 @@ setup appEnv@AppEnv{..} window = void $ do
     onElementIDClick remotesButtonId $ runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
 
     -- register UI actions
+    liftIO $ printWithTime "Registering UI actions"
     setCallBufferMode BufferRun
-    fmap sequence_ <$> liftIO . atomically $ readTVar pageActions
+    actions <- liftIO . atomically $ readTVar pageActions
+    sequence_ actions
     flushCallBuffer
     setCallBufferMode NoBuffering

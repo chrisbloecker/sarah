@@ -70,12 +70,12 @@ runServer Config{..} state@ServerState{..} pending = do
 
   case connectionMode of
     ModeSubscribe -> do
+      putStrLn "[server] Client subscribed for device updates"
       atomically $ modifyTVar subscribers ((newId, connection) :)
       -- Just keep the websocket open, we don't really expect any messages
-      forever $ do
+      flip finally (disconnect state newId) $ forever $ do
         message <- receiveData connection :: IO Text
         putStrLn $ "Received message: " ++ unpack message
-      atomically $ modifyTVar subscribers (filter ((/= newId) . fst))
 
     -- run the server in command mode, i.e. receive exactly one command
     -- and reply with exactly one response

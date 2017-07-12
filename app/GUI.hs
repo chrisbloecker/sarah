@@ -4,7 +4,7 @@
 module Main
   where
 --------------------------------------------------------------------------------
-import Control.Concurrent          (forkIO, threadDelay)
+import Control.Concurrent          (forkIO)
 import Control.Concurrent.STM      (atomically, newTVar)
 import Control.Monad               (forever)
 import Control.Monad.Reader        (runReaderT)
@@ -64,12 +64,6 @@ run Options{..} = do
   counter      <- atomically $ newTVar 0
 
   let appEnv = AppEnv {..}
-
-  -- use a websocket for communication with the middleware
-  putStrLn $ "Connecting to middleware at " ++ middlewareHost ++ ":" ++ show middlewarePort
-  forkIO $ do
-    WS.runClient middlewareHost middlewarePort "/" (subscribeDeviceStateChanges remoteEvents)
-    putStrLn "Websocket closed"
 
   -- start the threepeny-gui server
   startGUI config (setup appEnv)

@@ -17,10 +17,6 @@ import Servant.Client
 --------------------------------------------------------------------------------
 import Raspberry.Hardware
 import Sarah.Middleware
---import Sarah.Middleware.Master
---import Sarah.Middleware.Model
---import Sarah.Middleware.Server
---import Sarah.Middleware.Slave
 --------------------------------------------------------------------------------
 import qualified Data.ByteString    as BS
 import qualified Data.Yaml          as Y
