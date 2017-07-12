@@ -20,6 +20,7 @@ library
                      , Graphics.UI.Material.Class
                      , Graphics.UI.Material.Icon
                      , Graphics.UI.Material.Reactive
+                     , Graphics.UI.Material.Types
                      , Graphics.UI.Threepenny.Extra
                      , Physics
                      , Raspberry.GPIO
