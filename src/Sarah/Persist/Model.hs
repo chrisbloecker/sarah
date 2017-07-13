@@ -41,7 +41,9 @@ SensorReading json
     value  Double
     deriving Show
 Schedule json
-    
+    device DeviceRep
+    action DeviceCommand
+    timer  Timer
     deriving Show
 Log json
     date Day
