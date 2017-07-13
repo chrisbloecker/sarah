@@ -15,7 +15,7 @@ import Data.Maybe                          (fromJust)
 import Data.Text                           (Text, unpack)
 import Data.Sequence                       (empty, (|>))
 import Data.Time                           (getZonedTime)
-import Graphics.UI.Material                (button, getItem, getItemId)
+import Graphics.UI.Material                (button, navigationLink, getItem, getItemId)
 import Graphics.UI.Threepenny              (UI, Window, CallBufferMode (..), newEvent, runUI, setCallBufferMode, flushCallBuffer)
 import Graphics.UI.Threepenny.Core         (ffi, runFunction)
 import Prelude                      hiding (div, span)
@@ -23,6 +23,7 @@ import Raspberry.IP
 import Sarah.GUI.Model
 import Sarah.GUI.Reactive
 import Sarah.GUI.Remote                    (Remote (..), fromDeviceRep)
+import Sarah.GUI.Schedule                  (buildSchedule)
 import Sarah.GUI.Websocket                 (toMaster, subscribeDeviceStateChanges)
 import Sarah.Middleware
 import Servant.Client
@@ -77,16 +78,25 @@ setup appEnv@AppEnv{..} window = void $ do
     -- ToDo: where and when should we clean up events for devices that don't exist
     --       or are not connected anymore?
 
+    let addAction :: UI () -> UI ()
+        addAction action = liftIO . atomically $ modifyTVar pageActions (|> action)
+
     liftIO $ forkIO $
         WS.runClient (host middleware) (port middleware) "/" (subscribeDeviceStateChanges remoteEvents)
 
-    remotesButton <- button Nothing (Just "Remotes")
+    remotesButton  <- navigationLink "Remotes"
+    scheduleButton <- navigationLink "Schedule"
+    logsButton     <- navigationLink "Logs"
 
     let navButtons = H.div $ do
                          getItem remotesButton
+                         getItem scheduleButton
+                         getItem logsButton
+
+    liftIO $ print (renderHtml navButtons)
 
     -- add the nav buttons to the page
-    runFunction $ ffi "document.getElementById('navigation').innterHTML = %1" (renderHtml navButtons)
+    runFunction $ ffi "document.getElementById('navigation').innerHTML = %1" (renderHtml navButtons)
 
     -- add the remotes by default
     liftIO $ printWithTime "Adding remotes"
@@ -94,9 +104,14 @@ setup appEnv@AppEnv{..} window = void $ do
     runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
 
     -- when the remotes button is clicked, show the remotes
-    let remotesButtonClickAction = onElementIDClick (getItemId remotesButton) $
-                                     runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
-    liftIO . atomically $ modifyTVar pageActions (|> remotesButtonClickAction)
+    addAction $
+      onElementIDClick (getItemId remotesButton) $
+        runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
+
+    -- when the schedule button is clicked, show the schedule
+    addAction $
+      onElementIDClick (getItem scheduleButton) $
+        runFunction $ ffi "document.getElementById('content').innerHtml = %1" (renderHtml mkSchedule)
 
     liftIO $ printWithTime "Upgrading DOM for Material"
     Material.upgradeDom

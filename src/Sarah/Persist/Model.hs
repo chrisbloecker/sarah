@@ -40,6 +40,9 @@ SensorReading json
     sensor Sensor
     value  Double
     deriving Show
+Schedule json
+    
+    deriving Show
 Log json
     date Day
     time TimeOfDay

@@ -35,6 +35,7 @@ library
                      , Sarah.GUI.Remote.Example
                      , Sarah.GUI.Remote.Power.HS110
                      , Sarah.GUI.Remote.Sensor.DHT22
+                     , Sarah.GUI.Schedule
                      , Sarah.GUI.Websocket
                      , Sarah.Middleware
                      , Sarah.Middleware.Device

@@ -87,6 +87,11 @@ newtype DeviceController = DeviceController { unDeviceController :: ProcessId }
 
 --------------------------------------------------------------------------------
 
+data Stream = Stream { streamName :: Text
+                     , streamUnit :: Unit
+                     , readStream :: 
+                     }
+
 -- Devices have a state and a set of commands that can be sent to them.
 -- ToDo: do we still need all those ToJSON and FromJSON instances?
 -- ToDo: do we still need DeviceCommand in here or is it enough to use the RequestReplyPairs?
@@ -105,6 +110,8 @@ class ( ToJSON model, FromJSON model
 
   -- a device controller runs a process for a device, takes commands and executes them
   startDeviceController :: model -> Slave -> PortManager -> Process DeviceController
+
+  getStreams :: model -> [Stream]
 
 -- Device states can be serialised and sent over the network. However, without
 -- knowledge of the concrete device model at hand, the state can not be interpretet.

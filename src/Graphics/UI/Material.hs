@@ -44,6 +44,24 @@ button micon mtext = do
   return Button {..}
 
 
+data NavigationLink = NavigationLink { item   :: H.Html
+                                     , itemId :: String
+                                     }
+
+instance HasItem   NavigationLink where getItem   = item
+instance HasItemId NavigationLink where getItemId = itemId
+
+navigationLink :: MonadIO m => Text -> m NavigationLink
+navigationLink text = do
+  itemId <- newIdent
+
+  let item = H.a H.! A.class_ "mdl-navigation__link"
+                 H.! A.href "" $
+                 H.text text
+
+  return NavigationLink{..}
+
+
 mkTile :: Text -> H.Html -> H.Html
 mkTile title content = H.div H.! A.class_ "mdl-card mdl-card-margin mdl-card--border mdl-shadow--2dp" $ do
                            H.div H.! A.class_ "mdl-card__title" $

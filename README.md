@@ -68,7 +68,7 @@ The list of supported devices is not very long yet, but I will add more as I go
 along. So far, the following devices can be connected
  * DHT11/DHT22 temperature and humidity sensor through GPIO
  * TP-Link HS110 smart power plug through IP
- * Some Toshiba ACs through GPIO (ToDo: add model identifiers)
+ * Some Toshiba ACs through GPIO (RAS-16NKV-E, RAS-M16NKCV, RAS-M13NKCV)
 
 ## Device Model
 A device is represented by a data type `model` which has an instance of `IsDevice`.

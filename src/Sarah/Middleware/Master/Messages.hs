@@ -48,6 +48,21 @@ instance WebSocketsData (MReply GetStatus) where
   fromLazyByteString = fromJust . decode'
 
 
+data GetSchedule
+
+instance IsMasterCommand GetSchedule where
+  data MRequest GetSchedule = GetScheduleRequest          deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+  data MReply   GetSchedule = GetScheduleReply   Schedule deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+
+instance WebSocketsData (MRequest GetSchedule) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
+instance WebSocketsData (MReply GetSchedule) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
+
 data Log = Log Text Text LogLevel
   deriving (Binary, Generic, Typeable)
 
