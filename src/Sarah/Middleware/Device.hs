@@ -25,7 +25,7 @@ import Data.Text.Encoding                   (encodeUtf8, decodeUtf8)
 import Network.WebSockets                   (WebSocketsData (..))
 import Sarah.Middleware.Model               (IsDevice (..))
 --------------------------------------------------------------------------------
--- The devices
+-- The devices, we need to enumerate them manually in the FromJSON instance for Device
 import Sarah.Middleware.Device.AC.Toshiba   (ToshibaAC)
 import Sarah.Middleware.Device.Example      (ExampleDevice)
 import Sarah.Middleware.Device.Power.HS110  (HS110)

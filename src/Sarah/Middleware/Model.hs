@@ -18,6 +18,7 @@ module Sarah.Middleware.Model
 
   , NodeName
   , DeviceName
+  , Room
   , DeviceAddress (..)
 
   , FromPid (..)
@@ -55,20 +56,18 @@ import Data.Maybe                                 (fromJust)
 import Data.Text                                  (Text)
 import Data.Text.Encoding                         (encodeUtf8, decodeUtf8)
 import Data.Typeable                              (Typeable)
+import Database.Persist.Sql                       (ConnectionPool)
 import GHC.Generics                               (Generic)
-import Network.HTTP.Client                        (Manager)
 import Network.WebSockets                         (WebSocketsData (..))
-import Servant.Common.BaseUrl                     (BaseUrl)
 --------------------------------------------------------------------------------
 import qualified Data.HashMap.Strict  as HM
 import qualified Data.ByteString.Lazy as LBS (toStrict, fromStrict)
 --------------------------------------------------------------------------------
 
-data Config = Config { master     :: Master
-                     , localNode  :: LocalNode
-                     , runLocally :: forall a. Process a -> IO a
-                     , manager    :: Manager
-                     , database   :: BaseUrl
+data Config = Config { master              :: Master
+                     , localNode           :: LocalNode
+                     , runLocally          :: forall a. Process a -> IO a
+                     , getDbConnectionPool :: ConnectionPool
                      }
 
 --------------------------------------------------------------------------------
@@ -86,11 +85,6 @@ newtype PortManager      = PortManager ProcessId
 newtype DeviceController = DeviceController { unDeviceController :: ProcessId }
 
 --------------------------------------------------------------------------------
-
-data Stream = Stream { streamName :: Text
-                     , streamUnit :: Unit
-                     , readStream :: 
-                     }
 
 -- Devices have a state and a set of commands that can be sent to them.
 -- ToDo: do we still need all those ToJSON and FromJSON instances?
@@ -111,7 +105,6 @@ class ( ToJSON model, FromJSON model
   -- a device controller runs a process for a device, takes commands and executes them
   startDeviceController :: model -> Slave -> PortManager -> Process DeviceController
 
-  getStreams :: model -> [Stream]
 
 -- Device states can be serialised and sent over the network. However, without
 -- knowledge of the concrete device model at hand, the state can not be interpretet.
@@ -130,6 +123,7 @@ eitherDecodeDeviceState = eitherDecode' . LBS.fromStrict . encodeUtf8 . getState
 
 type NodeName   = Text
 type DeviceName = Text
+type Room       = Text
 
 -- A device can be uniquely identified by a pair of NodeName and DeviceName.
 -- This implied that every node must have a unique name. Similarly, every device
@@ -138,7 +132,7 @@ type DeviceName = Text
 data DeviceAddress = DeviceAddress { deviceNode :: NodeName
                                    , deviceName :: DeviceName
                                    }
-  deriving (Binary, Generic, Typeable, ToJSON, FromJSON, Hashable, Eq, Show)
+  deriving (Binary, Generic, Typeable, ToJSON, FromJSON, Hashable, Eq, Show, Read)
 
 
 -- A wrapper that is intended to be used to add the pid of a sending process
@@ -153,7 +147,7 @@ sendWithPid to message = getSelfPid >>= \self -> send to (FromPid self message)
 -- The Text inside the command is a JSON representation of the command, which
 -- of course is device-sepcific. If a device receives a command that is intended
 -- for a different device type, it should just be ignored.
-newtype Command = Command { unCommand :: Text } deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
+newtype Command = Command { unCommand :: Text } deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show, Read)
 
 mkCommand :: IsDevice model => DeviceRequest model -> Command
 mkCommand = Command . decodeUtf8 . LBS.toStrict . encode

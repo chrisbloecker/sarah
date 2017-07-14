@@ -25,11 +25,8 @@ import Sarah.Middleware.Distributed     (NodeInfo (..), Status (..))
 import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model           hiding (manager)
 import Sarah.Middleware.Util
-import Servant.Client
 --------------------------------------------------------------------------------
-import qualified Data.Map.Strict      as M
-import qualified Sarah.Persist.Model  as Persist
-import qualified Sarah.Persist.Client as Persist
+import qualified Data.Map.Strict as M
 --------------------------------------------------------------------------------
 
 data MasterSettings = MasterSettings { masterNode :: WebAddress

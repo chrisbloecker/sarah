@@ -21,10 +21,10 @@ import Data.Text                                (Text)
 import Data.Typeable                            (Typeable)
 import GHC.Generics                             (Generic)
 import Network.WebSockets                       (WebSocketsData (..))
+import Sarah.Middleware.Database                (LogLevel, Schedule (..))
 import Sarah.Middleware.Device
 import Sarah.Middleware.Distributed
 import Sarah.Middleware.Model
-import Sarah.Persist.Model
 --------------------------------------------------------------------------------
 
 class ( Binary (MRequest command), Generic (MRequest command), Typeable (MRequest command), WebSocketsData (MRequest command), ToJSON (MRequest command), FromJSON (MRequest command)
@@ -32,6 +32,7 @@ class ( Binary (MRequest command), Generic (MRequest command), Typeable (MReques
       ) => IsMasterCommand command where
   data MRequest command :: *
   data MReply   command :: *
+
 
 data GetStatus
 
@@ -47,6 +48,9 @@ instance WebSocketsData (MReply GetStatus) where
   toLazyByteString = encode
   fromLazyByteString = fromJust . decode'
 
+
+deriving instance Generic Schedule
+deriving instance Binary  Schedule
 
 data GetSchedule
 
@@ -74,11 +78,8 @@ data DeviceStateChanged = DeviceStateChanged DeviceAddress EncodedDeviceState
 
 -- ToDo: how to sore sensor readings in general? There could be "fuzzy sensors"
 --       that don't return numerical readings, but something weird
-data SensorReading = SensorReading Room Sensor Double deriving (Binary, Generic, Typeable)
+data SensorReading = SensorReading Room DeviceAddress Double deriving (Binary, Generic, Typeable)
 
-deriving instance Binary Room
-deriving instance Binary Sensor
-deriving instance Binary LogLevel
 
 data MasterRequest = forall command. (IsMasterCommand command)
                    => MasterRequest (MRequest command)

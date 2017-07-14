@@ -1,6 +1,6 @@
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE DataKinds                  #-}
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
@@ -8,28 +8,23 @@
 {-# LANGUAGE TemplateHaskell            #-}
 {-# LANGUAGE TypeFamilies               #-}
 --------------------------------------------------------------------------------
-module Sarah.Persist.Model
-  ( module Sarah.Persist.Model
+module Sarah.Middleware.Database
+  ( module Sarah.Middleware.Database
   ) where
 --------------------------------------------------------------------------------
-import Control.Monad.Except   (MonadError, ExceptT)
-import Control.Monad.Reader   (MonadIO, MonadReader, ReaderT, asks, liftIO)
-import Database.Persist.Quasi
-import Database.Persist.Sql   (ConnectionPool, SqlPersistM, SqlPersistT, runMigration, runSqlPool)
-import Database.Persist.TH
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Reader   (MonadReader, asks)
+import Data.Binary            (Binary)
 import Data.Text              (Text)
 import Data.Time.Calendar     (Day)
 import Data.Time.LocalTime    (TimeOfDay)
-import Servant                (ServantErr)
+import Database.Persist.Quasi ()
+import Database.Persist.Sql   (SqlPersistT, runMigration, runSqlPool)
+import Database.Persist.TH    (mkMigrate, mkPersist, persistLowerCase, share, sqlSettings)
+import Physics
+import Sarah.Middleware.Model (Config (getDbConnectionPool))
 --------------------------------------------------------------------------------
-import Sarah.Persist.Types as Sarah.Persist.Model
---------------------------------------------------------------------------------
-
-newtype PersistApp a = PersistApp { runPersistApp :: ReaderT Config (ExceptT ServantErr IO) a }
-  deriving (Functor, Applicative, Monad, MonadReader Config, MonadError ServantErr, MonadIO)
-
-data Config = Config { getPool :: ConnectionPool }
-
+import Sarah.Middleware.Database.Types as Sarah.Middleware.Database
 --------------------------------------------------------------------------------
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"][persistLowerCase|
@@ -37,8 +32,13 @@ SensorReading json
     date   Day
     time   TimeOfDay
     room   Room
-    sensor Sensor
-    value  Double
+    sensor DeviceAddress
+    value  Dimension
+    deriving Show
+Schedule json
+    device DeviceAddress -- ToDo: do we need a DeviceRep here? how do we know what kind of device it is?
+    action Command
+    timer  Timer
     deriving Show
 Log json
     date Day
@@ -54,5 +54,5 @@ doMigrations = runMigration migrateAll
 
 runDb :: (MonadReader Config m, MonadIO m) => SqlPersistT IO b -> m b
 runDb query = do
-  pool <- asks getPool
+  pool <- asks getDbConnectionPool
   liftIO $ runSqlPool query pool
