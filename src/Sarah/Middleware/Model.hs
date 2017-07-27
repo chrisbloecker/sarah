@@ -64,10 +64,10 @@ import qualified Data.HashMap.Strict  as HM
 import qualified Data.ByteString.Lazy as LBS (toStrict, fromStrict)
 --------------------------------------------------------------------------------
 
-data Config = Config { master              :: Master
-                     , localNode           :: LocalNode
-                     , runLocally          :: forall a. Process a -> IO a
-                     , getDbConnectionPool :: ConnectionPool
+data Config = Config { master     :: Master
+                     , localNode  :: LocalNode
+                     , runLocally :: forall a. Process a -> IO a
+                     , getPool    :: ConnectionPool
                      }
 
 --------------------------------------------------------------------------------

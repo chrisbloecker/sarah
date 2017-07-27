@@ -2,6 +2,13 @@ module Sarah.Middleware
   ( module Sarah.Middleware
   ) where
 
+import Sarah.Middleware.Database as Sarah.Middleware
+  ( SensorReading (..)
+  , Schedule (..)
+  , Log (..)
+  , doMigrations
+  )
+
 import Sarah.Middleware.Device as Sarah.Middleware
   ( Device (..)
   , DeviceRep (unDeviceRep)
@@ -24,6 +31,7 @@ import Sarah.Middleware.Master as Sarah.Middleware
 import Sarah.Middleware.Master.Messages as Sarah.Middleware
   ( IsMasterCommand (..)
   , GetStatus (..)
+  , GetSchedule (..)
   , MRequest (..)
   , MReply (..)
   )

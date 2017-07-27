@@ -1,9 +1,11 @@
 webPort: 8090
 masterNode:
-  host: 192.168.0.4
+  host: 172.25.137.3
   port: 50000
 nodeRole: master
-backend:
-  host: 192.168.0.2
-  port: 8080
 timeout: 500000
+dbHost: localhost
+dbPort: 3306
+dbUser: sarah
+dbPassword: sarah
+dbDatabase: sarah

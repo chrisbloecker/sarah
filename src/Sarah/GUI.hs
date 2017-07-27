@@ -9,9 +9,8 @@ module Sarah.GUI
 import Control.Concurrent                  (forkIO)
 import Control.Concurrent.STM              (atomically, newTVar, readTVar, modifyTVar)
 import Control.Monad                       (forM_, unless, void)
-import Control.Monad.IO.Class              (liftIO)
+import Control.Monad.IO.Class              (MonadIO, liftIO)
 import Control.Monad.Reader                (runReaderT, ask)
-import Data.Maybe                          (fromJust)
 import Data.Text                           (Text, unpack)
 import Data.Sequence                       (empty, (|>))
 import Data.Time                           (getZonedTime)
@@ -36,24 +35,26 @@ import qualified Graphics.UI.Material        as Material
 import qualified Network.WebSockets          as WS
 --------------------------------------------------------------------------------
 
-printWithTime :: String -> IO ()
-printWithTime msg = do
+printWithTime :: (MonadIO m) => String -> m ()
+printWithTime msg = liftIO $ do
   now <- show <$> getZonedTime
   putStrLn . unwords $ [now, msg]
 
 
 setup :: AppEnv -> Window -> UI ()
 setup appEnv@AppEnv{..} window = void $ do
-    -- for building up the page tiles and UI actions
-    pageTiles   <- liftIO . atomically $ newTVar empty
+    -- ALL page events
     pageActions <- liftIO . atomically $ newTVar empty
+
+    -- remote tiles
+    remoteTiles <- liftIO . atomically $ newTVar empty
 
     -- a place to store the events for the remotes. let's use a TVar in case
     -- we want to add more events later on
     remoteEvents <- liftIO . atomically $ newTVar HM.empty
 
     -- get the status of the middleware, i.e. the connected nodes and their info
-    liftIO $ printWithTime "Requesting status from master"
+    printWithTime "Requesting status from master"
     status <- liftIO $ toMaster middleware GetStatusRequest
     liftIO $ case status of
         GetStatusReply Status{..} -> do
@@ -74,6 +75,33 @@ setup appEnv@AppEnv{..} window = void $ do
                                 remoteBuilderEnv = RemoteBuilderEnv{..}
                             runUI window $ runReaderT (buildRemote model) remoteBuilderEnv
                             printWithTime $ "Setup for " ++ unpack deviceName ++ " complete"
+
+    -- schedule items
+    scheduleItems <- liftIO . atomically $ newTVar empty
+
+    printWithTime "Requesting schedule from master"
+    schedule <- liftIO $ toMaster middleware GetScheduleRequest
+    liftIO $ case schedule of
+      GetScheduleReply schedules -> do
+        printWithTime "Received schedule from master, building schedule overview"
+        forM_ schedules $ \Schedule{..} -> do
+          print scheduleDevice
+    printWithTime "Schedule built"
+
+
+    items <- liftIO . atomically $ readTVar scheduleItems
+    let scheduleTable = H.table H.! A.class_ "mdl-data-table mdl-js-data-table" $ do
+                            H.thead $
+                                H.tr $ do
+                                    H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Device"
+                                    H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Command"
+                                    H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Timer"
+                            H.tbody $ do
+                                forM_ items id
+                                H.tr $ do
+                                    H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "D"
+                                    H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "C"
+                                    H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "T"
 
     -- ToDo: where and when should we clean up events for devices that don't exist
     --       or are not connected anymore?
@@ -99,25 +127,26 @@ setup appEnv@AppEnv{..} window = void $ do
     runFunction $ ffi "document.getElementById('navigation').innerHTML = %1" (renderHtml navButtons)
 
     -- add the remotes by default
-    liftIO $ printWithTime "Adding remotes"
-    tilesHtml <- fmap (renderHtml . sequence_) <$> liftIO . atomically $ readTVar pageTiles
-    runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
+    printWithTime "Adding remotes"
+    remotesHtml <- fmap (renderHtml . sequence_) <$> liftIO . atomically $ readTVar remoteTiles
+    runFunction $ ffi "document.getElementById('content').innerHTML = %1" remotesHtml
 
     -- when the remotes button is clicked, show the remotes
     addAction $
       onElementIDClick (getItemId remotesButton) $
-        runFunction $ ffi "document.getElementById('content').innerHTML = %1" tilesHtml
+        runFunction $ ffi "document.getElementById('content').innerHTML = %1" remotesHtml
 
     -- when the schedule button is clicked, show the schedule
     addAction $
-      onElementIDClick (getItem scheduleButton) $
-        runFunction $ ffi "document.getElementById('content').innerHtml = %1" (renderHtml mkSchedule)
+      onElementIDClick (getItemId scheduleButton) $ do
+        schedule <- buildSchedule appEnv
+        runFunction $ ffi "document.getElementById('content').innerHtml = %1" (renderHtml schedule)
 
-    liftIO $ printWithTime "Upgrading DOM for Material"
+    printWithTime "Upgrading DOM for Material"
     Material.upgradeDom
 
     -- register UI actions
-    liftIO $ printWithTime "Registering UI actions"
+    printWithTime "Registering UI actions"
     setCallBufferMode BufferRun
     actions <- liftIO . atomically $ readTVar pageActions
     sequence_ actions

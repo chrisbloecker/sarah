@@ -8,9 +8,10 @@ import Control.Concurrent.MVar
 import Control.Distributed.Process
 import Control.Distributed.Process.Node     (initRemoteTable, forkProcess, runProcess, newLocalNode)
 import Control.Exception                    (throw)
+import Control.Monad.Logger                 (runStderrLoggingT)
 import Data.Maybe                           (fromMaybe)
 import Data.Monoid                          ((<>))
-import Network.HTTP.Client                  (newManager, defaultManagerSettings)
+import Database.Persist.MySQL               (ConnectInfo (..), createMySQLPool, defaultConnectInfo, runSqlPool)
 import Network.Transport.TCP                (createTransport, defaultTCPParameters)
 import Options.Applicative
 import Servant.Client
@@ -57,10 +58,22 @@ go Options{..} = case nodeRole of
           Right transport -> do
             serverState <- initState
 
-            manager   <- newManager defaultManagerSettings
-            let database = BaseUrl Http (host backend) (port backend) ""
-            node      <- newLocalNode transport initRemoteTable
-            masterPid <- forkProcess node (runMaster (ClientEnv manager database) (subscribers serverState) timeout)
+            let connectionInfo = defaultConnectInfo { connectHost     =              dbHost
+                                                    , connectPort     = fromIntegral dbPort
+                                                    , connectUser     =              dbUser
+                                                    , connectPassword =              dbPassword
+                                                    , connectDatabase =              dbDatabase
+                                                    }
+
+            pool <- runStderrLoggingT (createMySQLPool connectionInfo 1)
+
+            putStrLn "Running migration"
+            runSqlPool doMigrations pool
+
+            node <- newLocalNode transport initRemoteTable
+
+            masterPid <- forkProcess node (runMaster (subscribers serverState) timeout pool)
+            putStrLn $ "Master started at " ++ show masterPid
 
             let config = Config { master     = mkMaster masterPid
                                 , localNode  = node
@@ -68,8 +81,7 @@ go Options{..} = case nodeRole of
                                                                  runProcess node $ do r <- p
                                                                                       liftIO $ putMVar m r
                                                                  takeMVar m
-                                , database   = database
-                                , manager    = manager
+                                , getPool    = pool
                                 }
 
             -- Launch a server for communication with clients using websockets

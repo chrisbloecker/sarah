@@ -21,7 +21,7 @@ import Data.Text                                (Text)
 import Data.Typeable                            (Typeable)
 import GHC.Generics                             (Generic)
 import Network.WebSockets                       (WebSocketsData (..))
-import Sarah.Middleware.Database                (LogLevel, Schedule (..))
+import Sarah.Middleware.Database                (LogLevel, Schedule (..), Dimension)
 import Sarah.Middleware.Device
 import Sarah.Middleware.Distributed
 import Sarah.Middleware.Model
@@ -29,16 +29,28 @@ import Sarah.Middleware.Model
 
 class ( Binary (MRequest command), Generic (MRequest command), Typeable (MRequest command), WebSocketsData (MRequest command), ToJSON (MRequest command), FromJSON (MRequest command)
       , Binary (MReply   command), Generic (MReply   command), Typeable (MReply   command), WebSocketsData (MReply   command), ToJSON (MReply   command), FromJSON (MReply   command)
+      , WebSocketsData command, Show command
       ) => IsMasterCommand command where
   data MRequest command :: *
   data MReply   command :: *
 
+  -- we need to be able to get the type out from the command because we have to
+  -- match on a unique type with cloud haskell...
+  getType :: MRequest command -> command
 
-data GetStatus
+
+-- | for getting the current status
+data GetStatus = GetStatus deriving (Binary, Generic, ToJSON, FromJSON, Show)
 
 instance IsMasterCommand GetStatus where
   data MRequest GetStatus = GetStatusRequest         deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
   data MReply   GetStatus = GetStatusReply   Status  deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+
+  getType _ = GetStatus
+
+instance WebSocketsData GetStatus where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
 
 instance WebSocketsData (MRequest GetStatus) where
   toLazyByteString = encode
@@ -52,11 +64,18 @@ instance WebSocketsData (MReply GetStatus) where
 deriving instance Generic Schedule
 deriving instance Binary  Schedule
 
-data GetSchedule
+-- | for getting the schedule
+data GetSchedule = GetSchedule deriving (Binary, Generic, ToJSON, FromJSON, Show)
 
 instance IsMasterCommand GetSchedule where
-  data MRequest GetSchedule = GetScheduleRequest          deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
-  data MReply   GetSchedule = GetScheduleReply   Schedule deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+  data MRequest GetSchedule = GetScheduleRequest            deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+  data MReply   GetSchedule = GetScheduleReply   [Schedule] deriving (Binary, Generic, Typeable, ToJSON, FromJSON)
+
+  getType _ = GetSchedule
+
+instance WebSocketsData GetSchedule where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
 
 instance WebSocketsData (MRequest GetSchedule) where
   toLazyByteString = encode
@@ -67,7 +86,7 @@ instance WebSocketsData (MReply GetSchedule) where
   fromLazyByteString = fromJust . decode'
 
 
-data Log = Log Text Text LogLevel
+data PutLog = PutLog Text Text LogLevel
   deriving (Binary, Generic, Typeable)
 
 data NodeUp = NodeUp ProcessId NodeInfo
@@ -78,7 +97,7 @@ data DeviceStateChanged = DeviceStateChanged DeviceAddress EncodedDeviceState
 
 -- ToDo: how to sore sensor readings in general? There could be "fuzzy sensors"
 --       that don't return numerical readings, but something weird
-data SensorReading = SensorReading Room DeviceAddress Double deriving (Binary, Generic, Typeable)
+data LogSensorReading = LogSensorReading Room DeviceAddress Dimension deriving (Binary, Generic, Typeable)
 
 
 data MasterRequest = forall command. (IsMasterCommand command)

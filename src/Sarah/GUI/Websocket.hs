@@ -64,5 +64,6 @@ toMaster :: (IsMasterCommand command)
 toMaster middleware request =
   WS.runClient (host middleware) (port middleware) "/" $ \connection -> do
     WS.sendBinaryData connection ModeMaster
-    WS.sendBinaryData connection request
+    putStrLn $ "[toMaster] " ++ show (getType request)
+    WS.sendBinaryData connection (getType request)
     WS.receiveData connection

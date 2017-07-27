@@ -11,58 +11,73 @@ module Sarah.Middleware.Master
 import Control.Concurrent.STM           (TVar, atomically, readTVar)
 import Control.Distributed.Process
 import Control.Monad                    (void, forM_)
-import Data.Map.Strict                  (Map, empty, elems, insert, delete)
+import Control.Concurrent               (forkIO)
+import Data.Map.Strict                  (Map)
 import Data.Text                        (unpack)
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
+import Database.Persist.Sql             (ConnectionPool, runSqlPool)
 import GHC.Generics                     (Generic)
 import Import.DeriveJSON
 import Network.HTTP.Client              (Manager)
 import Network.WebSockets               (Connection, sendTextData)
 import Raspberry.Hardware
+import Sarah.Middleware.Database
 import Sarah.Middleware.Distributed     (NodeInfo (..), Status (..))
 import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model           hiding (manager)
 import Sarah.Middleware.Util
 --------------------------------------------------------------------------------
-import qualified Data.Map.Strict as M
+import qualified Data.Map.Strict  as M
+import qualified Database.Persist as DB
 --------------------------------------------------------------------------------
 
 data MasterSettings = MasterSettings { masterNode :: WebAddress
-                                     , backend    :: WebAddress
                                      , webPort    :: Port
                                      , timeout    :: Int
+                                     , dbHost     :: String
+                                     , dbPort     :: Int
+                                     , dbUser     :: String
+                                     , dbPassword :: String
+                                     , dbDatabase :: String
                                      }
   deriving (Generic, FromJSON)
 
-data State = State { nodes          :: Map ProcessId NodeInfo
-                   , nodeNames      :: Map NodeName  ProcessId
-                   , backendClient  :: ClientEnv
-                   , subscribers    :: TVar [(Integer, Connection)]
-                   , queryTimeout   :: Int
+data State = State { nodes        :: Map ProcessId NodeInfo
+                   , nodeNames    :: Map NodeName  ProcessId
+                   , subscribers  :: TVar [(Integer, Connection)]
+                   , queryTimeout :: Int
+                   , pool         :: ConnectionPool
                    }
 
 --------------------------------------------------------------------------------
 
-runMaster :: ClientEnv -> TVar [(Integer, Connection)] -> Int -> Process ()
-runMaster backendClient subscribers queryTimeout = do
+runMaster :: TVar [(Integer, Connection)] -> Int -> ConnectionPool -> Process ()
+runMaster subscribers queryTimeout pool = do
   self <- getSelfPid
   register masterName self
   say "Master up"
-  loop State { nodes         = empty
-             , nodeNames     = empty
-             , backendClient = backendClient
-             , subscribers   = subscribers
-             , queryTimeout  = queryTimeout
+  loop State { nodes        = M.empty
+             , nodeNames    = M.empty
+             , subscribers  = subscribers
+             , queryTimeout = queryTimeout
+             , pool         = pool
              }
 
 
 loop :: State -> Process ()
 loop state@State{..} =
-  receiveWait [ match $ \(FromPid pid GetStatusRequest) -> do
+  receiveWait [ match $ \(FromPid pid GetStatus) -> do
                   say $ "[master] Status requested by " ++ show pid
-                  send pid (GetStatusReply $ Status (elems nodes))
+                  send pid (GetStatusReply $ Status (M.elems nodes))
+                  loop state
+
+              , match $ \(FromPid pid GetSchedule) -> do
+                  say $ "[master] Schedule requested by " ++ show pid
+                  spawnLocal $ do
+                    schedule <- liftIO $ runSqlPool (DB.selectList [] []) pool
+                    send pid (GetScheduleReply $ fmap DB.entityVal schedule)
                   loop state
 
               , match $ \(FromPid src (query :: Query)) -> do
@@ -94,33 +109,31 @@ loop state@State{..} =
                       sendTextData connection $ StateChangeEvent deviceAddress encodedState
                   loop state
 
-              , match $ \(Log nodeName message logLevel) -> do
+              , match $ \(PutLog nodeName message logLevel) -> do
                   say "Received Log message"
-                  spawnLocal $ do
-                    now <- liftIO getCurrentTime
-                    let logEntry = Persist.Log (utctDay now) (timeToTimeOfDay . utctDayTime $ now) nodeName message logLevel
-                    mRes <- liftIO $ runClientM (Persist.putLog logEntry) backendClient
-                    case mRes of
-                      Left err -> say (show err)
-                      Right _  -> return ()
+                  liftIO . forkIO $ do
+                    now <- getCurrentTime
+                    let today    = utctDay now
+                        thisTime = timeToTimeOfDay . utctDayTime $ now
+                        logEntry = Log today thisTime nodeName message logLevel
+                    void $ runSqlPool (DB.insert logEntry) pool
                   loop state
 
               , match $ \(NodeUp pid nodeInfo@NodeInfo{..}) -> do
                   mon <- monitor pid
                   say $ "[master] " ++ unpack nodeName ++ " connected at " ++ show pid
-                  loop $ state { nodes     = insert pid      nodeInfo nodes
-                               , nodeNames = insert nodeName pid      nodeNames
+                  loop $ state { nodes     = M.insert pid      nodeInfo nodes
+                               , nodeNames = M.insert nodeName pid      nodeNames
                                }
 
-              , match $ \(SensorReading room sensor value) -> do
+              , match $ \(LogSensorReading room sensor value) -> do
                   say "Received SensorReading message"
-                  spawnLocal $ do
+                  liftIO . forkIO $ do
                     now <- liftIO getCurrentTime
-                    let sensorReading = Persist.SensorReading (utctDay now) (timeToTimeOfDay . utctDayTime $ now) room sensor value
-                    mRes <- liftIO $ runClientM (Persist.putSensorReading sensorReading) backendClient
-                    case mRes of
-                      Left err -> say (show err)
-                      Right _  -> return ()
+                    let today         = utctDay now
+                        thisTime      = timeToTimeOfDay . utctDayTime $ now
+                        sensorReading = SensorReading today thisTime room sensor value
+                    void $ runSqlPool (DB.insert sensorReading) pool
                   loop state
 
               , match $ \(ProcessMonitorNotification monRef pid reason) ->
@@ -130,8 +143,8 @@ loop state@State{..} =
                       loop state
                     Just NodeInfo{..} -> do
                       say $ "Received monitor notification from " ++ unpack nodeName ++ ": " ++ show reason ++ " " ++ show pid
-                      loop $ state { nodes     = pid      `delete` nodes
-                                   , nodeNames = nodeName `delete` nodeNames
+                      loop $ state { nodes     = M.delete pid      nodes
+                                   , nodeNames = M.delete nodeName nodeNames
                                    }
 
               , matchAny $ \message -> do

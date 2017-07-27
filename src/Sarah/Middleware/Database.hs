@@ -22,7 +22,7 @@ import Database.Persist.Quasi ()
 import Database.Persist.Sql   (SqlPersistT, runMigration, runSqlPool)
 import Database.Persist.TH    (mkMigrate, mkPersist, persistLowerCase, share, sqlSettings)
 import Physics
-import Sarah.Middleware.Model (Config (getDbConnectionPool))
+import Sarah.Middleware.Model (Config (getPool))
 --------------------------------------------------------------------------------
 import Sarah.Middleware.Database.Types as Sarah.Middleware.Database
 --------------------------------------------------------------------------------
@@ -52,7 +52,5 @@ Log json
 doMigrations :: SqlPersistT IO ()
 doMigrations = runMigration migrateAll
 
-runDb :: (MonadReader Config m, MonadIO m) => SqlPersistT IO b -> m b
-runDb query = do
-  pool <- asks getDbConnectionPool
-  liftIO $ runSqlPool query pool
+runDB :: (MonadReader Config m, MonadIO m) => SqlPersistT IO b -> m b
+runDB query = liftIO . runSqlPool query =<< asks getPool

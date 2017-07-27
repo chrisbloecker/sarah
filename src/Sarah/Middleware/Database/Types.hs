@@ -23,9 +23,9 @@ data LogLevel = Info
               | Error
   deriving (Show, Read, Eq, Generic, Binary)
 
-data Dimension = Temperature Double
-               | Humidity    Double
-  deriving (Show, Read)
+data Dimension = Temperature Double -- in degree celsius
+               | Humidity    Double -- in percent
+  deriving (Show, Read, Generic, Binary)
 
 deriving instance Generic Day
 deriving instance Binary  Day

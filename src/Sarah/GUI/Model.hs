@@ -37,7 +37,7 @@ type SuccessHandler a = a -> IO ()
 data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , deviceAddress      :: DeviceAddress
                                          , eventStateChanged  :: Event EncodedDeviceState
-                                         , pageTiles          :: TVar (Seq H.Html)
+                                         , remoteTiles        :: TVar (Seq H.Html)
                                          , pageActions        :: TVar (Seq (UI ()))
                                          , runRemote          :: RemoteRunner () -> UI ()
                                          }
@@ -45,7 +45,7 @@ data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
 addPageTile :: H.Html -> RemoteBuilder ()
 addPageTile tile = do
   RemoteBuilderEnv{..} <- ask
-  liftIO . atomically $ modifyTVar pageTiles (|> tile)
+  liftIO . atomically $ modifyTVar remoteTiles (|> tile)
 
 
 addPageAction :: UI () -> RemoteBuilder ()
