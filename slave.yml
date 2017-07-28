@@ -1,8 +1,8 @@
 nodeAddress:
-  host: 192.168.0.4
+  host: 172.25.137.3
   port: 50001
 masterAddress:
-  host: 192.168.0.4
+  host: 172.25.137.3
   port: 50000
 devices:
 - name: Example

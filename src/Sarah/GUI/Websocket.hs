@@ -9,7 +9,7 @@ module Sarah.GUI.Websocket
 import Control.Concurrent.STM (TVar, atomically, readTVar)
 import Control.Monad          (forever)
 import Control.Monad.Reader   (ask, liftIO)
-import Data.Aeson             (ToJSON, FromJSON)
+import Data.Aeson             (ToJSON, FromJSON, encode)
 import Data.HashMap.Strict    (HashMap)
 import Data.Text              (Text, unpack)
 import Raspberry.IP           (WebAddress (..))
@@ -64,6 +64,5 @@ toMaster :: (IsMasterCommand command)
 toMaster middleware request =
   WS.runClient (host middleware) (port middleware) "/" $ \connection -> do
     WS.sendBinaryData connection ModeMaster
-    putStrLn $ "[toMaster] " ++ show (getType request)
-    WS.sendBinaryData connection (getType request)
+    WS.sendBinaryData connection (mkMasterRequest request)
     WS.receiveData connection

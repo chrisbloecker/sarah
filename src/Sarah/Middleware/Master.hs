@@ -68,12 +68,12 @@ runMaster subscribers queryTimeout pool = do
 
 loop :: State -> Process ()
 loop state@State{..} =
-  receiveWait [ match $ \(FromPid pid GetStatus) -> do
+  receiveWait [ match $ \(FromPid pid (request :: MRequest GetStatus)) -> do
                   say $ "[master] Status requested by " ++ show pid
                   send pid (GetStatusReply $ Status (M.elems nodes))
                   loop state
 
-              , match $ \(FromPid pid GetSchedule) -> do
+              , match $ \(FromPid pid (request :: MRequest GetSchedule)) -> do
                   say $ "[master] Schedule requested by " ++ show pid
                   spawnLocal $ do
                     schedule <- liftIO $ runSqlPool (DB.selectList [] []) pool

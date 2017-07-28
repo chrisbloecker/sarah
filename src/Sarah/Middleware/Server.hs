@@ -89,7 +89,7 @@ runServer Config{..} state@ServerState{..} pending = do
     -- run the server in master mode, i.e. receive exactly one command and
     -- forward it to the master
     ModeMaster -> do
-      MasterRequest request <- receiveData connection
+      MasterRequest request <- receiveData connection :: IO MasterRequest
       reply <- serverMaster master request
       sendBinaryData connection reply
 

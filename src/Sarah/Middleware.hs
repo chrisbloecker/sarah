@@ -34,6 +34,7 @@ import Sarah.Middleware.Master.Messages as Sarah.Middleware
   , GetSchedule (..)
   , MRequest (..)
   , MReply (..)
+  , mkMasterRequest
   )
 
 import Sarah.Middleware.Model as Sarah.Middleware

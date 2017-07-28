@@ -15,25 +15,30 @@
   </script>
 </head>
 <body>
-  <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+  <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header mdl-layout--fixed-tabs">
     <header class="mdl-layout__header">
       <div class="mdl-layout__header-row">
         <span class="mdl-layout-title">sarah</span>
-        <div class="mdl-layout-spacer"></div>
-        <nav class="mdl-navigation mdl-layout--large-screen-only">
-        </nav>
+      </div>
+      <div class="mdl-layout__tab-bar mdl-js-ripple-effect">
+        <a href="#remotes-tab"  class="mdl-layout__tab is-active">Remotes</a>
+        <a href="#schedule-tab" class="mdl-layout__tab">Schedule</a>
+        <a href="#log-tab"      class="mdl-layout__tab">Log</a>
       </div>
     </header>
-    <div class="mdl-layout__drawer">
-      <span class="mdl-layout-title">sarah</span>
-      <nav class="mdl-navigation" id="navigation">
-      </nav>
-    </div>
     <main class="mdl-layout__content">
-      <div class="page-content">
-        <div class="mdl-grid" id="content">
+      <section class="mdl-layout__tab-panel is-active" id="remotes-tab">
+        <div class="page-content mdl-grid" id="remotes-content">
         </div>
-      </div>
+      </section>
+      <section class="mdl-layout__tab-panel" id="schedule-tab">
+        <div class="page-content" id="schedule-content">
+        </div>
+      </section>
+      <section class="mdl-layout__tab-panel" id="log-tab">
+        <div class="page-content" id="log-content">
+        </div>
+      </section>
     </main>
   </div>
 </body>

@@ -1,8 +1,6 @@
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase                 #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE TemplateHaskell            #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell   #-}
 --------------------------------------------------------------------------------
 module Sarah.Persist.Types
   where
@@ -13,7 +11,6 @@ import Data.Text            (pack, unpack)
 import Data.Time.Clock      (UTCTime)
 import Database.Persist.TH
 import GHC.Generics         (Generic)
-import Servant              (FromHttpApiData (..), ToHttpApiData (..))
 import Text.Read            (readEither)
 --------------------------------------------------------------------------------
 
@@ -71,15 +68,6 @@ type DayOfMonth = Int
 
 data TimeInterval = TimeIntervall Int
   deriving (Show, Read, Eq, Generic)
-
-
-instance FromHttpApiData LogLevel  where parseUrlPiece = bimap pack id . readEither . unpack
-instance FromHttpApiData Room      where parseUrlPiece = bimap pack id . readEither . unpack
-instance FromHttpApiData Sensor    where parseUrlPiece = bimap pack id . readEither . unpack
-
-instance ToHttpApiData LogLevel  where toUrlPiece = pack . show
-instance ToHttpApiData Room      where toUrlPiece = pack . show
-instance ToHttpApiData Sensor    where toUrlPiece = pack . show
 
 deriveJSON defaultOptions ''LogLevel
 deriveJSON defaultOptions ''Room

@@ -24,6 +24,13 @@ import qualified Text.Blaze.Html5.Attributes as A
 upgradeDom :: UI ()
 upgradeDom = runFunction $ ffi "componentHandler.upgradeDom();console.log('component upgrade ok.')"
 
+removeChildren :: String -> UI ()
+removeChildren parentId = runFunction $ ffi ("var parent = document.getElementById(%1);"
+                                          ++ "while (parent.firstChild)"
+                                          ++ "{"
+                                          ++ "  parent.removeChild(parent.firstChild);"
+                                          ++ "}") parentId
+
 
 data Button = Button { item   :: H.Html
                      , itemId :: String
@@ -56,7 +63,8 @@ navigationLink text = do
   itemId <- newIdent
 
   let item = H.a H.! A.class_ "mdl-navigation__link"
-                 H.! A.href "" $
+                 H.! A.id (H.toValue itemId)
+                 H.! A.href "#" $
                  H.text text
 
   return NavigationLink{..}
