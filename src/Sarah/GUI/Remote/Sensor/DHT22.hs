@@ -29,8 +29,8 @@ instance HasRemote DHT22 where
     temperature <- lift $ reactiveLabel "--°C"
     humidity    <- lift $ reactiveLabel "--%"
 
-    getTemperatureButton <- button (Just refresh) Nothing
-    getHumidityButton    <- button (Just refresh) Nothing
+    getTemperatureButton <- iconButton refresh
+    getHumidityButton    <- iconButton refresh
 
     let eventStateChangedHandler :: Handler (DeviceState DHT22)
         eventStateChangedHandler SensorState{..} = case readings of
@@ -56,9 +56,10 @@ instance HasRemote DHT22 where
 
     addPageTile $
       let title = unwords [deviceNode deviceAddress, deviceName deviceAddress]
-      in mkTile title $ list [ listItem (H.text "Temperature") (H.div $ getItem temperature >> getItem getTemperatureButton)
-                             , listItem (H.text "Humidity")    (H.div $ getItem humidity >> getItem getHumidityButton)
-                             ]
+          img   = Nothing
+      in mkTile title img $ list [ listItem (H.text "Temperature") (H.div $ getItem temperature >> getItem getTemperatureButton)
+                                 , listItem (H.text "Humidity")    (H.div $ getItem humidity >> getItem getHumidityButton)
+                                 ]
 
     addPageAction $
       runRemote $

@@ -37,11 +37,10 @@ instance HasRemote HS110 where
             then PowerOn
             else PowerOff
 
-    let title  = unwords [deviceNode deviceAddress, deviceName deviceAddress]
-        widget = mkTile title $
-                     list [ listItem (H.text "Power") $ getItem powerSwitch ]
-
-    addPageTile widget
+    addPageTile $
+      let title = unwords [deviceNode deviceAddress, deviceName deviceAddress]
+          img   = Nothing -- Just "static/img/remote/power.png"
+      in mkTile title img $ list [ listItem (H.text "Power") $ getItem powerSwitch ]
 
     -- get the state of the device
     addPageAction $

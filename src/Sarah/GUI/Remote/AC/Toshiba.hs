@@ -37,10 +37,10 @@ instance HasRemote ToshibaAC where
     mode'        <- lift $ reactiveLabel  "Off"
     powerMode'   <- lift $ reactiveLabel  "Normal"
 
-    tempDownButton <- button (Just chevron_left)  Nothing
-    tempUpButton   <- button (Just chevron_right) Nothing
-    fanDownButton  <- button (Just chevron_left)  Nothing
-    fanUpButton    <- button (Just chevron_right) Nothing
+    tempDownButton <- iconButton chevron_left
+    tempUpButton   <- iconButton chevron_right
+    fanDownButton  <- iconButton chevron_left
+    fanUpButton    <- iconButton chevron_right
     autoButton     <- lift $ reactiveListItem "Auto"   grey
     coolButton     <- lift $ reactiveListItem "Cool"   grey
     dryButton      <- lift $ reactiveListItem "Dry"    grey
@@ -118,13 +118,14 @@ instance HasRemote ToshibaAC where
                                                               ]
 
     addPageTile $
-      let title  = unwords [deviceNode deviceAddress, deviceName deviceAddress]
-      in mkTile title $ list [ listItem (H.text "Power")       $ getItem powerSwitch
-                             , listItem (H.text "Temperature") $ H.div $ getItem tempDownButton >> getItem temperature' >> getItem tempUpButton
-                             , listItem (H.text "Fan")         $ H.div $ getItem fanDownButton >> getItem fanlevel' >> getItem fanUpButton
-                             , listItem (H.text "Mode")        $ getItem dropdownMode
-                             , listItem (H.text "Power Mode")  $ getItem dropdownPowerMode
-                             ]
+      let title = unwords [deviceNode deviceAddress, deviceName deviceAddress]
+          img   = Nothing -- Just "static/img/remote/ac.png"
+      in mkTile title img $ list [ listItem (H.text "Power")       $ getItem powerSwitch
+                                 , listItem (H.text "Temperature") $ H.div $ getItem tempDownButton >> getItem temperature' >> getItem tempUpButton
+                                 , listItem (H.text "Fan")         $ H.div $ getItem fanDownButton >> getItem fanlevel' >> getItem fanUpButton
+                                 , listItem (H.text "Mode")        $ getItem dropdownMode
+                                 , listItem (H.text "Power Mode")  $ getItem dropdownPowerMode
+                                 ]
 
     addPageAction $
       runRemote $

@@ -7,7 +7,9 @@ module Graphics.UI.Material
   )
   where
 --------------------------------------------------------------------------------
-import Control.Monad          (forM_)
+import Control.Monad          (forM_, when)
+import Data.Monoid            ((<>))
+import Data.Maybe             (isJust, fromJust)
 import Data.Text              (Text)
 import Graphics.UI.Threepenny
 import Sarah.GUI.Reactive
@@ -51,6 +53,24 @@ button micon mtext = do
   return Button {..}
 
 
+data IconButton = IconButton { item   :: H.Html
+                             , itemId :: String
+                             }
+
+instance HasItem   IconButton where getItem   = item
+instance HasItemId IconButton where getItemId = itemId
+
+iconButton :: MonadIO m => Icon -> m IconButton
+iconButton theIcon = do
+  itemId <- newIdent
+
+  let item = H.button H.! A.class_ "mdl-button mdl-js-button mdl-button--icon"
+                      H.! A.id (H.toValue itemId) $
+                 icon theIcon
+
+  return IconButton{..}
+
+
 data NavigationLink = NavigationLink { item   :: H.Html
                                      , itemId :: String
                                      }
@@ -70,13 +90,21 @@ navigationLink text = do
   return NavigationLink{..}
 
 
-mkTile :: Text -> H.Html -> H.Html
-mkTile title content = H.div H.! A.class_ "mdl-card mdl-card-margin mdl-card--border mdl-shadow--2dp" $ do
-                           H.div H.! A.class_ "mdl-card__title" $
-                               H.h2 H.! A.class_ "mdl-card__title-text" $
-                               H.text title
-                           H.div H.! A.class_ "mdl-card__actions mdl-card--border" $
-                               content
+mkTile :: Text -> Maybe Text -> H.Html -> H.Html
+mkTile title mimg content =
+    H.div H.! A.class_ "mdl-cell mdl-cell--3-col" $
+        H.div H.! A.class_ "mdl-card mdl-card-margin mdl-card--border mdl-shadow--2dp"
+              H.! A.style "width: 100%;" $ do
+            H.div H.! A.class_ "mdl-card__title" $
+                H.h2 H.! A.class_ "mdl-card__title-text" $
+                    H.text title
+            when (isJust mimg) $
+                H.div H.! A.class_ "mdl-card__media" $
+                    H.img H.! A.src (H.toValue . fromJust $ mimg)
+                          H.! A.style "width: 100%;"
+                          H.! A.alt ""
+            H.div H.! A.class_ "mdl-card__actions mdl-card--border" $
+                content
 
 
 list :: [H.Html] -> H.Html
@@ -86,7 +114,8 @@ list items = H.div $
 
 
 listItem :: H.Html -> H.Html -> H.Html
-listItem content action = H.li H.! A.class_ "mdl-list__item" $ do
+listItem content action = H.li H.! A.class_ "mdl-list__item"
+                               H.! A.style "height: 30px;" $ do
                               H.span H.! A.class_ "mdl-list__item-primary-content" $
                                   content
                               H.span H.! A.class_ "mdl-list__item-secondary-action" $

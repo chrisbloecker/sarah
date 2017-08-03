@@ -29,8 +29,8 @@ instance HasRemote ExampleDevice where
     display <- lift $ reactiveLabel "foo"
     mode    <- lift $ reactiveLabel "Normal"
 
-    getRandomNumberButton <- button (Just trending_up) Nothing
-    alwaysFailingButton   <- button (Just bug_report)  Nothing
+    getRandomNumberButton <- iconButton trending_up
+    alwaysFailingButton   <- iconButton bug_report
 
     addPageAction $
       onElementIDClick (getItemId getRandomNumberButton) $ runRemote $ do
@@ -82,11 +82,12 @@ instance HasRemote ExampleDevice where
                                                ]
 
     addPageTile $
-      let title  = unwords [deviceNode deviceAddress, deviceName deviceAddress]
-      in mkTile title $ list [ listItem (getItem display) (getItem getRandomNumberButton)
-                             , listItem (H.div $ H.text "") (getItem alwaysFailingButton)
-                             , listItem (H.label $ H.text "Mode") (getItem dropdown)
-                             ]
+      let title = unwords [deviceNode deviceAddress, deviceName deviceAddress]
+          img   = Nothing -- Just "static/img/remote/example.png"
+      in mkTile title img $ list [ listItem (getItem display) (getItem getRandomNumberButton)
+                                 , listItem (H.div $ H.text "") (getItem alwaysFailingButton)
+                                 , listItem (H.label $ H.text "Mode") (getItem dropdown)
+                                 ]
 
     -- get the current state and set it
     addPageAction $
