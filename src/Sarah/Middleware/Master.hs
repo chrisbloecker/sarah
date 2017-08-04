@@ -80,6 +80,13 @@ loop state@State{..} =
                     send pid (GetScheduleReply $ fmap DB.entityVal schedule)
                   loop state
 
+              , match $ \(FromPid pid (request :: MRequest GetLogs)) -> do
+                  say $ "[master] Logs requested by " ++ show pid
+                  spawnLocal $ do
+                    logs <- liftIO $ runSqlPool (DB.selectList [] []) pool
+                    send pid (GetLogsReply $ fmap DB.entityVal logs)
+                  loop state
+
               , match $ \(FromPid src (query :: Query)) -> do
                   let nodeName = deviceNode (queryTarget query)
                   say $ "[master] Received Query for " ++ show nodeName

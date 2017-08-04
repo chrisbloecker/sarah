@@ -8,7 +8,8 @@ module Sarah.GUI.Websocket
 --------------------------------------------------------------------------------
 import Control.Concurrent.STM (TVar, atomically, readTVar)
 import Control.Monad          (forever)
-import Control.Monad.Reader   (ask, liftIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Reader   (ask)
 import Data.Aeson             (ToJSON, FromJSON, encode)
 import Data.HashMap.Strict    (HashMap)
 import Data.Text              (Text, unpack)
@@ -59,10 +60,11 @@ withoutResponse command = do
     WS.sendTextData connection query
 
 
-toMaster :: (IsMasterCommand command)
-         => WebAddress -> MRequest command -> IO (MReply command)
+toMaster :: (MonadIO m, IsMasterCommand command)
+         => WebAddress -> MRequest command -> m (MReply command)
 toMaster middleware request =
-  WS.runClient (host middleware) (port middleware) "/" $ \connection -> do
+  liftIO $ WS.runClient (host middleware) (port middleware) "/" $ \connection -> do
     WS.sendBinaryData connection ModeMaster
+    print . encode $ mkMasterRequest request
     WS.sendBinaryData connection (mkMasterRequest request)
     WS.receiveData connection

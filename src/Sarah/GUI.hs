@@ -14,7 +14,7 @@ import Control.Monad.Reader                (runReaderT, ask)
 import Data.Text                           (Text, pack, unpack)
 import Data.Sequence                       (empty, (|>))
 import Data.Time                           (getZonedTime)
-import Graphics.UI.Material                (button, navigationLink, getItem, getItemId, upgradeDom, removeChildren)
+import Graphics.UI.Material                (button, navigationLink, getItem, getItemId, upgradeDom, toast)
 import Graphics.UI.Threepenny              (UI, Window, CallBufferMode (..), newEvent, runUI, setCallBufferMode, flushCallBuffer)
 import Graphics.UI.Threepenny.Core         (ffi, runFunction)
 import Prelude                      hiding (div, span)
@@ -79,7 +79,8 @@ setup appEnv@AppEnv{..} window = void $ do
                             runUI window $ runReaderT (buildRemote model) remoteBuilderEnv
                             printWithTime $ "Setup for " ++ unpack deviceName ++ " complete"
 
-    -- schedule items
+
+    -- schedule
     scheduleItems <- liftIO . atomically $ newTVar empty
 
     printWithTime "Requesting schedule from master"
@@ -96,23 +97,8 @@ setup appEnv@AppEnv{..} window = void $ do
 
     printWithTime "Schedule built"
 
-    addScheduleButton <- button Nothing (Just "Add Schedule")
-    dialogId          <- newIdent
-    let addScheduleModal = H.customParent "dialog" H.! A.class_ "mdl-dialog"
-                                                   H.! A.id (H.toValue dialogId) $ do
-                               H.div H.! A.class_ "mdl-dialog__content" $
-                                   H.p $
-                                       H.text "Allow this site to collect usage data to improve your experience?"
-                               H.div H.! A.class_ "mdl-dialog__actions mdl-dialog__actions--full-width" $ do
-                                   H.button H.! A.type_ "button"
-                                            H.! A.class_ "mdl-button" $
-                                       H.text "Agree"
-                                   H.button H.! A.type_ "button"
-                                            H.! A.class_ "mdl-button close" $
-                                       H.text "Disagree"
-
-    items <- liftIO . atomically $ readTVar scheduleItems
-    let schedule = H.div $ do
+    scheduleElements <- liftIO . atomically $ readTVar scheduleItems
+    let schedule = H.div $
                        H.table H.! A.class_ "mdl-data-table mdl-js-data-table" $ do
                            H.thead $
                                H.tr $ do
@@ -120,17 +106,39 @@ setup appEnv@AppEnv{..} window = void $ do
                                    H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Command"
                                    H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Timer"
                            H.tbody $
-                               forM_ items id
-                       getItem addScheduleButton
-                       addScheduleModal
+                               forM_ scheduleElements id
 
-    addAction $ do
-      let js = "var dialog = document.getElementById(%1);"
-            ++ "var showModalButton = document.getElementById(%2);"
-            ++ "if (!dialog.showModal) { dialogPolyfill.registerDialog(dialog); }"
-            ++ "showModalButton.addEventListener('click', function() { dialog.showModal(); });"
-            ++ "dialog.querySelector('.close').addEventListener('click', function() { dialog.close(); });"
-      runFunction $ ffi js dialogId (getItemId addScheduleButton)
+
+    -- log
+    logItems <- liftIO . atomically $ newTVar empty
+
+    printWithTime "Requesting logs from master"
+    logs <- liftIO $ toMaster middleware GetLogsRequest
+    liftIO $ case logs of
+      GetLogsReply logs -> do
+        printWithTime "Received logs from master, building log table"
+        forM_ logs $ \Log{..} -> do
+          let item = H.tr $ do
+                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ logDate)
+                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ logTime)
+                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ logSource)
+                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ logText)
+                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ logLevel)
+          liftIO . atomically $ modifyTVar logItems (|> item)
+
+    logElements <- liftIO . atomically $ readTVar logItems
+    let log = H.div $
+                  H.table H.! A.class_ "mdl-data-table mdl-js-data-table" $ do
+                      H.thead $
+                          H.tr $ do
+                              H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Date"
+                              H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Time"
+                              H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Source"
+                              H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Text"
+                              H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Level"
+                      H.tbody $
+                          forM_ logElements id
+
 
     liftIO $ forkIO $
         WS.runClient (host middleware) (port middleware) "/" (subscribeDeviceStateChanges remoteEvents)
@@ -144,6 +152,10 @@ setup appEnv@AppEnv{..} window = void $ do
     let scheduleHtml = renderHtml schedule
     runFunction $ ffi "document.getElementById('schedule-content').innerHTML = %1" scheduleHtml
 
+    -- and the log in the log tab
+    let logHtml = renderHtml log
+    runFunction $ ffi "document.getElementById('log-content').innerHTML = %1" logHtml
+
     printWithTime "Upgrading DOM for Material"
     upgradeDom
 
@@ -154,3 +166,5 @@ setup appEnv@AppEnv{..} window = void $ do
     sequence_ actions
     flushCallBuffer
     setCallBufferMode NoBuffering
+
+    toast "Initialisation complete."

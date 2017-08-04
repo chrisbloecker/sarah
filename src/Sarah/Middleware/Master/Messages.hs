@@ -23,7 +23,7 @@ import Data.Text                                (Text, unpack)
 import Data.Typeable                            (Typeable)
 import GHC.Generics                             (Generic)
 import Network.WebSockets                       (WebSocketsData (..))
-import Sarah.Middleware.Database                (LogLevel, Schedule (..), Dimension)
+import Sarah.Middleware.Database                (Dimension, Log (..), LogLevel, Schedule (..))
 import Sarah.Middleware.Device
 import Sarah.Middleware.Distributed
 import Sarah.Middleware.Model
@@ -92,7 +92,7 @@ instance FromJSON (MRequest GetSchedule) where
     request <- o .: "request" :: Parser Text
     case request of
       "GetScheduleRequest" -> return GetScheduleRequest
-      request              -> fail $ "Invalid request " ++ unpack request
+      request              -> fail $ "Invalid request: " ++ unpack request
 
 instance ToJSON (MReply GetSchedule) where
   toJSON (GetScheduleReply schedule) = object [ "reply"    .= String "GetScheduleReply"
@@ -113,6 +113,48 @@ instance WebSocketsData (MRequest GetSchedule) where
 instance WebSocketsData (MReply GetSchedule) where
   toLazyByteString = encode
   fromLazyByteString = fromJust . decode'
+
+
+-- | for getting the logs
+data GetLogs
+
+deriving instance Generic Log
+deriving instance Binary  Log
+
+instance IsMasterCommand GetLogs where
+  data MRequest GetLogs = GetLogsRequest       deriving (Binary, Generic, Typeable, Show)
+  data MReply   GetLogs = GetLogsReply   [Log] deriving (Binary, Generic, Typeable, Show)
+
+instance ToJSON (MRequest GetLogs) where
+  toJSON GetLogsRequest = object [ "request" .= String "GetLogsRequest" ]
+
+instance FromJSON (MRequest GetLogs) where
+  parseJSON = withObject "MRequest GetLogs" $ \o -> do
+    request <- o .: "request" :: Parser Text
+    case request of
+      "GetLogsRequest" -> return GetLogsRequest
+      request          -> fail $ "Invalid request: " ++ unpack request
+
+instance ToJSON (MReply GetLogs) where
+  toJSON (GetLogsReply logs) = object [ "reply" .= String "GetLogsReply"
+                                      , "logs"  .= toJSON logs
+                                      ]
+
+instance FromJSON (MReply GetLogs) where
+  parseJSON = withObject "MReply Getlogs" $ \o -> do
+    reply <- o .: "reply" :: Parser Text
+    case reply of
+      "GetLogsReply" -> GetLogsReply <$> o .: "logs"
+      reply          -> fail $ "Invalid reply: " ++ unpack reply
+
+instance WebSocketsData (MRequest GetLogs) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
+instance WebSocketsData (MReply GetLogs) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
 
 
 data PutLog = PutLog Text Text LogLevel

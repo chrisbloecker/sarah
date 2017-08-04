@@ -24,7 +24,10 @@ import qualified Text.Blaze.Html5.Attributes as A
 --------------------------------------------------------------------------------
 
 upgradeDom :: UI ()
-upgradeDom = runFunction $ ffi "componentHandler.upgradeDom();console.log('component upgrade ok.')"
+upgradeDom = runFunction $ ffi "componentHandler.upgradeDom(); console.log('component upgrade ok.');"
+
+toast :: Text -> UI ()
+toast message = runFunction $ ffi "document.getElementById('toast').MaterialSnackbar.showSnackbar({ message: %1});" message
 
 removeChildren :: String -> UI ()
 removeChildren parentId = runFunction $ ffi ("var parent = document.getElementById(%1);"
@@ -92,8 +95,8 @@ navigationLink text = do
 
 mkTile :: Text -> Maybe Text -> H.Html -> H.Html
 mkTile title mimg content =
-    H.div H.! A.class_ "mdl-cell mdl-cell--3-col" $
-        H.div H.! A.class_ "mdl-card mdl-card-margin mdl-card--border mdl-shadow--2dp"
+    H.div H.! A.class_ "mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--4-col-phone" $
+        H.div H.! A.class_ "mdl-card mdl-card-margin mdl-card--border mdl-shadow--4dp"
               H.! A.style "width: 100%;" $ do
             H.div H.! A.class_ "mdl-card__title" $
                 H.h2 H.! A.class_ "mdl-card__title-text" $
