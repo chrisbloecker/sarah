@@ -96,3 +96,6 @@ instance HasRemote ExampleDevice where
         withResponse GetStateRequest
           doNothing
           (\(GetStateReply state) -> eventStateChangedHandler state)
+
+
+  buildSchedule _ = return ()

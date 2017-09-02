@@ -10,7 +10,7 @@ import Control.Concurrent                  (forkIO)
 import Control.Concurrent.STM              (atomically, newTVar, readTVar, modifyTVar)
 import Control.Monad                       (forM_, unless, void)
 import Control.Monad.IO.Class              (MonadIO, liftIO)
-import Control.Monad.Reader                (runReaderT, ask)
+import Control.Monad.Reader                (runReaderT, ask, lift)
 import Data.Text                           (Text, pack, unpack)
 import Data.Sequence                       (empty, (|>))
 import Data.Time                           (getZonedTime)
@@ -49,8 +49,9 @@ setup appEnv@AppEnv{..} window = void $ do
     let addAction :: UI () -> UI ()
         addAction action = liftIO . atomically $ modifyTVar pageActions (|> action)
 
-    -- remote tiles
-    remoteTiles <- liftIO . atomically $ newTVar empty
+    -- tiles
+    remoteTiles   <- liftIO . atomically $ newTVar empty
+    scheduleTiles <- liftIO . atomically $ newTVar empty
 
     -- a place to store the events for the remotes. let's use a TVar in case
     -- we want to add more events later on
@@ -77,37 +78,14 @@ setup appEnv@AppEnv{..} window = void $ do
                             let runRemote        = liftIO . flip runReaderT RemoteRunnerEnv{..}
                                 remoteBuilderEnv = RemoteBuilderEnv{..}
                             runUI window $ runReaderT (buildRemote model) remoteBuilderEnv
+
+                            let getSchedule = lift $ do
+                                    GetScheduleReply schedule <- toMaster middleware (GetScheduleRequest deviceAddress)
+                                    return schedule
+                                scheduleBuilderEnv = ScheduleBuilderEnv{..}
+                            runUI window $ runReaderT (buildSchedule model) scheduleBuilderEnv
+
                             printWithTime $ "Setup for " ++ unpack deviceName ++ " complete"
-
-
-    -- schedule
-    scheduleItems <- liftIO . atomically $ newTVar empty
-
-    printWithTime "Requesting schedule from master"
-    schedule <- liftIO $ toMaster middleware GetScheduleRequest
-    liftIO $ case schedule of
-      GetScheduleReply schedules -> do
-        printWithTime "Received schedule from master, building schedule overview"
-        forM_ schedules $ \Schedule{..} -> do
-          let item = H.tr $ do
-                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ scheduleDevice)
-                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ scheduleAction)
-                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ scheduleTimer)
-          liftIO . atomically $ modifyTVar scheduleItems (|> item)
-
-    printWithTime "Schedule built"
-
-    scheduleElements <- liftIO . atomically $ readTVar scheduleItems
-    let schedule = H.div $
-                       H.table H.! A.class_ "mdl-data-table mdl-js-data-table" $ do
-                           H.thead $
-                               H.tr $ do
-                                   H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Device"
-                                   H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Command"
-                                   H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Timer"
-                           H.tbody $
-                               forM_ scheduleElements id
-
 
     -- log
     logItems <- liftIO . atomically $ newTVar empty
@@ -121,8 +99,8 @@ setup appEnv@AppEnv{..} window = void $ do
           let item = H.tr $ do
                          H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ logDate)
                          H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ logTime)
-                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ logSource)
-                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ logText)
+                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text logSource
+                         H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text logText
                          H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text (pack . show $ logLevel)
           liftIO . atomically $ modifyTVar logItems (|> item)
 
@@ -139,7 +117,6 @@ setup appEnv@AppEnv{..} window = void $ do
                       H.tbody $
                           forM_ logElements id
 
-
     liftIO $ forkIO $
         WS.runClient (host middleware) (port middleware) "/" (subscribeDeviceStateChanges remoteEvents)
 
@@ -149,7 +126,8 @@ setup appEnv@AppEnv{..} window = void $ do
     runFunction $ ffi "document.getElementById('remotes-content').innerHTML = %1" remotesHtml
 
     -- and the schedule in the schedule tab
-    let scheduleHtml = renderHtml schedule
+    printWithTime "Adding schedules"
+    scheduleHtml <- fmap (renderHtml . sequence_) <$> liftIO . atomically $ readTVar scheduleTiles
     runFunction $ ffi "document.getElementById('schedule-content').innerHTML = %1" scheduleHtml
 
     -- and the log in the log tab

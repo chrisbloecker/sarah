@@ -21,7 +21,6 @@ library
                      , Graphics.UI.Material.Icon
                      , Graphics.UI.Material.Reactive
                      , Graphics.UI.Material.Types
-                     , Graphics.UI.Threepenny.Extra
                      , Physics
                      , Raspberry.GPIO
                      , Raspberry.Hardware
@@ -35,7 +34,6 @@ library
                      , Sarah.GUI.Remote.Example
                      , Sarah.GUI.Remote.Power.HS110
                      , Sarah.GUI.Remote.Sensor.DHT22
-                     , Sarah.GUI.Schedule
                      , Sarah.GUI.Websocket
                      , Sarah.Middleware
                      , Sarah.Middleware.Database
@@ -55,13 +53,6 @@ library
                      , Sarah.Middleware.Slave
                      , Sarah.Middleware.Slave.Messages
                      , Sarah.Middleware.Util
-                    --  , Sarah.Persist.Api
-                    --  , Sarah.Persist.Api.Log
-                    --  , Sarah.Persist.Api.Sensor
-                    --  , Sarah.Persist.Client
-                    --  , Sarah.Persist.Model
-                    --  , Sarah.Persist.Settings
-                    --  , Sarah.Persist.Types
   other-modules:       Import.DeriveJSON
   c-sources:           src/Sarah/Middleware/Device/AC/Toshiba.c
                      , src/Sarah/Middleware/Device/Sensor/DHT22.c
@@ -108,25 +99,6 @@ library
                      , warp
                      , websockets
   default-language:    Haskell2010
-
-
--- executable backend
---   hs-source-dirs:      app
---   main-is:             Backend.hs
---   ghc-options:         -O2 -threaded -rtsopts -with-rtsopts=-N
---   build-depends:       base
---                      , bytestring
---                      , monad-logger
---                      , persistent
---                      , persistent-mysql
---                      , sarah
---                      , servant-server
---                      , warp
---                      , wai
---                      , wai-extra
---                      , wai-cors
---                      , yaml
---   default-language:    Haskell2010
 
 
 executable sarah

@@ -19,9 +19,9 @@ toBool _      = False
 -- taken from hue-dashboard by blitzcode
 onElementIDClick :: String -> UI () -> UI ()
 onElementIDClick elementID handler = do
-    window   <- askWindow
-    exported <- ffiExport $ void $ runUI window handler
-    runFunction $ ffi "$(%1).on('click', %2);" ('#':elementID) exported
+  window   <- askWindow
+  exported <- ffiExport $ void $ runUI window handler
+  runFunction $ ffi "$(%1).on('click', %2);" ('#':elementID) exported
 
 -- event that occurs when the user changed the checked state of a checkbox
 onElementIDCheckedChange :: String -> (Bool -> UI ()) -> UI ()

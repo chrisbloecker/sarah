@@ -30,12 +30,12 @@ import Sarah.Middleware.Model            hiding (master, nodeName)
 import Sarah.Middleware.Model.Interface
 import Sarah.Middleware.Slave.Messages
 import Sarah.Middleware.Util
-import Sarah.Persist.Model
 --------------------------------------------------------------------------------
 import qualified Data.Map.Strict   as M  (fromList, empty, insert, lookup, foldrWithKey)
 import qualified Data.HashMap.Lazy as HM (fromList)
 --------------------------------------------------------------------------------
 
+-- | A device is described by its name and the device itself.
 data DeviceDescription = DeviceDescription DeviceName Device deriving (Show)
 
 instance ToJSON DeviceDescription where

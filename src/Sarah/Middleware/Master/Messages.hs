@@ -81,17 +81,19 @@ deriving instance Generic Schedule
 deriving instance Binary  Schedule
 
 instance IsMasterCommand GetSchedule where
-  data MRequest GetSchedule = GetScheduleRequest            deriving (Binary, Generic, Typeable)
-  data MReply   GetSchedule = GetScheduleReply   [Schedule] deriving (Binary, Generic, Typeable)
+  data MRequest GetSchedule = GetScheduleRequest DeviceAddress deriving (Binary, Generic, Typeable)
+  data MReply   GetSchedule = GetScheduleReply   [Schedule]    deriving (Binary, Generic, Typeable)
 
 instance ToJSON (MRequest GetSchedule) where
-  toJSON GetScheduleRequest = object [ "request" .= String "GetScheduleRequest" ]
+  toJSON (GetScheduleRequest deviceAddress) = object [ "request"       .= String "GetScheduleRequest"
+                                                     , "deviceAddress" .= toJSON deviceAddress
+                                                     ]
 
 instance FromJSON (MRequest GetSchedule) where
   parseJSON = withObject "MRequest GetSchedule" $ \o -> do
     request <- o .: "request" :: Parser Text
     case request of
-      "GetScheduleRequest" -> return GetScheduleRequest
+      "GetScheduleRequest" -> GetScheduleRequest <$> o .: "deviceAddress"
       request              -> fail $ "Invalid request: " ++ unpack request
 
 instance ToJSON (MReply GetSchedule) where
@@ -122,8 +124,8 @@ deriving instance Generic Log
 deriving instance Binary  Log
 
 instance IsMasterCommand GetLogs where
-  data MRequest GetLogs = GetLogsRequest       deriving (Binary, Generic, Typeable, Show)
-  data MReply   GetLogs = GetLogsReply   [Log] deriving (Binary, Generic, Typeable, Show)
+  data MRequest GetLogs = GetLogsRequest       deriving (Binary, Generic, Typeable)
+  data MReply   GetLogs = GetLogsReply   [Log] deriving (Binary, Generic, Typeable)
 
 instance ToJSON (MRequest GetLogs) where
   toJSON GetLogsRequest = object [ "request" .= String "GetLogsRequest" ]
@@ -177,9 +179,12 @@ data MasterRequest = forall command. (IsMasterCommand command)
 instance ToJSON MasterRequest where
   toJSON (MasterRequest request) = toJSON request
 
+-- Don't forget to add all the requests that should be understood here!
 instance FromJSON MasterRequest where
   parseJSON v = MasterRequest <$> (parseJSON v :: Parser (MRequest GetStatus))
             <|> MasterRequest <$> (parseJSON v :: Parser (MRequest GetSchedule))
+            <|> MasterRequest <$> (parseJSON v :: Parser (MRequest GetLogs))
+            <|> fail ("Unexpected MasterRequest: " ++ show v)
 
 instance WebSocketsData MasterRequest where
   toLazyByteString = encode

@@ -34,6 +34,12 @@ type SuccessHandler a = a -> IO ()
 
 --------------------------------------------------------------------------------
 
+class PageTileBuilder builder where
+  addPageTile :: H.Html -> ReaderT builder UI ()
+
+class PageActionBuilder builder where
+  addPageAction :: UI () -> ReaderT builder UI ()
+
 data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , deviceAddress      :: DeviceAddress
                                          , eventStateChanged  :: Event EncodedDeviceState
@@ -42,19 +48,36 @@ data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , runRemote          :: RemoteRunner () -> UI ()
                                          }
 
-addPageTile :: H.Html -> RemoteBuilder ()
-addPageTile tile = do
-  RemoteBuilderEnv{..} <- ask
-  liftIO . atomically $ modifyTVar remoteTiles (|> tile)
+instance PageTileBuilder RemoteBuilderEnv where
+  addPageTile tile = do
+    RemoteBuilderEnv{..} <- ask
+    liftIO . atomically $ modifyTVar remoteTiles (|> tile)
+
+instance PageActionBuilder RemoteBuilderEnv where
+  addPageAction action = do
+    RemoteBuilderEnv{..} <- ask
+    liftIO . atomically $ modifyTVar pageActions (|> action)
 
 
-addPageAction :: UI () -> RemoteBuilder ()
-addPageAction action = do
-  RemoteBuilderEnv{..} <- ask
-  liftIO . atomically $ modifyTVar pageActions (|> action)
+data ScheduleBuilderEnv = ScheduleBuilderEnv { deviceAddress :: DeviceAddress
+                                             , scheduleTiles :: TVar (Seq H.Html)
+                                             , pageActions   :: TVar (Seq (UI ()))
+                                             , getSchedule   :: ScheduleBuilder [Schedule]
+                                             }
+
+instance PageTileBuilder ScheduleBuilderEnv where
+  addPageTile tile = do
+    ScheduleBuilderEnv{..} <- ask
+    liftIO . atomically $ modifyTVar scheduleTiles (|> tile)
+
+instance PageActionBuilder ScheduleBuilderEnv where
+  addPageAction action = do
+    ScheduleBuilderEnv{..} <- ask
+    liftIO . atomically $ modifyTVar pageActions (|> action)
 
 
-type RemoteBuilder = ReaderT RemoteBuilderEnv UI
+type RemoteBuilder   = ReaderT RemoteBuilderEnv   UI
+type ScheduleBuilder = ReaderT ScheduleBuilderEnv UI
 
 -- for running remotes so they know what device they control and where to find it
 data RemoteRunnerEnv = RemoteRunnerEnv { deviceAddress :: DeviceAddress
@@ -71,6 +94,10 @@ class IsDevice model => HasRemote model where
   --  - A DeviceAddress, so we know where the device is. Potentially, there can be
   --    many devices of the same kind available, even at the same node.
   buildRemote :: model -> RemoteBuilder ()
+
+  -- For generating a "widget" than can be used to customise schedules for a device.
+  buildSchedule :: model -> ScheduleBuilder ()
+
 
 doNothing :: IO ()
 doNothing = return ()

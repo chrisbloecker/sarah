@@ -132,3 +132,6 @@ instance HasRemote ToshibaAC where
         withResponse (Read GetConfig)
           doNothing
           (\(DeviceState config) -> eventStateChangedHandler config)
+
+
+  buildSchedule _ = return ()

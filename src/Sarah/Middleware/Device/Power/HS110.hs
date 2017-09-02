@@ -165,11 +165,11 @@ data SystemResult = SystemInfo { sysErr     :: Integer
                   | SetRelayResult { relayState :: Integer }
                   | SetLEDResult   { ledState   :: Bool    }
 
-data ActiveMode = Schedule
+data ActiveMode = ModeSchedule
 
 instance FromJSON ActiveMode where
   parseJSON = \case
-    String "schedule" -> return Schedule
+    String "schedule" -> return ModeSchedule
     invalid           -> fail $ "Invalid JSON: " ++ show invalid
 
 

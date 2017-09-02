@@ -8,10 +8,11 @@ module Graphics.UI.Material
   where
 --------------------------------------------------------------------------------
 import Control.Monad          (forM_, when)
+import Control.Monad.IO.Class (MonadIO)
 import Data.Monoid            ((<>))
 import Data.Maybe             (isJust, fromJust)
 import Data.Text              (Text)
-import Graphics.UI.Threepenny
+import Graphics.UI.Threepenny (UI, runFunction, ffi)
 import Sarah.GUI.Reactive
 --------------------------------------------------------------------------------
 import Graphics.UI.Material.Class    as Graphics.UI.Material
@@ -20,6 +21,7 @@ import Graphics.UI.Material.Reactive as Graphics.UI.Material
 import Graphics.UI.Material.Types    as Graphics.UI.Material
 --------------------------------------------------------------------------------
 import qualified Text.Blaze.Html5            as H
+import qualified Text.Blaze.Internal         as H
 import qualified Text.Blaze.Html5.Attributes as A
 --------------------------------------------------------------------------------
 
@@ -28,6 +30,14 @@ upgradeDom = runFunction $ ffi "componentHandler.upgradeDom(); console.log('comp
 
 toast :: Text -> UI ()
 toast message = runFunction $ ffi "document.getElementById('toast').MaterialSnackbar.showSnackbar({ message: %1});" message
+
+showDialogue :: String -> UI ()
+showDialogue dialogueId =
+  runFunction $ ffi "var dialogue = document.getElementById(%1); if (dialogue) dialogue.showModal();" dialogueId
+
+hideDialogue :: String -> UI ()
+hideDialogue dialogueId =
+  runFunction $ ffi "var dialogue = document.getElementById(%1); if (dialogue) dialogue.close()" dialogueId
 
 removeChildren :: String -> UI ()
 removeChildren parentId = runFunction $ ffi ("var parent = document.getElementById(%1);"
@@ -93,9 +103,46 @@ navigationLink text = do
   return NavigationLink{..}
 
 
+data Dialogue = Dialogue { item            :: H.Html
+                         , itemId          :: String
+                         , submitButtonId  :: String
+                         , dismissButtonId :: String
+                         }
+
+instance HasItem            Dialogue where getItem            = item
+instance HasItemId          Dialogue where getItemId          = itemId
+instance HasSubmitButtonId  Dialogue where getSubmitButtonId  = submitButtonId
+instance HasDismissButtonId Dialogue where getDismissButtonId = dismissButtonId
+
+dialog = H.Parent "dialog" "<dialog" "</dialog>"
+{-# INLINE dialog #-}
+
+dialogue :: MonadIO m => Text -> H.Html -> m Dialogue
+dialogue title content = do
+  itemId <- newIdent
+
+  submitButton  <- button Nothing (Just "Submit")
+  dismissButton <- button Nothing (Just "Cancel")
+
+  let submitButtonId  = getItemId submitButton
+      dismissButtonId = getItemId dismissButton
+
+      item = dialog H.! A.class_ "mdl-dialog"
+                    H.! A.id (H.toValue itemId) $ do
+               H.h4 H.! A.class_ "mdl-dialog__title" $
+                   H.text title
+               H.div H.! A.class_ "mdl-dialog__content" $
+                   content
+               H.div H.! A.class_ "mdl-dialog-actions" $ do
+                   getItem submitButton
+                   getItem dismissButton
+
+  return Dialogue{..}
+
+
 mkTile :: Text -> Maybe Text -> H.Html -> H.Html
 mkTile title mimg content =
-    H.div H.! A.class_ "mdl-cell mdl-cell--2-col-desktop mdl-cell--4-col-tablet mdl-cell--4-col-phone" $
+    H.div H.! A.class_ "mdl-cell mdl-cell--3-col-desktop mdl-cell--3-col-tablet mdl-cell--3-col-phone" $
         H.div H.! A.class_ "mdl-card mdl-card-margin mdl-card--border mdl-shadow--4dp"
               H.! A.style "width: 100%;" $ do
             H.div H.! A.class_ "mdl-card__title" $
@@ -123,13 +170,3 @@ listItem content action = H.li H.! A.class_ "mdl-list__item"
                                   content
                               H.span H.! A.class_ "mdl-list__item-secondary-action" $
                                   action
-
-
-slider :: Int -> Int -> Int -> Int -> H.Html
-slider width min max value = H.p H.! A.style (H.toValue . unwords $ ["width:", show width ++ "px"]) $
-                                 H.input H.! A.class_ "mdl-slider mdl-js-slider"
-                                         H.! A.type_ "range"
-                                         H.! A.min (H.toValue min)
-                                         H.! A.max (H.toValue max)
-                                         H.! A.value (H.toValue value)
-                                         H.! A.step (H.toValue (1 :: Int))

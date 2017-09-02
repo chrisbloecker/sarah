@@ -66,3 +66,6 @@ instance HasRemote DHT22 where
         withResponse GetReadingsRequest
           doNothing
           (\(GetReadingsReply state) -> eventStateChangedHandler state)
+
+
+  buildSchedule _ = return ()

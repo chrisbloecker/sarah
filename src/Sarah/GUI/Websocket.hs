@@ -60,6 +60,7 @@ withoutResponse command = do
     WS.sendTextData connection query
 
 
+-- ToDo: what do we do if no response comes back?
 toMaster :: (MonadIO m, IsMasterCommand command)
          => WebAddress -> MRequest command -> m (MReply command)
 toMaster middleware request =

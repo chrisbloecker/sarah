@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveAnyClass      #-}
 {-# LANGUAGE DeriveGeneric       #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 --------------------------------------------------------------------------------
@@ -58,6 +59,7 @@ runMaster subscribers queryTimeout pool = do
   self <- getSelfPid
   register masterName self
   say "Master up"
+  send self (PutLog "Master" "Master up" Debug)
   loop State { nodes        = M.empty
              , nodeNames    = M.empty
              , subscribers  = subscribers
@@ -118,7 +120,7 @@ loop state@State{..} =
 
               , match $ \(PutLog nodeName message logLevel) -> do
                   say "Received Log message"
-                  liftIO . forkIO $ do
+                  spawnLocal . liftIO $ do
                     now <- getCurrentTime
                     let today    = utctDay now
                         thisTime = timeToTimeOfDay . utctDayTime $ now
@@ -135,8 +137,8 @@ loop state@State{..} =
 
               , match $ \(LogSensorReading room sensor value) -> do
                   say "Received SensorReading message"
-                  liftIO . forkIO $ do
-                    now <- liftIO getCurrentTime
+                  spawnLocal . liftIO $ do
+                    now <- getCurrentTime
                     let today         = utctDay now
                         thisTime      = timeToTimeOfDay . utctDayTime $ now
                         sensorReading = SensorReading today thisTime room sensor value
