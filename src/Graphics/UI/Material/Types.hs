@@ -3,8 +3,9 @@
 module Graphics.UI.Material.Types
   where
 --------------------------------------------------------------------------------
-import Graphics.UI.Threepenny
-import Text.Blaze.Html5
+import Graphics.UI.Threepenny (Behavior, Event, Handler, ToJS)
+import Data.Text              (Text, pack)
+import Text.Blaze.Html5       (Html)
 --------------------------------------------------------------------------------
 
 type Behaviour = Behavior

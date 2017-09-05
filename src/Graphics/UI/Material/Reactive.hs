@@ -1,4 +1,5 @@
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE FlexibleInstances     #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RecordWildCards       #-}
@@ -6,11 +7,12 @@
 module Graphics.UI.Material.Reactive
   where
 --------------------------------------------------------------------------------
-import Control.Monad                      (forM, void)
+import Control.Monad                      (forM_, when, void)
+import Control.Monad.IO.Class             (MonadIO, liftIO)
 import Data.Text                          (Text, pack, unpack)
 import Graphics.UI.Material.Types
 import Graphics.UI.Material.Icon
-import Graphics.UI.Threepenny      hiding (map, empty)
+import Graphics.UI.Threepenny             (Event, Handler, UI, newEvent, stepper, currentValue, onChanges)
 import Graphics.UI.Threepenny.Core        (runFunction, ffi)
 import Prelude                     hiding (span, div)
 import Sarah.GUI.Reactive
@@ -39,9 +41,9 @@ dropdown label items = do
 
 
 data ReactiveLabel = ReactiveLabel { item      :: H.Html
-                                   , event     :: Event    Text
-                                   , handler   :: Handler  Text
-                                   , behaviour :: Behavior Text
+                                   , event     :: Event     Text
+                                   , handler   :: Handler   Text
+                                   , behaviour :: Behaviour Text
                                    }
 
 instance HasItem      ReactiveLabel      where getItem      = item
@@ -111,7 +113,7 @@ newtype ReactiveButton = ReactiveButton { item :: H.Html }
 instance HasItem ReactiveButton where
   getItem = item
 
-reactiveButton :: Text -> Behavior Text -> UI ReactiveButton
+reactiveButton :: Text -> Behaviour Text -> UI ReactiveButton
 reactiveButton label behaviour = do
   buttonId     <- newIdent
   initialClass <- currentValue behaviour
@@ -131,7 +133,7 @@ newtype ReactiveCheckbox = ReactiveCheckbox { item :: H.Html }
 instance HasItem ReactiveCheckbox where
   getItem = item
 
-reactiveCheckbox :: Behavior Bool -> UI ReactiveCheckbox
+reactiveCheckbox :: Behaviour Bool -> UI ReactiveCheckbox
 reactiveCheckbox behaviour = do
   checkboxId     <- newIdent
   initialChecked <- currentValue behaviour
@@ -146,10 +148,62 @@ reactiveCheckbox behaviour = do
   return ReactiveCheckbox{..}
 
 
+data ReactiveOption = ReactiveOption { item   :: H.Html
+                                     , itemId :: String
+                                     }
+
+instance HasItem   ReactiveOption where getItem   = item
+instance HasItemId ReactiveOption where getItemId = itemId
+
+reactiveOption :: HasOptions option => option -> UI ReactiveOption
+reactiveOption option = do
+  itemId <- newIdent
+
+  let item = H.option H.! A.value (H.toValue . toOptionLabel $ option) $
+                 H.text (toOptionLabel option)
+
+  return ReactiveOption{..}
+
+
+data ReactiveSelectField option = ReactiveSelectField { item      :: H.Html
+                                                      , itemId    :: String
+                                                      , event     :: Event     option
+                                                      , handler   :: Handler   option
+                                                      , behaviour :: Behaviour option
+                                                      }
+
+instance HasOptions option => HasItem      (ReactiveSelectField option)        where getItem      = item
+instance HasOptions option => HasItemId    (ReactiveSelectField option)        where getItemId    = itemId
+instance HasOptions option => HasEvent     (ReactiveSelectField option) option where getEvent     = event
+instance HasOptions option => HasHandler   (ReactiveSelectField option) option where getHandler   = handler
+instance HasOptions option => HasBehaviour (ReactiveSelectField option) option where getBehaviour = behaviour
+
+reactiveSelectField :: HasOptions option
+                    => [ReactiveOption] -> option -> UI (ReactiveSelectField option)
+reactiveSelectField options initial = do
+  (event, handler) <- liftIO newEvent
+  behaviour        <- stepper initial event
+  itemId           <- newIdent
+  initialSelected  <- currentValue behaviour
+
+  let item = H.div H.! A.class_ "mdl-textfield mdl-js-textfield mdl-textfield--floating-label" $ do
+                 H.select H.! A.class_ "mdl-textfield__input"
+                          H.! A.id (H.toValue itemId) $
+                     forM_ options getItem
+                 H.label H.! A.class_ "mdl-textfield__label"
+                         H.! A.for (H.toValue itemId) $
+                     H.text (toOptionLabel initial)
+
+  onChanges behaviour $ \newSelection ->
+    runFunction $ ffi "document.getElementById(%1).value = %2; console.log(%2);" itemId newSelection
+
+  return ReactiveSelectField{..}
+
+
 data ReactiveListItem = ReactiveListItem { item      :: H.Html
                                          , itemId    :: String
-                                         , event     :: Event   Text
-                                         , handler   :: Handler Text
+                                         , event     :: Event     Text
+                                         , handler   :: Handler   Text
                                          , behaviour :: Behaviour Text
                                          }
 

@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances   #-}
 {-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
@@ -11,7 +12,7 @@ import Control.Monad.Reader            (lift, ask)
 import Data.Foldable                   (traverse_)
 import Data.Text                       (Text, pack, unwords)
 import Graphics.UI.Material
-import Graphics.UI.Threepenny          (Handler, register)
+import Graphics.UI.Threepenny          (ToJS (..), Handler, register)
 import Prelude                  hiding (unwords)
 import Sarah.GUI.Reactive
 import Sarah.GUI.Model                 (HasRemote (..), RemoteBuilderEnv (..), doNothing, addPageTile, addPageAction)
@@ -53,11 +54,17 @@ instance HasRemote ExampleDevice where
     starButton   <- lift $ reactiveListItem "Star"   grey
     heartButton  <- lift $ reactiveListItem "Heart"  grey
 
+    normalOption <- lift $ reactiveOption Normal
+    starOption   <- lift $ reactiveOption Star
+    heartOption  <- lift $ reactiveOption Heart
+
+    selectField  <- lift $ reactiveSelectField [normalOption, starOption, heartOption] ("Normal" :: Text)
+
     let eventStateChangedHandler :: Handler (DeviceState ExampleDevice)
         eventStateChangedHandler = \case
-          Normal -> sequence_ [getHandler normalButton accented, getHandler starButton grey,     getHandler heartButton grey,     getHandler mode ("Normal" :: Text)]
-          Star   -> sequence_ [getHandler normalButton grey,     getHandler starButton accented, getHandler heartButton grey,     getHandler mode ("Star"   :: Text)]
-          Heart  -> sequence_ [getHandler normalButton grey,     getHandler starButton grey,     getHandler heartButton accented, getHandler mode ("Heart"  :: Text)]
+          Normal -> sequence_ [getHandler normalButton accented, getHandler starButton grey,     getHandler heartButton grey,     getHandler mode ("Normal" :: Text), getHandler selectField ("Normal" :: Text)]
+          Star   -> sequence_ [getHandler normalButton grey,     getHandler starButton accented, getHandler heartButton grey,     getHandler mode ("Star"   :: Text), getHandler selectField ("Star"   :: Text)]
+          Heart  -> sequence_ [getHandler normalButton grey,     getHandler starButton grey,     getHandler heartButton accented, getHandler mode ("Heart"  :: Text), getHandler selectField ("Heart"  :: Text)]
 
     unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
@@ -76,10 +83,15 @@ instance HasRemote ExampleDevice where
         liftIO $ putStrLn "[Example.heartButton.click]"
         runRemote $ withoutResponse (SetStateRequest Heart)
 
-    dropdown <- lift $ dropdown (getItem mode) [ getItem normalButton
-                                               , getItem starButton
-                                               , getItem heartButton
-                                               ]
+    addPageAction $
+      onElementIDChange (getItemId selectField) $ \newOption -> do
+        liftIO $ putStrLn "[Example.selectField.change]"
+        runRemote $ withoutResponse (SetStateRequest newOption)
+
+    dropdown <- dropdown (getItem mode) [ getItem normalButton
+                                        , getItem starButton
+                                        , getItem heartButton
+                                        ]
 
     addPageTile $
       let title = unwords [deviceNode deviceAddress, deviceName deviceAddress]
@@ -87,6 +99,7 @@ instance HasRemote ExampleDevice where
       in mkTile title img $ list [ listItem (getItem display) (getItem getRandomNumberButton)
                                  , listItem (H.div $ H.text "") (getItem alwaysFailingButton)
                                  , listItem (H.label $ H.text "Mode") (getItem dropdown)
+                                 , listItem (H.label $ H.text "Mode") (getItem selectField)
                                  ]
 
     -- get the current state and set it
