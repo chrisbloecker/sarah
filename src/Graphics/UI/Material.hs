@@ -46,6 +46,7 @@ removeChildren parentId = runFunction $ ffi ("var parent = document.getElementBy
                                           ++ "  parent.removeChild(parent.firstChild);"
                                           ++ "}") parentId
 
+--------------------------------------------------------------------------------
 
 data Button = Button { item   :: H.Html
                      , itemId :: String
@@ -66,6 +67,7 @@ button micon mtext = do
 
   return Button {..}
 
+--------------------------------------------------------------------------------
 
 data IconButton = IconButton { item   :: H.Html
                              , itemId :: String
@@ -85,6 +87,7 @@ iconButton theIcon = do
 
   return IconButton{..}
 
+--------------------------------------------------------------------------------
 
 data NavigationLink = NavigationLink { item   :: H.Html
                                      , itemId :: String
@@ -105,6 +108,7 @@ navigationLink text = do
 
   return NavigationLink{..}
 
+--------------------------------------------------------------------------------
 
 data Dialogue = Dialogue { item            :: H.Html
                          , itemId          :: String
@@ -117,6 +121,8 @@ instance IsWidget Dialogue where
   getItemId = itemId
 instance HasSubmitButtonId  Dialogue where getSubmitButtonId  = submitButtonId
 instance HasDismissButtonId Dialogue where getDismissButtonId = dismissButtonId
+
+--------------------------------------------------------------------------------
 
 dialog = H.Parent "dialog" "<dialog" "</dialog>"
 {-# INLINE dialog #-}
@@ -143,22 +149,38 @@ dialogue title content = do
 
   return Dialogue{..}
 
+--------------------------------------------------------------------------------
 
-mkTile :: Text -> Maybe Text -> H.Html -> H.Html
-mkTile title mimg content =
-    H.div H.! A.class_ "mdl-cell mdl-cell--3-col-desktop mdl-cell--3-col-tablet mdl-cell--3-col-phone" $
-        H.div H.! A.class_ "mdl-card mdl-card-margin mdl-card--border mdl-shadow--4dp"
-              H.! A.style "width: 100%;" $ do
-            H.div H.! A.class_ "mdl-card__title" $
-                H.h2 H.! A.class_ "mdl-card__title-text" $
-                    H.text title
-            when (isJust mimg) $
-                H.div H.! A.class_ "mdl-card__media" $
-                    H.img H.! A.src (H.toValue . fromJust $ mimg)
-                          H.! A.style "width: 100%;"
-                          H.! A.alt ""
-            H.div H.! A.class_ "mdl-card__actions mdl-card--border" $
-                content
+data TileWidth = TileWidth3
+               | TileWidth12
+
+mkTile3, mkTile12 :: Text -> Maybe Text -> H.Html -> H.Html
+mkTile3  = mkTile TileWidth3
+mkTile12 = mkTile TileWidth12
+
+mkTile :: TileWidth -> Text -> Maybe Text -> H.Html -> H.Html
+mkTile tileWidth title mimg content =
+    let width     = case tileWidth of
+                        TileWidth3  -> "3"
+                        TileWidth12 -> "12"
+        tileClass = unwords [ "mdl-cell"
+                            , "mdl-cell--" ++ width ++ "-col-desktop"
+                            , "mdl-cell--" ++ width ++ "-col-tablet"
+                            , "mdl-cell--" ++ width ++ "-col-phone"
+                            ]
+    in H.div H.! A.class_ (H.toValue tileClass) $
+           H.div H.! A.class_ "mdl-card mdl-card-margin mdl-card--border mdl-shadow--4dp"
+                 H.! A.style "width: 100%;" $ do
+               H.div H.! A.class_ "mdl-card__title" $
+                   H.h2 H.! A.class_ "mdl-card__title-text" $
+                       H.text title
+               when (isJust mimg) $
+                   H.div H.! A.class_ "mdl-card__media" $
+                       H.img H.! A.src (H.toValue . fromJust $ mimg)
+                             H.! A.style "width: 100%;"
+                             H.! A.alt ""
+               H.div H.! A.class_ "mdl-card__actions mdl-card--border" $
+                   content
 
 
 list :: [H.Html] -> H.Html

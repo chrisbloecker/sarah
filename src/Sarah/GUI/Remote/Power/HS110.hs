@@ -43,7 +43,7 @@ instance HasRemote HS110 where
     addPageTile $
       let title = unwords [deviceNode deviceAddress, deviceName deviceAddress]
           img   = Nothing -- Just "static/img/remote/power.png"
-      in mkTile title img $ list [ listItem (H.text "Power") $ getItem powerSwitch ]
+      in mkTile3 title img $ list [ listItem (H.text "Power") $ getItem powerSwitch ]
 
     -- get the state of the device
     addPageAction $
@@ -99,4 +99,4 @@ instance HasRemote HS110 where
       let title         = unwords [deviceNode deviceAddress, deviceName deviceAddress]
           img           = Nothing
           scheduleItems = map (\Schedule{..} -> listItem (H.text . pack . show $ scheduleTimer) (H.text "")) schedule
-      in mkTile title img (list $ scheduleItems ++ [getItem addItemButton])
+      in mkTile3 title img (list $ scheduleItems ++ [getItem addItemButton])

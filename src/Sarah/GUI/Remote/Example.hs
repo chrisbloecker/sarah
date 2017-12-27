@@ -107,11 +107,11 @@ instance HasRemote ExampleDevice where
     addPageTile $
       let title = unwords [deviceNode deviceAddress, deviceName deviceAddress]
           img   = Nothing -- Just "static/img/remote/example.png"
-      in mkTile title img $ list [ listItem (getItem display) (getItem getRandomNumberButton)
-                                 , listItem (H.div $ H.text "") (getItem alwaysFailingButton)
-                                 , listItem (H.label $ H.text "Mode") (getItem dropdown)
-                                 , listItem (H.label $ H.text "Mode") (getItem selectField)
-                                 ]
+      in mkTile3 title img $ list [ listItem (getItem display) (getItem getRandomNumberButton)
+                                  , listItem (H.div $ H.text "") (getItem alwaysFailingButton)
+                                  , listItem (H.label $ H.text "Mode") (getItem dropdown)
+                                  , listItem (H.label $ H.text "Mode") (getItem selectField)
+                                  ]
 
     -- get the current state and set it
     addPageAction $
