@@ -100,6 +100,7 @@ class ( ToJSON model, FromJSON model
   -- the commands a device understands
   data family DeviceRequest model :: *
 
+  -- the replies a device sends
   data family DeviceReply   model :: *
 
   -- a device controller runs a process for a device, takes commands and executes them

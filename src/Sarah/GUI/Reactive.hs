@@ -9,7 +9,7 @@ import Control.Monad.IO.Class      (MonadIO, liftIO)
 import Data.Aeson                  (ToJSON, FromJSON, encode, decode')
 import Data.ByteString.Lazy        (toStrict, fromStrict)
 import Data.Maybe                  (fromJust)
-import Data.Text                   (Text)
+import Data.Text                   (Text, pack, unpack)
 import Data.Text.Encoding          (encodeUtf8, decodeUtf8)
 import Data.UUID                   (toString)
 import Data.UUID.V4                (nextRandom)
@@ -18,13 +18,9 @@ import Graphics.UI.Threepenny      (UI, runUI, askWindow)
 import Graphics.UI.Threepenny.Core (runFunction, ffi, ffiExport)
 --------------------------------------------------------------------------------
 
-class (ToJSON option, FromJSON option, ToJS option) => HasOptions option where
-  toOptionLabel   :: option -> Text
-  fromOptionLabel :: Text -> option
-
-instance (ToJSON option, FromJSON option, ToJS option) => HasOptions option where
-  toOptionLabel   = decodeUtf8 . toStrict . encode
-  fromOptionLabel = fromJust . decode' . fromStrict . encodeUtf8
+class HasSelection option where
+  toSelectionLabel   :: option -> Text
+  fromSelectionLabel :: Text -> Either Text option
 
 newIdent :: MonadIO m => m String
 newIdent = toString <$> liftIO nextRandom
@@ -50,8 +46,10 @@ onElementIDCheckedChange elementId handler = do
 
 
 -- event that occurs when the user changes the selection in a select field
-onElementIDChange :: HasOptions option => String -> (option -> UI ()) -> UI ()
+onElementIDChange :: HasSelection option => String -> (option -> UI ()) -> UI ()
 onElementIDChange elementId handler = do
   window   <- askWindow
-  exported <- ffiExport $ \a -> void $ runUI window (handler . fromOptionLabel $ a)
+  exported <- ffiExport $ \a -> void $ runUI window $ case fromSelectionLabel a of
+                                                        Left  err    -> liftIO $ print err
+                                                        Right option -> handler option
   runFunction $ ffi "$(%1).on('change', function(e) { var value = $(%1).prop('value').toString(); %2(value) })" ('#':elementId) exported

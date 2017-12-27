@@ -10,7 +10,7 @@ module Sarah.GUI.Remote.Example
 import Control.Monad.IO.Class          (liftIO)
 import Control.Monad.Reader            (lift, ask)
 import Data.Foldable                   (traverse_)
-import Data.Text                       (Text, pack, unwords)
+import Data.Text                       (Text, append, pack, unwords)
 import Graphics.UI.Material
 import Graphics.UI.Threepenny          (ToJS (..), Handler, register)
 import Prelude                  hiding (unwords)
@@ -22,6 +22,17 @@ import Sarah.Middleware.Device.Example
 --------------------------------------------------------------------------------
 import qualified Text.Blaze.Html5 as H
 --------------------------------------------------------------------------------
+
+instance HasSelection (DeviceState ExampleDevice) where
+  toSelectionLabel Normal = "Normal"
+  toSelectionLabel Star   = "Star"
+  toSelectionLabel Heart  = "Heart"
+
+  fromSelectionLabel "Normal" = Right Normal
+  fromSelectionLabel "Star"   = Right Star
+  fromSelectionLabel "Heart"  = Right Heart
+  fromSelectionLabel t        = Left $ "Unexpected selection label for DeviceState ExampleDevice: " `append` t
+
 
 instance HasRemote ExampleDevice where
   buildRemote _ = do
@@ -58,13 +69,13 @@ instance HasRemote ExampleDevice where
     starOption   <- lift $ reactiveOption Star
     heartOption  <- lift $ reactiveOption Heart
 
-    selectField  <- lift $ reactiveSelectField [normalOption, starOption, heartOption] ("Normal" :: Text)
+    selectField  <- lift $ reactiveSelectField [normalOption, starOption, heartOption] Normal
 
     let eventStateChangedHandler :: Handler (DeviceState ExampleDevice)
         eventStateChangedHandler = \case
-          Normal -> sequence_ [getHandler normalButton accented, getHandler starButton grey,     getHandler heartButton grey,     getHandler mode ("Normal" :: Text), getHandler selectField ("Normal" :: Text)]
-          Star   -> sequence_ [getHandler normalButton grey,     getHandler starButton accented, getHandler heartButton grey,     getHandler mode ("Star"   :: Text), getHandler selectField ("Star"   :: Text)]
-          Heart  -> sequence_ [getHandler normalButton grey,     getHandler starButton grey,     getHandler heartButton accented, getHandler mode ("Heart"  :: Text), getHandler selectField ("Heart"  :: Text)]
+          Normal -> sequence_ [getHandler normalButton accented, getHandler starButton grey,     getHandler heartButton grey,     getHandler mode ("Normal" :: Text), getHandler selectField Normal]
+          Star   -> sequence_ [getHandler normalButton grey,     getHandler starButton accented, getHandler heartButton grey,     getHandler mode ("Star"   :: Text), getHandler selectField Star  ]
+          Heart  -> sequence_ [getHandler normalButton grey,     getHandler starButton grey,     getHandler heartButton accented, getHandler mode ("Heart"  :: Text), getHandler selectField Heart ]
 
     unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 

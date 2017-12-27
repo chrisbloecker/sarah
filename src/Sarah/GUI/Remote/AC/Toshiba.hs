@@ -8,7 +8,7 @@ module Sarah.GUI.Remote.AC.Toshiba
 import Control.Monad.IO.Class         (liftIO)
 import Control.Monad.Reader           (lift, ask)
 import Data.Foldable                  (traverse_)
-import Data.Text                      (Text, pack, unwords)
+import Data.Text                      (Text, append, pack, unwords)
 import Graphics.UI.Material
 import Graphics.UI.Threepenny         (Handler, register)
 import Prelude                 hiding (span, unwords)
@@ -21,6 +21,51 @@ import Sarah.Middleware.Device.AC.Toshiba
 --------------------------------------------------------------------------------
 import qualified Text.Blaze.Html5 as H
 --------------------------------------------------------------------------------
+
+instance HasSelection Fan where
+  toSelectionLabel FanAuto     = "Auto"
+  toSelectionLabel FanQuiet    = "Quiet"
+  toSelectionLabel FanVeryLow  = "Very Low"
+  toSelectionLabel FanLow      = "Low"
+  toSelectionLabel FanNormal   = "Normal"
+  toSelectionLabel FanHigh     = "High"
+  toSelectionLabel FanVeryHigh = "Very High"
+
+  fromSelectionLabel "Auto"      = Right FanAuto
+  fromSelectionLabel "Quiet"     = Right FanQuiet
+  fromSelectionLabel "Very Low"  = Right FanVeryLow
+  fromSelectionLabel "Low"       = Right FanLow
+  fromSelectionLabel "Normal"    = Right FanNormal
+  fromSelectionLabel "High"      = Right FanHigh
+  fromSelectionLabel "Very High" = Right FanVeryHigh
+  fromSelectionLabel t           = Left $ "Unexpected selection label for Fan: " `append` t
+
+
+instance HasSelection Mode where
+  toSelectionLabel ModeAuto = "Auto"
+  toSelectionLabel ModeCool = "Cool"
+  toSelectionLabel ModeDry  = "Dry"
+  toSelectionLabel ModeFan  = "Fan"
+  toSelectionLabel ModeOff  = "Off"
+
+  fromSelectionLabel "Auto" = Right ModeAuto
+  fromSelectionLabel "Cool" = Right ModeCool
+  fromSelectionLabel "Dry"  = Right ModeDry
+  fromSelectionLabel "Fan"  = Right ModeFan
+  fromSelectionLabel "Off"  = Right ModeOff
+  fromSelectionLabel t      = Left $ "Unexpected selection label for Mode: " `append` t
+
+
+instance HasSelection Power where
+  toSelectionLabel PowerNormal = "Normal"
+  toSelectionLabel PowerHigh   = "High"
+  toSelectionLabel PowerEco    = "Eco"
+
+  fromSelectionLabel "Nomrla" = Right PowerNormal
+  fromSelectionLabel "High"   = Right PowerHigh
+  fromSelectionLabel "Eco"    = Right PowerEco
+  fromSelectionLabel t        = Left $ "Unexpected selection label for Power: " `append` t
+
 
 instance HasRemote ToshibaAC where
   buildRemote _ = do
@@ -87,10 +132,10 @@ instance HasRemote ToshibaAC where
 
             getHandler ecoButton grey
             getHandler hiButton  grey
-            case mpower of
-              Nothing                ->                                  getHandler powerMode' ("Normal" :: Text)
-              Just PowerEco  -> getHandler ecoButton accented >> getHandler powerMode' ("Eco"    :: Text)
-              Just PowerHigh -> getHandler hiButton  accented >> getHandler powerMode' ("High"   :: Text)
+            case power of
+              PowerNormal ->                                  getHandler powerMode' ("Normal" :: Text)
+              PowerEco    -> getHandler ecoButton accented >> getHandler powerMode' ("Eco"    :: Text)
+              PowerHigh   -> getHandler hiButton  accented >> getHandler powerMode' ("High"   :: Text)
 
     unregister <- liftIO $ register (decodeDeviceState <$> eventStateChanged) (traverse_ eventStateChangedHandler)
 
@@ -103,9 +148,9 @@ instance HasRemote ToshibaAC where
     addPageAction $ onElementIDClick (getItemId coolButton)     $ runRemote $ withoutResponse (Write (SetMode ModeCool))
     addPageAction $ onElementIDClick (getItemId dryButton)      $ runRemote $ withoutResponse (Write (SetMode ModeDry))
     addPageAction $ onElementIDClick (getItemId fanButton)      $ runRemote $ withoutResponse (Write (SetMode ModeFan))
-    addPageAction $ onElementIDClick (getItemId normalButton)   $ runRemote $ withoutResponse (Write (SetPowerMode Nothing))
-    addPageAction $ onElementIDClick (getItemId ecoButton)      $ runRemote $ withoutResponse (Write (SetPowerMode $ Just PowerEco))
-    addPageAction $ onElementIDClick (getItemId hiButton)       $ runRemote $ withoutResponse (Write (SetPowerMode $ Just PowerHigh))
+    addPageAction $ onElementIDClick (getItemId normalButton)   $ runRemote $ withoutResponse (Write (SetPowerMode PowerNormal))
+    addPageAction $ onElementIDClick (getItemId ecoButton)      $ runRemote $ withoutResponse (Write (SetPowerMode PowerEco))
+    addPageAction $ onElementIDClick (getItemId hiButton)       $ runRemote $ withoutResponse (Write (SetPowerMode PowerHigh))
 
     dropdownMode <- dropdown (getItem mode') [ getItem autoButton
                                              , getItem coolButton

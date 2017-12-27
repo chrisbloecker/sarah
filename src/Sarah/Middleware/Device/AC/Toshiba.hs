@@ -32,7 +32,7 @@ import qualified Language.C.Inline as C
 data Temp  = T17 | T18 | T19 | T20 | T21 | T22 | T23 | T24 | T25 | T26 | T27 | T28 | T29 | T30 deriving (Generic, Typeable, ToJSON, FromJSON, Show, Eq, Ord, Enum, Bounded)
 data Fan   = FanAuto | FanQuiet | FanVeryLow | FanLow | FanNormal | FanHigh | FanVeryHigh      deriving (Generic, Typeable, ToJSON, FromJSON, Show, Eq, Ord, Enum, Bounded)
 data Mode  = ModeAuto | ModeCool | ModeDry | ModeFan | ModeOff                                 deriving (Generic, Typeable, ToJSON, FromJSON, Show, Eq)
-data Power = PowerHigh | PowerEco                                                              deriving (Generic, Typeable, ToJSON, FromJSON, Show, Eq)
+data Power = PowerNormal | PowerHigh | PowerEco                                                deriving (Generic, Typeable, ToJSON, FromJSON, Show, Eq)
 
 instance ToBits Temp where
   toBits T17 = 0x0
@@ -67,8 +67,9 @@ instance ToBits Mode where
   toBits ModeOff  = 0x7
 
 instance ToBits Power where
-  toBits PowerHigh = 0x1
-  toBits PowerEco  = 0x3
+  toBits PowerNormal = 0x0 -- make up value, just for a complete implementation!
+  toBits PowerHigh   = 0x1
+  toBits PowerEco    = 0x3
 
 --------------------------------------------------------------------------------
 
@@ -173,12 +174,12 @@ convert Config{..} =
   let t = toBits . fromTemperature $ temperature :: Int
       f = toBits                     fan         :: Int
       m = toBits                     mode        :: Int
-      bits = case mpower of
-               Nothing    -> let checksum = map (foldr xor zeroBits) [[t, f], [0x1, m   ]]
-                             in [0xF, 0x2, 0x0, 0xD, 0x0, 0x3, 0xF, 0xC, 0x0, 0x1, t, 0x0, f, m, 0x0, 0x0        ] ++ checksum
-               Just power -> let p        = toBits power :: Int
-                                 checksum = map (foldr xor zeroBits) [[t, f], [0x9, m, p]]
-                             in [0xF, 0x2, 0x0, 0xD, 0x0, 0x4, 0xF, 0xB, 0x0, 0x9, t, 0x0, f, m, 0x0, 0x0, 0x0, p] ++ checksum
+      bits = case power of
+               PowerNormal -> let checksum = map (foldr xor zeroBits) [[t, f], [0x1, m   ]]
+                              in [0xF, 0x2, 0x0, 0xD, 0x0, 0x3, 0xF, 0xC, 0x0, 0x1, t, 0x0, f, m, 0x0, 0x0        ] ++ checksum
+               power       -> let p        = toBits power :: Int
+                                  checksum = map (foldr xor zeroBits) [[t, f], [0x9, m, p]]
+                              in [0xF, 0x2, 0x0, 0xD, 0x0, 0x4, 0xF, 0xB, 0x0, 0x9, t, 0x0, f, m, 0x0, 0x0, 0x0, p] ++ checksum
   in BS.concat . map bitsToNibble $ bits
 
 
@@ -240,21 +241,21 @@ data Writing = PowerOn
              | SetTemperature Temperature
              | SetFanMode     Fan
              | SetMode        Mode
-             | SetPowerMode   (Maybe Power)
+             | SetPowerMode   Power
   deriving (Generic, ToJSON, FromJSON, Show)
 
 defaultConfig :: DeviceState ToshibaAC
 defaultConfig = Config { temperature = Temperature 20
                        , fan         = FanAuto
                        , mode        = ModeOff
-                       , mpower      = Nothing
+                       , power       = PowerNormal
                        }
 
 instance IsDevice ToshibaAC where
   data DeviceState ToshibaAC = Config { temperature :: Temperature
                                       , fan         :: Fan
                                       , mode        :: Mode
-                                      , mpower      :: Maybe Power
+                                      , power       :: Power
                                       }
     deriving (Generic, ToJSON, FromJSON)
 
@@ -310,7 +311,7 @@ instance IsDevice ToshibaAC where
                                                                     then config { mode = m }
                                                                     else config
                                               SetPowerMode   p -> if mode /= ModeOff
-                                                                    then config { mpower = p }
+                                                                    then config { power = p }
                                                                     else config
                               res <- liftIO $ setAC pin config'
                               case res of

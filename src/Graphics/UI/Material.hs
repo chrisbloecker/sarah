@@ -51,8 +51,9 @@ data Button = Button { item   :: H.Html
                      , itemId :: String
                      }
 
-instance HasItem   Button where getItem   = item
-instance HasItemId Button where getItemId = itemId
+instance IsWidget Button where
+  getItem   = item
+  getItemId = itemId
 
 button :: MonadIO m => Maybe Icon -> Maybe Text -> m Button
 button micon mtext = do
@@ -70,8 +71,9 @@ data IconButton = IconButton { item   :: H.Html
                              , itemId :: String
                              }
 
-instance HasItem   IconButton where getItem   = item
-instance HasItemId IconButton where getItemId = itemId
+instance IsWidget IconButton where
+  getItem   = item
+  getItemId = itemId
 
 iconButton :: MonadIO m => Icon -> m IconButton
 iconButton theIcon = do
@@ -88,8 +90,9 @@ data NavigationLink = NavigationLink { item   :: H.Html
                                      , itemId :: String
                                      }
 
-instance HasItem   NavigationLink where getItem   = item
-instance HasItemId NavigationLink where getItemId = itemId
+instance IsWidget NavigationLink where
+  getItem   = item
+  getItemId = itemId
 
 navigationLink :: MonadIO m => Text -> m NavigationLink
 navigationLink text = do
@@ -109,8 +112,9 @@ data Dialogue = Dialogue { item            :: H.Html
                          , dismissButtonId :: String
                          }
 
-instance HasItem            Dialogue where getItem            = item
-instance HasItemId          Dialogue where getItemId          = itemId
+instance IsWidget Dialogue where
+  getItem   = item
+  getItemId = itemId
 instance HasSubmitButtonId  Dialogue where getSubmitButtonId  = submitButtonId
 instance HasDismissButtonId Dialogue where getDismissButtonId = dismissButtonId
 

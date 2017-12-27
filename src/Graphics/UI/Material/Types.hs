@@ -8,12 +8,17 @@ import Data.Text              (Text, pack)
 import Text.Blaze.Html5       (Html)
 --------------------------------------------------------------------------------
 
+-- British English
 type Behaviour = Behavior
 
-class HasItem            a   where getItem            :: a -> Html
-class HasItemId          a   where getItemId          :: a -> String
+class IsWidget a where
+  getItem   :: a -> Html
+  getItemId :: a -> String
+
 class HasSubmitButtonId  a   where getSubmitButtonId  :: a -> String
 class HasDismissButtonId a   where getDismissButtonId :: a -> String
-class HasEvent           a t where getEvent           :: a -> Event     t
-class HasHandler         a t where getHandler         :: a -> Handler   t
-class HasBehaviour       a t where getBehaviour       :: a -> Behaviour t
+
+class IsReactive a t where
+  getEvent     :: a -> Event     t
+  getHandler   :: a -> Handler   t
+  getBehaviour :: a -> Behaviour t
