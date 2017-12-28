@@ -152,16 +152,19 @@ dialogue title content = do
 --------------------------------------------------------------------------------
 
 data TileWidth = TileWidth3
+               | TileWidth6
                | TileWidth12
 
-mkTile3, mkTile12 :: Text -> Maybe Text -> H.Html -> H.Html
+mkTile3, mkTile6, mkTile12 :: Text -> Maybe Text -> H.Html -> H.Html
 mkTile3  = mkTile TileWidth3
+mkTile6  = mkTile TileWidth6
 mkTile12 = mkTile TileWidth12
 
 mkTile :: TileWidth -> Text -> Maybe Text -> H.Html -> H.Html
 mkTile tileWidth title mimg content =
     let width     = case tileWidth of
                         TileWidth3  -> "3"
+                        TileWidth6  -> "6"
                         TileWidth12 -> "12"
         tileClass = unwords [ "mdl-cell"
                             , "mdl-cell--" ++ width ++ "-col-desktop"

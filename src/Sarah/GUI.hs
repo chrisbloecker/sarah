@@ -106,8 +106,9 @@ setup appEnv@AppEnv{..} window = void $ do
 
     logElements <- liftIO . atomically $ readTVar logItems
     let log = mkTile12 "Log" Nothing $
-                  H.table H.! A.class_ "mdl-data-table mdl-js-data-table" $ do
-                      H.thead $
+                  H.table H.! A.class_ "mdl-data-table mdl-js-data-table"
+                          H.! A.style "width: 100%;" $ do
+                      H.thead H.! A.style "width: 100%;" $
                           H.tr $ do
                               H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Date"
                               H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $ H.text "Time"

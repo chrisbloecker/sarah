@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE UndecidableInstances #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Reactive
@@ -9,7 +10,7 @@ import Control.Monad.IO.Class      (MonadIO, liftIO)
 import Data.Aeson                  (ToJSON, FromJSON, encode, decode')
 import Data.ByteString.Lazy        (toStrict, fromStrict)
 import Data.Maybe                  (fromJust)
-import Data.Text                   (Text, pack, unpack)
+import Data.Text                   (Text, append, pack, unpack)
 import Data.Text.Encoding          (encodeUtf8, decodeUtf8)
 import Data.UUID                   (toString)
 import Data.UUID.V4                (nextRandom)
@@ -21,6 +22,9 @@ import Graphics.UI.Threepenny.Core (runFunction, ffi, ffiExport)
 class HasSelection option where
   toSelectionLabel   :: option -> Text
   fromSelectionLabel :: Text -> Either Text option
+
+unexpectedSelectionLabel :: HasSelection option => Text -> Either Text option
+unexpectedSelectionLabel t = Left $ "Unexpected selection label: " `append` t
 
 newIdent :: MonadIO m => m String
 newIdent = toString <$> liftIO nextRandom

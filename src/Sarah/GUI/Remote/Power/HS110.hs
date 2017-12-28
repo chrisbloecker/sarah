@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 --------------------------------------------------------------------------------
@@ -21,6 +22,18 @@ import Sarah.Middleware.Device.Power.HS110
 import qualified Text.Blaze.Html5 as H
 import qualified Text.Blaze.Html5.Attributes as A
 --------------------------------------------------------------------------------
+
+instance HasSelection (DeviceRequest HS110) where
+  toSelectionLabel PowerOn            = "Power On"
+  toSelectionLabel PowerOff           = "Power Off"
+  toSelectionLabel GetStateRequest    = "Get State"
+  toSelectionLabel GetReadingsRequest = "Get Readings"
+
+  fromSelectionLabel "Power On"     = Right PowerOn
+  fromSelectionLabel "Power Off"    = Right PowerOff
+  fromSelectionLabel "Get State"    = Right GetStateRequest
+  fromSelectionLabel "Get Readings" = Right GetReadingsRequest
+  fromSelectionLabel t              = unexpectedSelectionLabel t
 
 instance HasRemote HS110 where
   buildRemote _ = do
@@ -57,22 +70,12 @@ instance HasRemote HS110 where
     ScheduleBuilderEnv{..} <- ask
     schedule               <- getSchedule
 
-    let input = H.div H.! A.class_ "mdl-textfield mdl-js-textfield mdl-textfield--floating-label" $ do
-                    H.select H.! A.class_ "mdl-textfield__input"
-                             H.! A.id "octane"
-                             H.! A.name "octane" $ do
-                        H.option $
-                            H.text ""
-                        H.option H.! A.value "85" $
-                            H.text "85"
-                        H.option H.! A.value "87" $
-                            H.text "87"
-                    H.label H.! A.class_ "mdl-textfield__label"
-                            H.! A.for "octane" $
-                        H.text "Octane"
+    optionPowerOn   <- lift $ reactiveOption PowerOn
+    optionPowerOff  <- lift $ reactiveOption PowerOff
+    optionSelection <- lift $ reactiveSelectField [optionPowerOn, optionPowerOff] PowerOn
 
     addItemButton   <- button Nothing (Just "Add")
-    addItemDialogue <- dialogue "Add schedule" input
+    addItemDialogue <- dialogue "Add schedule" (getItem optionSelection)
 
     -- display the dialogue to add a schedule item
     addPageAction $
@@ -80,9 +83,9 @@ instance HasRemote HS110 where
         showDialogue (getItemId addItemDialogue)
 
     -- submitting the new schedule item through the dialogue
-    --addPageAction $
-    --  onElementIDClick (getSubmitButton addItemDialogue) $
-    --    return ()
+    addPageAction $
+      onElementIDClick (getSubmitButtonId addItemDialogue) $ liftIO $
+        putStrLn "Ok, we should create a new schedule item now..."
 
     -- hide the dialogue
     -- ToDo: should we reset the input elements?

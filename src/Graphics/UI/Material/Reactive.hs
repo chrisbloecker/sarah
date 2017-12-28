@@ -173,15 +173,15 @@ reactiveCheckbox behaviour = do
 
 --------------------------------------------------------------------------------
 
-data ReactiveOption = ReactiveOption { item   :: H.Html
-                                     , itemId :: String
-                                     }
+data ReactiveOption option = ReactiveOption { item   :: H.Html
+                                            , itemId :: String
+                                            }
 
-instance IsWidget ReactiveOption where
+instance HasSelection option => IsWidget (ReactiveOption option) where
   getItem   = item
   getItemId = itemId
 
-reactiveOption :: HasSelection option => option -> UI ReactiveOption
+reactiveOption :: HasSelection option => option -> UI (ReactiveOption option)
 reactiveOption option = do
   itemId <- newIdent
 
@@ -209,7 +209,7 @@ instance HasSelection option => IsReactive (ReactiveSelectField option) option w
   getBehaviour = behaviour
 
 reactiveSelectField :: HasSelection option
-                    => [ReactiveOption] -> option -> UI (ReactiveSelectField option)
+                    => [ReactiveOption option] -> option -> UI (ReactiveSelectField option)
 reactiveSelectField options initial = do
   (event, handler) <- liftIO newEvent
   behaviour        <- stepper initial event
