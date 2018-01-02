@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Remote.Power.HS110
   where
@@ -11,15 +12,16 @@ import Control.Monad.IO.Class              (liftIO)
 import Data.Foldable                       (traverse_)
 import Data.Text                           (unwords, pack)
 import Graphics.UI.Material
-import Graphics.UI.Threepenny              (Handler, register)
+import Graphics.UI.Threepenny              (UI, Handler, register, currentValue, runFunction, ffi)
 import Prelude                      hiding (unwords)
 import Sarah.GUI.Model
 import Sarah.GUI.Reactive
 import Sarah.GUI.Websocket                 (withResponse, withoutResponse)
-import Sarah.Middleware                    (DeviceState, decodeDeviceState, DeviceAddress (..), Schedule (..))
+import Sarah.Middleware                    ( DeviceState, decodeDeviceState, DeviceAddress (..), Schedule (..)
+                                           , Timer (..), TimeInterval (..))
 import Sarah.Middleware.Device.Power.HS110
 --------------------------------------------------------------------------------
-import qualified Text.Blaze.Html5 as H
+import qualified Text.Blaze.Html5            as H
 import qualified Text.Blaze.Html5.Attributes as A
 --------------------------------------------------------------------------------
 
@@ -56,7 +58,7 @@ instance HasRemote HS110 where
     addPageTile $
       let title = unwords [deviceNode deviceAddress, deviceName deviceAddress]
           img   = Nothing -- Just "static/img/remote/power.png"
-      in mkTile3 title img $ list [ listItem (H.text "Power") $ getItem powerSwitch ]
+      in mkTileSmall title img $ list [ listItem (H.text "Power") $ getItem powerSwitch ]
 
     -- get the state of the device
     addPageAction $
@@ -70,12 +72,22 @@ instance HasRemote HS110 where
     ScheduleBuilderEnv{..} <- ask
     schedule               <- getSchedule
 
-    optionPowerOn   <- lift $ reactiveOption PowerOn
-    optionPowerOff  <- lift $ reactiveOption PowerOff
-    optionSelection <- lift $ reactiveSelectField [optionPowerOn, optionPowerOff] PowerOn
+    optionPowerOn  <- lift $ reactiveOption PowerOn
+    optionPowerOff <- lift $ reactiveOption PowerOff
+    scheduleAction <- lift $ reactiveSelectField [optionPowerOn, optionPowerOff] PowerOn
+    scheduleTimer  <- lift timerInput
 
     addItemButton   <- button Nothing (Just "Add")
-    addItemDialogue <- dialogue "Add schedule" (getItem optionSelection)
+    addItemDialogue <- dialogue "Add schedule" $ list [ getItem scheduleAction
+                                                      , getItem scheduleTimer
+                                                      ]
+
+    traverse_ addPageAction (getPageActions scheduleTimer)
+
+    addPageAction $
+      onElementIDChange (getItemId scheduleTimer) $ \(newSelection :: TimerInputOptions) -> do
+        runFunction $ ffi "console.log('New selection: %1')" (show newSelection)
+        liftIO . putStrLn $ "New option is " ++ show newSelection
 
     -- display the dialogue to add a schedule item
     addPageAction $
@@ -84,8 +96,10 @@ instance HasRemote HS110 where
 
     -- submitting the new schedule item through the dialogue
     addPageAction $
-      onElementIDClick (getSubmitButtonId addItemDialogue) $ liftIO $
-        putStrLn "Ok, we should create a new schedule item now..."
+      onElementIDClick (getSubmitButtonId addItemDialogue) $ do
+        timer <- getInput scheduleTimer :: UI Timer
+        liftIO $ putStrLn "Ok, we should create a new schedule item now..."
+        liftIO . print $ timer
 
     -- hide the dialogue
     -- ToDo: should we reset the input elements?
@@ -102,4 +116,4 @@ instance HasRemote HS110 where
       let title         = unwords [deviceNode deviceAddress, deviceName deviceAddress]
           img           = Nothing
           scheduleItems = map (\Schedule{..} -> listItem (H.text . pack . show $ scheduleTimer) (H.text "")) schedule
-      in mkTile3 title img (list $ scheduleItems ++ [getItem addItemButton])
+      in mkTileSmall title img (list $ scheduleItems ++ [getItem addItemButton])

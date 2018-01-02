@@ -6,6 +6,12 @@ import Sarah.Middleware.Database as Sarah.Middleware
   ( SensorReading (..)
   , Schedule (..)
   , Log (..)
+  , Timer (..)
+  , TimePoint (..)
+  , Month (..)
+  , Weekday (..)
+  , DayOfMonth
+  , TimeInterval (..)
   , doMigrations
   )
 

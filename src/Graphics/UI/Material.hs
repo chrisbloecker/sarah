@@ -122,8 +122,6 @@ instance IsWidget Dialogue where
 instance HasSubmitButtonId  Dialogue where getSubmitButtonId  = submitButtonId
 instance HasDismissButtonId Dialogue where getDismissButtonId = dismissButtonId
 
---------------------------------------------------------------------------------
-
 dialog = H.Parent "dialog" "<dialog" "</dialog>"
 {-# INLINE dialog #-}
 
@@ -151,25 +149,25 @@ dialogue title content = do
 
 --------------------------------------------------------------------------------
 
-data TileWidth = TileWidth3
-               | TileWidth6
-               | TileWidth12
+data TileSize = TileSmall
+              | TileMedium
+              | TileLarge
 
-mkTile3, mkTile6, mkTile12 :: Text -> Maybe Text -> H.Html -> H.Html
-mkTile3  = mkTile TileWidth3
-mkTile6  = mkTile TileWidth6
-mkTile12 = mkTile TileWidth12
+mkTileSmall, mkTileMedium, mkTileLarge :: Text -> Maybe Text -> H.Html -> H.Html
+mkTileSmall  = mkTile TileSmall
+mkTileMedium = mkTile TileMedium
+mkTileLarge  = mkTile TileLarge
 
-mkTile :: TileWidth -> Text -> Maybe Text -> H.Html -> H.Html
-mkTile tileWidth title mimg content =
-    let width     = case tileWidth of
-                        TileWidth3  -> "3"
-                        TileWidth6  -> "6"
-                        TileWidth12 -> "12"
+mkTile :: TileSize -> Text -> Maybe Text -> H.Html -> H.Html
+mkTile tileSize title mimg content =
+    let (widthPhone, widthTablet, widthDesktop) = case tileSize of
+                                                      TileSmall  -> ("3", "3",  "3")
+                                                      TileMedium -> ("3", "5",  "5")
+                                                      TileLarge  -> ("3", "7", "11")
         tileClass = unwords [ "mdl-cell"
-                            , "mdl-cell--" ++ width ++ "-col-desktop"
-                            , "mdl-cell--" ++ width ++ "-col-tablet"
-                            , "mdl-cell--" ++ width ++ "-col-phone"
+                            , "mdl-cell--" ++ widthDesktop ++ "-col-desktop"
+                            , "mdl-cell--" ++ widthTablet  ++ "-col-tablet"
+                            , "mdl-cell--" ++ widthPhone   ++ "-col-phone"
                             ]
     in H.div H.! A.class_ (H.toValue tileClass) $
            H.div H.! A.class_ "mdl-card mdl-card-margin mdl-card--border mdl-shadow--4dp"

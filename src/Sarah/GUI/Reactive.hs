@@ -14,9 +14,9 @@ import Data.Text                   (Text, append, pack, unpack)
 import Data.Text.Encoding          (encodeUtf8, decodeUtf8)
 import Data.UUID                   (toString)
 import Data.UUID.V4                (nextRandom)
-import Foreign.JavaScript          (ToJS (..))
+import Foreign.JavaScript          (FromJS)
 import Graphics.UI.Threepenny      (UI, runUI, askWindow)
-import Graphics.UI.Threepenny.Core (runFunction, ffi, ffiExport)
+import Graphics.UI.Threepenny.Core (callFunction, runFunction, ffi, ffiExport)
 --------------------------------------------------------------------------------
 
 class HasSelection option where
@@ -33,12 +33,15 @@ toBool :: String -> Bool
 toBool "true" = True
 toBool _      = False
 
+getValue :: FromJS a => String -> UI a
+getValue elementId = callFunction $ ffi "$(%1).val()" ('#':elementId)
+
 -- taken from hue-dashboard by blitzcode
 onElementIDClick :: String -> UI () -> UI ()
-onElementIDClick elementID handler = do
+onElementIDClick elementId handler = do
   window   <- askWindow
   exported <- ffiExport $ void $ runUI window handler
-  runFunction $ ffi "$(%1).on('click', %2);" ('#':elementID) exported
+  runFunction $ ffi "$(%1).on('click', %2);" ('#':elementId) exported
 
 
 -- event that occurs when the user changes the checked state of a checkbox

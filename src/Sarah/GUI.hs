@@ -14,7 +14,7 @@ import Control.Monad.Reader                (runReaderT, ask, lift)
 import Data.Text                           (Text, pack, unpack)
 import Data.Sequence                       (empty, (|>))
 import Data.Time                           (getZonedTime)
-import Graphics.UI.Material                (button, navigationLink, getItem, getItemId, upgradeDom, toast, mkTile12)
+import Graphics.UI.Material                (button, navigationLink, getItem, getItemId, upgradeDom, toast, mkTileLarge)
 import Graphics.UI.Threepenny              (UI, Window, CallBufferMode (..), newEvent, runUI, setCallBufferMode, flushCallBuffer)
 import Graphics.UI.Threepenny.Core         (ffi, runFunction)
 import Prelude                      hiding (div, span)
@@ -105,7 +105,7 @@ setup appEnv@AppEnv{..} window = void $ do
           liftIO . atomically $ modifyTVar logItems (|> item)
 
     logElements <- liftIO . atomically $ readTVar logItems
-    let log = mkTile12 "Log" Nothing $
+    let log = mkTileLarge "Log" Nothing $
                   H.table H.! A.class_ "mdl-data-table mdl-js-data-table"
                           H.! A.style "width: 100%;" $ do
                       H.thead H.! A.style "width: 100%;" $

@@ -68,7 +68,7 @@ data Weekday = Monday
 
 type DayOfMonth = Int
 
-data TimeInterval = TimeIntervall Int
+data TimeInterval = TimeInterval Int
   deriving (Show, Read, Eq, Generic, Binary)
 
 

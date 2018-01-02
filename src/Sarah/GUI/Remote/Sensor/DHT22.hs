@@ -57,9 +57,9 @@ instance HasRemote DHT22 where
     addPageTile $
       let title = unwords [deviceNode deviceAddress, deviceName deviceAddress]
           img   = Nothing
-      in mkTile3 title img $ list [ listItem (H.text "Temperature") (H.div $ getItem temperature >> getItem getTemperatureButton)
-                                  , listItem (H.text "Humidity")    (H.div $ getItem humidity >> getItem getHumidityButton)
-                                  ]
+      in mkTileSmall title img $ list [ listItem (H.text "Temperature") (H.div $ getItem temperature >> getItem getTemperatureButton)
+                                       , listItem (H.text "Humidity")    (H.div $ getItem humidity >> getItem getHumidityButton)
+                                       ]
 
     addPageAction $
       runRemote $

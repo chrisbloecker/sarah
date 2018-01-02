@@ -165,12 +165,12 @@ instance HasRemote ToshibaAC where
     addPageTile $
       let title = unwords [deviceNode deviceAddress, deviceName deviceAddress]
           img   = Nothing -- Just "static/img/remote/ac.png"
-      in mkTile3 title img $ list [ listItem (H.text "Power")       $ getItem powerSwitch
-                                  , listItem (H.text "Temperature") $ H.div $ getItem tempDownButton >> getItem temperature' >> getItem tempUpButton
-                                  , listItem (H.text "Fan")         $ H.div $ getItem fanDownButton >> getItem fanlevel' >> getItem fanUpButton
-                                  , listItem (H.text "Mode")        $ getItem dropdownMode
-                                  , listItem (H.text "Power Mode")  $ getItem dropdownPowerMode
-                                  ]
+      in mkTileSmall title img $ list [ listItem (H.text "Power")       $ getItem powerSwitch
+                                       , listItem (H.text "Temperature") $ H.div $ getItem tempDownButton >> getItem temperature' >> getItem tempUpButton
+                                       , listItem (H.text "Fan")         $ H.div $ getItem fanDownButton >> getItem fanlevel' >> getItem fanUpButton
+                                       , listItem (H.text "Mode")        $ getItem dropdownMode
+                                       , listItem (H.text "Power Mode")  $ getItem dropdownPowerMode
+                                       ]
 
     addPageAction $
       runRemote $
