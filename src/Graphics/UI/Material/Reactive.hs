@@ -9,11 +9,14 @@
 module Graphics.UI.Material.Reactive
   where
 --------------------------------------------------------------------------------
+import Control.Arrow                      ((&&&))
 import Control.Monad                      (forM_, when, void)
 import Control.Monad.IO.Class             (MonadIO, liftIO)
 import Data.Text                          (Text, pack, unpack)
 import Data.Time.Calendar                 (Day, fromGregorian)
-import Data.Time.LocalTime                (TimeOfDay, midnight)
+import Data.Time.Clock                    (utctDay, utctDayTime)
+import Data.Time.Format                   (parseTimeM, defaultTimeLocale)
+import Data.Time.LocalTime                (TimeOfDay, timeToTimeOfDay, midnight)
 import Graphics.UI.Material.Types
 import Graphics.UI.Material.Icon
 import Graphics.UI.Threepenny             (Event, Handler, UI, newEvent, stepper, currentValue, onChanges)
@@ -219,7 +222,7 @@ reactiveCloak initial child = do
 
 data DatePicker = DatePicker { item   :: H.Html
                              , itemId :: String
-                             , input  :: UI Day
+                             , input  :: UI (Maybe Day)
                              }
 
 instance IsWidget DatePicker where
@@ -242,7 +245,7 @@ datePicker = do
         liftIO $ putStrLn "[datePicker.getInput]"
         theInput <- getValue itemId
         liftIO . putStrLn $ "The input was: " ++ theInput
-        return (fromGregorian 1986 12 22)
+        return . Just $ fromGregorian 1986 12 22
 
   return DatePicker{..}
 
@@ -250,7 +253,7 @@ datePicker = do
 
 data TimePicker = TimePicker { item   :: H.Html
                              , itemId :: String
-                             , input  :: UI TimeOfDay
+                             , input  :: UI (Maybe TimeOfDay)
                              }
 
 instance IsWidget TimePicker where
@@ -273,7 +276,7 @@ timePicker = do
         liftIO $ putStrLn "[timePicker.getInput]"
         theInput <- getValue itemId
         liftIO . putStrLn $ "The input was: " ++ theInput
-        return midnight
+        return . Just $ midnight
 
   return TimePicker{..}
 
@@ -281,7 +284,7 @@ timePicker = do
 
 data DateTimePicker = DateTimePicker { item   :: H.Html
                                      , itemId :: String
-                                     , input  :: UI (Day, TimeOfDay)
+                                     , input  :: UI (Maybe (Day, TimeOfDay))
                                      }
 
 instance IsWidget DateTimePicker where
@@ -302,9 +305,8 @@ dateTimePicker = do
 
       input = do
         liftIO $ putStrLn "[dateTimePicker.getInput]"
-        theInput <- getValue itemId
-        liftIO . putStrLn $ "The input was: " ++ theInput
-        return (fromGregorian 1986 12 22, midnight)
+        mDateTime <- parseTimeM True defaultTimeLocale "%FT%R" <$> getValue itemId
+        return $ fmap (utctDay &&& timeToTimeOfDay . utctDayTime) mDateTime
 
   return DateTimePicker{..}
 
@@ -312,7 +314,7 @@ dateTimePicker = do
 
 data ReactiveOption option = ReactiveOption { item   :: H.Html
                                             , itemId :: String
-                                            , input  :: UI option
+                                            , input  :: UI (Maybe option)
                                             }
 
 instance HasSelection option => IsWidget (ReactiveOption option) where
@@ -329,7 +331,7 @@ reactiveOption option = do
   let item = H.option H.! A.value (H.toValue . toSelectionLabel $ option) $
                  H.text (toSelectionLabel option)
 
-      input = return option
+      input = return (Just option)
 
   return ReactiveOption{..}
 
@@ -417,7 +419,7 @@ reactiveListItem label initial = do
 
 data TimePointInput = TimePointInput { item   :: H.Html
                                      , itemId :: String
-                                     , input  :: UI TimePoint
+                                     , input  :: UI (Maybe TimePoint)
                                      }
 
 instance IsWidget TimePointInput where
@@ -437,7 +439,7 @@ timePointInput = do
         liftIO $ putStrLn "[timePointInput.getInput]"
         theInput <- getValue itemId
         liftIO . putStrLn $ "The input was: " ++ theInput
-        return (DayOfWeek Monday)
+        return . Just $ DayOfWeek Monday
 
   return TimePointInput{..}
 
@@ -445,7 +447,7 @@ timePointInput = do
 
 data TimeIntervalInput = TimeIntervalInput { item   :: H.Html
                                            , itemId :: String
-                                           , input  :: UI TimeInterval
+                                           , input  :: UI (Maybe TimeInterval)
                                            }
 
 instance IsWidget TimeIntervalInput where
@@ -474,7 +476,7 @@ timeIntervalInput = do
         liftIO $ putStrLn "[TimeIntervalInput.getInput]"
         theInput <- getValue itemId
         liftIO . putStrLn $ "The input was: " ++ theInput
-        return (TimeInterval 42)
+        return . Just $ TimeInterval 42
 
   return TimeIntervalInput{..}
 
@@ -483,7 +485,7 @@ timeIntervalInput = do
 data TimerInput = TimerInput { item    :: H.Html
                              , itemId  :: String
                              , actions :: [UI ()]
-                             , input   :: UI Timer
+                             , input   :: UI (Maybe Timer)
                              }
 
 instance IsWidget TimerInput where
@@ -548,8 +550,8 @@ timerInput = do
       input = do
         selection <- currentValue (getBehaviour timerOptions)
         case selection of
-          TimerInputOnce       -> uncurry Once <$> getInput onceInput
-          TimerInputEvery      -> Every        <$> getInput everyInput
-          TimerInputRepeatedly -> Repeatedly   <$> getInput repeatedlyInput
+          TimerInputOnce       -> fmap (uncurry Once) <$> getInput onceInput
+          TimerInputEvery      -> fmap Every          <$> getInput everyInput
+          TimerInputRepeatedly -> fmap Repeatedly     <$> getInput repeatedlyInput
 
   return TimerInput{..}

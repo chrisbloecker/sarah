@@ -16,7 +16,7 @@ class IsWidget a where
   getItemId :: a -> String
 
 class IsWidget a => HasInput a t where
-  getInput :: a -> UI t
+  getInput :: a -> UI (Maybe t)
 
 class IsWidget a => IsReactive a t where
   getEvent     :: a -> Event     t

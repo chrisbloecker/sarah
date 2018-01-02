@@ -97,9 +97,9 @@ instance HasRemote HS110 where
     -- submitting the new schedule item through the dialogue
     addPageAction $
       onElementIDClick (getSubmitButtonId addItemDialogue) $ do
-        timer <- getInput scheduleTimer :: UI Timer
+        mTimer <- getInput scheduleTimer :: UI (Maybe Timer)
         liftIO $ putStrLn "Ok, we should create a new schedule item now..."
-        liftIO . print $ timer
+        liftIO . print $ mTimer
 
     -- hide the dialogue
     -- ToDo: should we reset the input elements?
