@@ -5,12 +5,15 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
 {-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
 --------------------------------------------------------------------------------
 module Graphics.UI.Material.Reactive
   where
 --------------------------------------------------------------------------------
+import Combinators
+import Control.Applicative                (liftA2, liftA3)
 import Control.Arrow                      ((&&&))
-import Control.Monad                      (forM_, when, void)
+import Control.Monad                      ((>=>), forM_, when, void)
 import Control.Monad.IO.Class             (MonadIO, liftIO)
 import Data.Text                          (Text, pack, unpack)
 import Data.Time.Calendar                 (Day, fromGregorian)
@@ -23,7 +26,8 @@ import Graphics.UI.Threepenny             (Event, Handler, UI, newEvent, stepper
 import Graphics.UI.Threepenny.Core        (runFunction, callFunction, ffi)
 import Prelude                     hiding (span, div)
 import Sarah.GUI.Reactive
-import Sarah.Middleware                   (Timer (..), TimePoint (..), TimeInterval (..), Weekday (..))
+import Sarah.Middleware                   (Timer (..), TimePoint (..), TimeInterval (..), Month (..), DayOfMonth, Weekday (..))
+import Text.Read                          (readMaybe)
 --------------------------------------------------------------------------------
 import qualified Text.Blaze.Html5            as H
 import qualified Text.Blaze.Html5.Attributes as A
@@ -214,7 +218,7 @@ reactiveCloak initial child = do
                  child
 
   onChanges behaviour $ \cloak ->
-    runFunction $ ffi "document.getElementById(%1).style = %2;" itemId (toStyle cloak)
+    runFunction $ ffi "var elem = document.getElementById(%1); if (elem) { elem.style = %2; } else { console.log('Could not find element to cloak: %1.'); }" itemId (toStyle cloak)
 
   return ReactiveCloak{..}
 
@@ -243,9 +247,7 @@ datePicker = do
 
       input = do
         liftIO $ putStrLn "[datePicker.getInput]"
-        theInput <- getValue itemId
-        liftIO . putStrLn $ "The input was: " ++ theInput
-        return . Just $ fromGregorian 1986 12 22
+        fmap utctDay <$> parseTimeM True defaultTimeLocale "%F" <$> getValue itemId
 
   return DatePicker{..}
 
@@ -274,17 +276,16 @@ timePicker = do
 
       input = do
         liftIO $ putStrLn "[timePicker.getInput]"
-        theInput <- getValue itemId
-        liftIO . putStrLn $ "The input was: " ++ theInput
-        return . Just $ midnight
+        fmap (timeToTimeOfDay . utctDayTime) <$> parseTimeM True defaultTimeLocale "%R" <$> getValue itemId
 
   return TimePicker{..}
 
 --------------------------------------------------------------------------------
 
-data DateTimePicker = DateTimePicker { item   :: H.Html
-                                     , itemId :: String
-                                     , input  :: UI (Maybe (Day, TimeOfDay))
+data DateTimePicker = DateTimePicker { item    :: H.Html
+                                     , itemId  :: String
+                                     , actions :: [UI ()]
+                                     , input   :: UI (Maybe (Day, TimeOfDay))
                                      }
 
 instance IsWidget DateTimePicker where
@@ -293,6 +294,9 @@ instance IsWidget DateTimePicker where
 
 instance HasInput DateTimePicker (Day, TimeOfDay) where
   getInput = input
+
+instance HasPageActions DateTimePicker where
+  getPageActions = actions
 
 dateTimePicker :: UI DateTimePicker
 dateTimePicker = do
@@ -307,6 +311,8 @@ dateTimePicker = do
         liftIO $ putStrLn "[dateTimePicker.getInput]"
         mDateTime <- parseTimeM True defaultTimeLocale "%FT%R" <$> getValue itemId
         return $ fmap (utctDay &&& timeToTimeOfDay . utctDayTime) mDateTime
+
+      actions = []
 
   return DateTimePicker{..}
 
@@ -365,16 +371,7 @@ reactiveSelectField options initial = do
                  H.select H.! A.class_ "mdl-textfield__input"
                           H.! A.id (H.toValue itemId) $
                      forM_ options getItem
---                 H.label H.! A.class_ "mdl-textfield__label"
---                         H.! A.for (H.toValue itemId) $
---                     H.text (toSelectionLabel initialSelected)
-{-
-  forM_ options $ \option ->
-    onElementIDClick (getItemId option) $ do
 
-       theOption <- getInput option
-       liftIO $ handler theOption
--}
   onChanges behaviour $ \newSelection ->
     runFunction $ ffi "document.getElementById(%1).value = %2; console.log(%2);" itemId (toSelectionLabel newSelection)
 
@@ -417,9 +414,176 @@ reactiveListItem label initial = do
 
 --------------------------------------------------------------------------------
 
-data TimePointInput = TimePointInput { item   :: H.Html
-                                     , itemId :: String
-                                     , input  :: UI (Maybe TimePoint)
+data MonthInput = MonthInput { item    :: H.Html
+                             , itemId  :: String
+                             , actions :: [UI ()]
+                             , input   :: UI (Maybe Month)
+                             }
+
+instance IsWidget MonthInput where
+  getItem   = item
+  getItemId = itemId
+
+instance HasInput MonthInput Month where
+  getInput = input
+
+instance HasPageActions MonthInput where
+  getPageActions = actions
+
+instance HasSelection Month where
+  toSelectionLabel January   = "January"
+  toSelectionLabel February  = "February"
+  toSelectionLabel March     = "March"
+  toSelectionLabel April     = "April"
+  toSelectionLabel May       = "May"
+  toSelectionLabel June      = "June"
+  toSelectionLabel July      = "July"
+  toSelectionLabel August    = "August"
+  toSelectionLabel September = "September"
+  toSelectionLabel October   = "October"
+  toSelectionLabel November  = "November"
+  toSelectionLabel December  = "December"
+
+  fromSelectionLabel "January"   = Right January
+  fromSelectionLabel "February"  = Right February
+  fromSelectionLabel "March"     = Right March
+  fromSelectionLabel "April"     = Right April
+  fromSelectionLabel "May"       = Right May
+  fromSelectionLabel "June"      = Right June
+  fromSelectionLabel "July"      = Right July
+  fromSelectionLabel "August"    = Right August
+  fromSelectionLabel "September" = Right September
+  fromSelectionLabel "October"   = Right October
+  fromSelectionLabel "November"  = Right November
+  fromSelectionLabel "December"  = Right December
+  fromSelectionLabel t           = unexpectedSelectionLabel t
+
+monthPicker :: UI MonthInput
+monthPicker = do
+  january      <- reactiveOption January
+  february     <- reactiveOption February
+  march        <- reactiveOption March
+  april        <- reactiveOption April
+  may          <- reactiveOption May
+  june         <- reactiveOption June
+  july         <- reactiveOption July
+  august       <- reactiveOption August
+  september    <- reactiveOption September
+  october      <- reactiveOption October
+  november     <- reactiveOption November
+  december     <- reactiveOption December
+  monthOptions <- reactiveSelectField [january, february, march, april, may, june, july, august, september, october, november, december] January
+
+  let item   = getItem   monthOptions
+      itemId = getItemId monthOptions
+
+      onChangeMonth = onElementIDChange (getItemId monthOptions) $ fmap liftIO $ \(month :: Month) ->
+                        getHandler monthOptions month
+
+      actions = [onChangeMonth]
+
+      input = Just <$> currentValue (getBehaviour monthOptions)
+
+  return MonthInput{..}
+
+--------------------------------------------------------------------------------
+
+data DayOfMonthInput = DayOfMonthInput { item    :: H.Html
+                                       , itemId  :: String
+                                       , input   :: UI (Maybe DayOfMonth)
+                                       }
+
+instance IsWidget DayOfMonthInput where
+  getItem   = item
+  getItemId = itemId
+
+instance HasInput DayOfMonthInput DayOfMonth where
+  getInput = input
+
+dayOfMonthPicker :: UI DayOfMonthInput
+dayOfMonthPicker = do
+  itemId <- newIdent
+
+  let item = H.div H.! A.class_ "mdl-textfield mdl-js-textfield" $ do
+                 H.input H.! A.class_ "mdl-textfield__input"
+                         H.! A.id (H.toValue itemId)
+                         H.! A.type_ "text"
+                         H.! A.pattern "[1-9]|[12][0-9]|30|31"
+                 H.label H.! A.class_ "mdl-textfield__label"
+                         H.! A.for (H.toValue itemId) $
+                     H.text "Day of month"
+                 H.span  H.! A.class_ "mdl-textfield__error"$
+                     H.text "Input is not a valid number!"
+
+      input = over (getValue itemId) readMaybe
+
+  return DayOfMonthInput{..}
+
+--------------------------------------------------------------------------------
+
+data WeekdayInput = WeekdayInput { item    :: H.Html
+                                 , itemId  :: String
+                                 , actions :: [UI ()]
+                                 , input   :: UI (Maybe Weekday)
+                                 }
+
+instance IsWidget WeekdayInput where
+  getItem   = item
+  getItemId = itemId
+
+instance HasInput WeekdayInput Weekday where
+  getInput = input
+
+instance HasPageActions WeekdayInput where
+  getPageActions = actions
+
+instance HasSelection Weekday where
+  toSelectionLabel Monday    = "Monday"
+  toSelectionLabel Tuesday   = "Tuesday"
+  toSelectionLabel Wednesday = "Wednesday"
+  toSelectionLabel Thursday  = "Thursday"
+  toSelectionLabel Friday    = "Friday"
+  toSelectionLabel Saturday  = "Saturday"
+  toSelectionLabel Sunday    = "Sunday"
+
+  fromSelectionLabel "Monday"    = Right Monday
+  fromSelectionLabel "Tuesday"   = Right Tuesday
+  fromSelectionLabel "Wednesday" = Right Wednesday
+  fromSelectionLabel "Thursday"  = Right Thursday
+  fromSelectionLabel "Friday"    = Right Friday
+  fromSelectionLabel "Saturday"  = Right Saturday
+  fromSelectionLabel "Sunday"    = Right Sunday
+  fromSelectionLabel t           = unexpectedSelectionLabel t
+
+weekdayPicker :: UI WeekdayInput
+weekdayPicker = do
+  monday         <- reactiveOption Monday
+  tuesday        <- reactiveOption Tuesday
+  wednesday      <- reactiveOption Wednesday
+  thursday       <- reactiveOption Thursday
+  friday         <- reactiveOption Friday
+  saturday       <- reactiveOption Saturday
+  sunday         <- reactiveOption Sunday
+  weekdayOptions <- reactiveSelectField [monday, tuesday, wednesday, thursday, friday, saturday, sunday] Monday
+
+  let item   = getItem   weekdayOptions
+      itemId = getItemId weekdayOptions
+
+      onChangeWeekday = onElementIDChange (getItemId weekdayOptions) $ fmap liftIO $ \(weekday :: Weekday) ->
+                          getHandler weekdayOptions weekday
+
+      actions = [onChangeWeekday]
+
+      input = Just <$> currentValue (getBehaviour weekdayOptions)
+
+  return WeekdayInput{..}
+
+--------------------------------------------------------------------------------
+
+data TimePointInput = TimePointInput { item    :: H.Html
+                                     , itemId  :: String
+                                     , actions :: [UI ()]
+                                     , input   :: UI (Maybe TimePoint)
                                      }
 
 instance IsWidget TimePointInput where
@@ -429,25 +593,80 @@ instance IsWidget TimePointInput where
 instance HasInput TimePointInput TimePoint where
   getInput = input
 
+instance HasPageActions TimePointInput where
+  getPageActions = actions
+
+data TimePointInputOptions = TimePointInputDayOfYear
+                           | TimePointInputDayOfMonth
+                           | TimePointInputDayOfWeek
+                           | TimePointInputTimeOfDay
+
+instance HasSelection TimePointInputOptions where
+  toSelectionLabel TimePointInputDayOfYear  = "Day of year"
+  toSelectionLabel TimePointInputDayOfMonth = "Day of month"
+  toSelectionLabel TimePointInputDayOfWeek  = "Day of week"
+  toSelectionLabel TimePointInputTimeOfDay  = "Time of day"
+
+  fromSelectionLabel "Day of year"  = Right TimePointInputDayOfYear
+  fromSelectionLabel "Day of month" = Right TimePointInputDayOfMonth
+  fromSelectionLabel "Day of week"  = Right TimePointInputDayOfWeek
+  fromSelectionLabel "Time of day"  = Right TimePointInputTimeOfDay
+  fromSelectionLabel t              = unexpectedSelectionLabel t
+
 timePointInput :: UI TimePointInput
 timePointInput = do
-  itemId <- newIdent
+  optionDayOfYear  <- reactiveOption TimePointInputDayOfYear
+  optionDayOfMonth <- reactiveOption TimePointInputDayOfMonth
+  optionDayOfWeek  <- reactiveOption TimePointInputDayOfWeek
+  optionTimeOfDay  <- reactiveOption TimePointInputTimeOfDay
+  timePointOptions <- reactiveSelectField [optionDayOfYear, optionDayOfMonth, optionDayOfWeek, optionTimeOfDay] TimePointInputDayOfYear
 
-  let item = H.text "Time Point"
+  monthInput      <- monthPicker
+  dayOfMonthInput <- dayOfMonthPicker
+  weekdayInput    <- weekdayPicker
+  timeOfDayInput  <- timePicker
 
-      input = do
-        liftIO $ putStrLn "[timePointInput.getInput]"
-        theInput <- getValue itemId
-        liftIO . putStrLn $ "The input was: " ++ theInput
-        return . Just $ DayOfWeek Monday
+  monthCloaked      <- reactiveCloak Visible (getItem monthInput)
+  dayOfMonthCloaked <- reactiveCloak Hidden  (getItem dayOfMonthInput)
+  weekdayCloaked    <- reactiveCloak Hidden  (getItem weekdayInput)
+
+  let itemId = getItemId timePointOptions
+
+      item = H.div $
+                 H.ul H.! A.class_ "mdl-list" $ sequence_
+                     [ getItem timePointOptions
+                     , getItem monthCloaked
+                     , getItem dayOfMonthCloaked
+                     , getItem weekdayCloaked
+                     , getItem timeOfDayInput
+                     ]
+
+      onChangeTimePoint = onElementIDChange (getItemId timePointOptions) $ fmap liftIO $ \case
+                              TimePointInputDayOfYear  -> sequence_ [getHandler timePointOptions TimePointInputDayOfYear,  getHandler monthCloaked Visible, getHandler dayOfMonthCloaked Visible, getHandler weekdayCloaked Hidden ]
+                              TimePointInputDayOfMonth -> sequence_ [getHandler timePointOptions TimePointInputDayOfMonth, getHandler monthCloaked Hidden,  getHandler dayOfMonthCloaked Visible, getHandler weekdayCloaked Hidden ]
+                              TimePointInputDayOfWeek  -> sequence_ [getHandler timePointOptions TimePointInputDayOfWeek,  getHandler monthCloaked Hidden,  getHandler dayOfMonthCloaked Hidden,  getHandler weekdayCloaked Visible]
+                              TimePointInputTimeOfDay  -> sequence_ [getHandler timePointOptions TimePointInputTimeOfDay,  getHandler monthCloaked Hidden,  getHandler dayOfMonthCloaked Hidden,  getHandler weekdayCloaked Hidden ]
+
+      actions = [onChangeTimePoint]
+
+      input = currentValue (getBehaviour timePointOptions) >>= \case
+                TimePointInputDayOfYear  -> liftA3 DayOfYear  <$> getInput monthInput
+                                                              <*> getInput dayOfMonthInput
+                                                              <*> getInput timeOfDayInput
+                TimePointInputDayOfMonth -> liftA2 DayOfMonth <$> getInput dayOfMonthInput
+                                                              <*> getInput timeOfDayInput
+                TimePointInputDayOfWeek  -> liftA2 DayOfWeek  <$> getInput weekdayInput
+                                                              <*> getInput timeOfDayInput
+                TimePointInputTimeOfDay  -> fmap TimeOfDay  <$> getInput timeOfDayInput
 
   return TimePointInput{..}
 
 --------------------------------------------------------------------------------
 
-data TimeIntervalInput = TimeIntervalInput { item   :: H.Html
-                                           , itemId :: String
-                                           , input  :: UI (Maybe TimeInterval)
+data TimeIntervalInput = TimeIntervalInput { item    :: H.Html
+                                           , itemId  :: String
+                                           , actions :: [UI ()]
+                                           , input   :: UI (Maybe TimeInterval)
                                            }
 
 instance IsWidget TimeIntervalInput where
@@ -457,6 +676,9 @@ instance IsWidget TimeIntervalInput where
 instance HasInput TimeIntervalInput TimeInterval where
   getInput = input
 
+instance HasPageActions TimeIntervalInput where
+  getPageActions = actions
+
 timeIntervalInput :: UI TimeIntervalInput
 timeIntervalInput = do
   itemId <- newIdent
@@ -465,18 +687,18 @@ timeIntervalInput = do
                  H.input H.! A.class_ "mdl-textfield__input"
                          H.! A.id (H.toValue itemId)
                          H.! A.type_ "text"
-                         H.! A.pattern "-?[1-9][0-9]*"
+                         H.! A.pattern "[1-9][0-9]*"
                  H.label H.! A.class_ "mdl-textfield__label"
                          H.! A.for (H.toValue itemId) $
-                     H.text "Time interval"
+                     H.text "Time interval in seconds"
                  H.span  H.! A.class_ "mdl-textfield__error" $
                      H.text "Input is not a number!"
 
       input = do
         liftIO $ putStrLn "[TimeIntervalInput.getInput]"
-        theInput <- getValue itemId
-        liftIO . putStrLn $ "The input was: " ++ theInput
-        return . Just $ TimeInterval 42
+        over (getValue itemId) (readMaybe >=> fmap TimeInterval)
+
+      actions = []
 
   return TimeIntervalInput{..}
 
@@ -515,8 +737,6 @@ instance HasSelection TimerInputOptions where
 
 timerInput :: UI TimerInput
 timerInput = do
-  --itemId <- newIdent
-
   optionOnce       <- reactiveOption TimerInputOnce
   optionEvery      <- reactiveOption TimerInputEvery
   optionRepeatedly <- reactiveOption TimerInputRepeatedly
@@ -546,6 +766,9 @@ timerInput = do
                         TimerInputRepeatedly -> sequence_ [getHandler timerOptions TimerInputRepeatedly, getHandler onceCloaked Hidden,  getHandler everyCloaked Hidden,  getHandler repeatedlyCloaked Visible]
 
       actions = [onChangeTimer]
+             ++ getPageActions onceInput
+             ++ getPageActions everyInput
+             ++ getPageActions repeatedlyInput
 
       input = do
         selection <- currentValue (getBehaviour timerOptions)

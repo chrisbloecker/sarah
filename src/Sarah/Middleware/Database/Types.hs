@@ -37,9 +37,9 @@ data Timer = Once       Day TimeOfDay
            | Repeatedly TimeInterval
   deriving (Show, Read, Eq, Generic, Binary)
 
-data TimePoint = DayOfYear  Month DayOfMonth
-               | DayOfMonth DayOfMonth
-               | DayOfWeek  Weekday
+data TimePoint = DayOfYear  Month DayOfMonth TimeOfDay
+               | DayOfMonth DayOfMonth TimeOfDay
+               | DayOfWeek  Weekday TimeOfDay
                | TimeOfDay  TimeOfDay
   deriving (Show, Read, Eq, Generic, Binary)
 
