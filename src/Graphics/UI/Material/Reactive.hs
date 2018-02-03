@@ -384,7 +384,7 @@ reactiveSelectField options initial = do
   onChanges behaviour $ \newSelection ->
     runFunction $ ffi "document.getElementById(%1).value = %2; console.log(%2);" itemId (toSelectionLabel newSelection)
 
-  let input = _f . currentValue $ behaviour
+  let input = Just <$> currentValue behaviour
 
   return ReactiveSelectField{..}
 
