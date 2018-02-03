@@ -1,7 +1,8 @@
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving  #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Remote.Power.HS110
   where
@@ -24,6 +25,8 @@ import Sarah.Middleware.Device.Power.HS110
 import qualified Text.Blaze.Html5            as H
 import qualified Text.Blaze.Html5.Attributes as A
 --------------------------------------------------------------------------------
+
+deriving instance Show (DeviceRequest HS110)
 
 instance HasSelection (DeviceRequest HS110) where
   toSelectionLabel PowerOn            = "Power On"
@@ -97,8 +100,10 @@ instance HasRemote HS110 where
     -- submitting the new schedule item through the dialogue
     addPageAction $
       onElementIDClick (getSubmitButtonId addItemDialogue) $ do
-        mTimer <- getInput scheduleTimer :: UI (Maybe Timer)
+        mAction <- getInput scheduleAction :: UI (Maybe (DeviceRequest HS110))
+        mTimer  <- getInput scheduleTimer  :: UI (Maybe Timer)
         liftIO $ putStrLn "Ok, we should create a new schedule item now..."
+        liftIO . print $ mAction
         liftIO . print $ mTimer
 
     -- hide the dialogue

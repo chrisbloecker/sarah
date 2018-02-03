@@ -253,14 +253,18 @@ datePicker = do
 
 --------------------------------------------------------------------------------
 
-data TimePicker = TimePicker { item   :: H.Html
-                             , itemId :: String
-                             , input  :: UI (Maybe TimeOfDay)
+data TimePicker = TimePicker { item    :: H.Html
+                             , itemId  :: String
+                             , actions :: [UI ()]
+                             , input   :: UI (Maybe TimeOfDay)
                              }
 
 instance IsWidget TimePicker where
   getItem   = item
   getItemId = itemId
+
+instance HasPageActions TimePicker where
+  getPageActions = actions
 
 instance HasInput TimePicker TimeOfDay where
   getInput = input
@@ -274,8 +278,9 @@ timePicker = do
                          H.! A.type_ "time"
                          H.! A.id (H.toValue itemId)
 
+      actions = []
+
       input = do
-        liftIO $ putStrLn "[timePicker.getInput]"
         fmap (timeToTimeOfDay . utctDayTime) <$> parseTimeM True defaultTimeLocale "%R" <$> getValue itemId
 
   return TimePicker{..}
@@ -348,6 +353,7 @@ data ReactiveSelectField option = ReactiveSelectField { item      :: H.Html
                                                       , event     :: Event     option
                                                       , handler   :: Handler   option
                                                       , behaviour :: Behaviour option
+                                                      , input     :: UI (Maybe option)
                                                       }
 
 instance HasSelection option => IsWidget (ReactiveSelectField option) where
@@ -358,6 +364,9 @@ instance HasSelection option => IsReactive (ReactiveSelectField option) option w
   getEvent     = event
   getHandler   = handler
   getBehaviour = behaviour
+
+instance HasSelection option => HasInput (ReactiveSelectField option) option where
+  getInput = input
 
 reactiveSelectField :: HasSelection option
                     => [ReactiveOption option] -> option -> UI (ReactiveSelectField option)
@@ -374,6 +383,8 @@ reactiveSelectField options initial = do
 
   onChanges behaviour $ \newSelection ->
     runFunction $ ffi "document.getElementById(%1).value = %2; console.log(%2);" itemId (toSelectionLabel newSelection)
+
+  let input = _f . currentValue $ behaviour
 
   return ReactiveSelectField{..}
 
@@ -490,12 +501,16 @@ monthPicker = do
 
 data DayOfMonthInput = DayOfMonthInput { item    :: H.Html
                                        , itemId  :: String
+                                       , actions :: [UI ()]
                                        , input   :: UI (Maybe DayOfMonth)
                                        }
 
 instance IsWidget DayOfMonthInput where
   getItem   = item
   getItemId = itemId
+
+instance HasPageActions DayOfMonthInput where
+  getPageActions = actions
 
 instance HasInput DayOfMonthInput DayOfMonth where
   getInput = input
@@ -514,6 +529,8 @@ dayOfMonthPicker = do
                      H.text "Day of month"
                  H.span  H.! A.class_ "mdl-textfield__error"$
                      H.text "Input is not a valid number!"
+
+      actions = []
 
       input = over (getValue itemId) readMaybe
 
@@ -627,7 +644,7 @@ timePointInput = do
   timeOfDayInput  <- timePicker
 
   monthCloaked      <- reactiveCloak Visible (getItem monthInput)
-  dayOfMonthCloaked <- reactiveCloak Hidden  (getItem dayOfMonthInput)
+  dayOfMonthCloaked <- reactiveCloak Visible (getItem dayOfMonthInput)
   weekdayCloaked    <- reactiveCloak Hidden  (getItem weekdayInput)
 
   let itemId = getItemId timePointOptions
@@ -648,6 +665,10 @@ timePointInput = do
                               TimePointInputTimeOfDay  -> sequence_ [getHandler timePointOptions TimePointInputTimeOfDay,  getHandler monthCloaked Hidden,  getHandler dayOfMonthCloaked Hidden,  getHandler weekdayCloaked Hidden ]
 
       actions = [onChangeTimePoint]
+             ++ getPageActions monthInput
+             ++ getPageActions dayOfMonthInput
+             ++ getPageActions weekdayInput
+             ++ getPageActions timeOfDayInput
 
       input = currentValue (getBehaviour timePointOptions) >>= \case
                 TimePointInputDayOfYear  -> liftA3 DayOfYear  <$> getInput monthInput
@@ -696,7 +717,7 @@ timeIntervalInput = do
 
       input = do
         liftIO $ putStrLn "[TimeIntervalInput.getInput]"
-        over (getValue itemId) (readMaybe >=> fmap TimeInterval)
+        over (getValue itemId) ((readMaybe :: String -> Maybe Int) >=> Just . TimeInterval)
 
       actions = []
 
@@ -737,22 +758,22 @@ instance HasSelection TimerInputOptions where
 
 timerInput :: UI TimerInput
 timerInput = do
-  optionOnce       <- reactiveOption TimerInputOnce
-  optionEvery      <- reactiveOption TimerInputEvery
-  optionRepeatedly <- reactiveOption TimerInputRepeatedly
-  timerOptions     <- reactiveSelectField [optionOnce, optionEvery, optionRepeatedly] TimerInputOnce
+  optionOnce        <- reactiveOption TimerInputOnce
+  optionEvery       <- reactiveOption TimerInputEvery
+  optionRepeatedly  <- reactiveOption TimerInputRepeatedly
+  timerOptions      <- reactiveSelectField [optionOnce, optionEvery, optionRepeatedly] TimerInputOnce
 
-  let itemId = getItemId timerOptions
-
-  onceInput       <- dateTimePicker
-  everyInput      <- timePointInput
-  repeatedlyInput <- timeIntervalInput
+  onceInput         <- dateTimePicker
+  everyInput        <- timePointInput
+  repeatedlyInput   <- timeIntervalInput
 
   onceCloaked       <- reactiveCloak Visible (getItem onceInput)
   everyCloaked      <- reactiveCloak Hidden  (getItem everyInput)
   repeatedlyCloaked <- reactiveCloak Hidden  (getItem repeatedlyInput)
 
-  let item = H.div $
+  let itemId = getItemId timerOptions
+
+      item = H.div $
                  H.ul H.! A.class_ "mdl-list" $ sequence_
                     [ getItem timerOptions
                     , getItem onceCloaked
