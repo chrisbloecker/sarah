@@ -7,7 +7,9 @@
 {-# LANGUAGE TypeFamilies              #-}
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Model
-  ( Config (..)
+  ( verboseFromJust
+  
+  , Config (..)
 
   , Master (unMaster)
   , Slave (unSlave)
