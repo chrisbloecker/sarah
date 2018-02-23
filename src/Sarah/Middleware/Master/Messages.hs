@@ -18,7 +18,6 @@ import Data.Aeson.Types                         (Parser, Value (..), (.=), (.:),
 import Data.Binary                              (Binary)
 import Data.ByteString.Lazy                     (ByteString)
 import Data.Constraint
-import Data.Maybe                               (fromJust)
 import Data.Text                                (Text, unpack)
 import Data.Typeable                            (Typeable)
 import GHC.Generics                             (Generic)
@@ -28,6 +27,10 @@ import Sarah.Middleware.Device
 import Sarah.Middleware.Distributed
 import Sarah.Middleware.Model
 --------------------------------------------------------------------------------
+
+verboseFromJust :: String -> Maybe a -> a
+verboseFromJust m Nothing  = error m
+verboseFromJust _ (Just x) = x
 
 class ( Binary (MRequest command), Generic (MRequest command), Typeable (MRequest command), WebSocketsData (MRequest command), ToJSON (MRequest command), FromJSON (MRequest command)
       , Binary (MReply   command), Generic (MReply   command), Typeable (MReply   command), WebSocketsData (MReply   command), ToJSON (MReply   command), FromJSON (MReply   command)
@@ -67,11 +70,11 @@ instance FromJSON (MReply GetStatus) where
 
 instance WebSocketsData (MRequest GetStatus) where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "Expected MRequest GetStatus" . decode'
 
 instance WebSocketsData (MReply GetStatus) where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "Expected MReply GetStatus" . decode'
 
 
 -- | for getting the schedule
@@ -110,11 +113,11 @@ instance FromJSON (MReply GetSchedule) where
 
 instance WebSocketsData (MRequest GetSchedule) where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "Expected MRequest GetSchedule" . decode'
 
 instance WebSocketsData (MReply GetSchedule) where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "Expected MReply GetSchedule" . decode'
 
 data CreateSchedule
 
@@ -146,11 +149,11 @@ instance FromJSON (MReply CreateSchedule) where
 
 instance WebSocketsData (MRequest CreateSchedule) where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "Expected MRequest CreateSchedule" . decode'
 
 instance WebSocketsData (MReply CreateSchedule) where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "Expected MReply CreateSchedule" . decode'
 
 -- | for getting the logs
 data GetLogs
@@ -186,11 +189,11 @@ instance FromJSON (MReply GetLogs) where
 
 instance WebSocketsData (MRequest GetLogs) where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "Expected MRequest GetLogs" . decode'
 
 instance WebSocketsData (MReply GetLogs) where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "Expected MReply GetLogs" . decode'
 
 
 
@@ -224,7 +227,7 @@ instance FromJSON MasterRequest where
 
 instance WebSocketsData MasterRequest where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "Expected MasterRequest" . decode'
 
 mkMasterRequest :: IsMasterCommand command => MRequest command -> MasterRequest
 mkMasterRequest = MasterRequest
