@@ -23,7 +23,7 @@ import Data.Text                                (Text, unpack)
 import Data.Typeable                            (Typeable)
 import GHC.Generics                             (Generic)
 import Network.WebSockets                       (WebSocketsData (..))
-import Sarah.Middleware.Database                (Dimension, Log (..), LogLevel, Schedule (..))
+import Sarah.Middleware.Database                (Dimension, Log (..), LogLevel, Schedule (..), Timer (..))
 import Sarah.Middleware.Device
 import Sarah.Middleware.Distributed
 import Sarah.Middleware.Model
@@ -116,6 +116,41 @@ instance WebSocketsData (MReply GetSchedule) where
   toLazyByteString = encode
   fromLazyByteString = fromJust . decode'
 
+data CreateSchedule
+
+instance IsMasterCommand CreateSchedule where
+  data MRequest CreateSchedule = CreateScheduleRequest Schedule deriving (Binary, Generic, Typeable)
+  data MReply   CreateSchedule = CreateScheduleReply            deriving (Binary, Generic, Typeable)
+
+instance ToJSON (MRequest CreateSchedule) where
+  toJSON (CreateScheduleRequest schedule) = object [ "request"  .= String "CreateScheduleRequest"
+                                                   , "schedule" .= toJSON schedule
+                                                   ]
+
+instance FromJSON (MRequest CreateSchedule) where
+  parseJSON = withObject "MRequest CreateSchedule" $ \o -> do
+    request <- o .: "request" :: Parser Text
+    case request of
+      "CreateScheduleRequest" -> CreateScheduleRequest <$> o .: "schedule"
+      request                 -> fail $ "Invalid request: " ++ unpack request
+
+instance ToJSON (MReply CreateSchedule) where
+  toJSON CreateScheduleReply = object [ "reply" .= String "CreateScheduleReply" ]
+
+instance FromJSON (MReply CreateSchedule) where
+  parseJSON = withObject "MReply CreateSchedule" $ \o -> do
+    reply <- o .: "reply" :: Parser Text
+    case reply of
+      "CreateScheduleReply" -> return CreateScheduleReply
+      reply                 -> fail $ "Invalid reply: " ++ unpack reply
+
+instance WebSocketsData (MRequest CreateSchedule) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
+
+instance WebSocketsData (MReply CreateSchedule) where
+  toLazyByteString = encode
+  fromLazyByteString = fromJust . decode'
 
 -- | for getting the logs
 data GetLogs

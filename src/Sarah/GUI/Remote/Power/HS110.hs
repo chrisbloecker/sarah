@@ -7,7 +7,7 @@
 module Sarah.GUI.Remote.Power.HS110
   where
 --------------------------------------------------------------------------------
-import Control.Monad                       (forM)
+import Control.Monad                       (forM, void)
 import Control.Monad.Reader                (lift, ask)
 import Control.Monad.IO.Class              (liftIO)
 import Data.Foldable                       (traverse_)
@@ -17,9 +17,8 @@ import Graphics.UI.Threepenny              (UI, Handler, register, currentValue,
 import Prelude                      hiding (unwords)
 import Sarah.GUI.Model
 import Sarah.GUI.Reactive
-import Sarah.GUI.Websocket                 (withResponse, withoutResponse)
-import Sarah.Middleware                    ( DeviceState, decodeDeviceState, DeviceAddress (..), Schedule (..)
-                                           , Timer (..), TimeInterval (..))
+import Sarah.GUI.Websocket
+import Sarah.Middleware
 import Sarah.Middleware.Device.Power.HS110
 --------------------------------------------------------------------------------
 import qualified Text.Blaze.Html5            as H
@@ -102,9 +101,15 @@ instance HasRemote HS110 where
       onElementIDClick (getSubmitButtonId addItemDialogue) $ do
         mAction <- getInput scheduleAction :: UI (Maybe (DeviceRequest HS110))
         mTimer  <- getInput scheduleTimer  :: UI (Maybe Timer)
-        liftIO $ putStrLn "Ok, we should create a new schedule item now..."
-        liftIO . print $ mAction
-        liftIO . print $ mTimer
+
+        case (,) <$> mAction <*> mTimer of
+          Nothing              -> return ()
+          Just (action, timer) -> do
+            let request = CreateScheduleRequest (Schedule deviceAddress (mkCommand action) timer)
+            void $ toMaster middleware request
+        --liftIO $ putStrLn "Ok, we should create a new schedule item now..."
+        --liftIO . print $ mAction
+        --liftIO . print $ mTimer
 
     -- hide the dialogue
     -- ToDo: should we reset the input elements?

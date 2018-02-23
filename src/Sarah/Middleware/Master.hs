@@ -82,6 +82,14 @@ loop state@State{..} =
                     send pid (GetScheduleReply $ fmap DB.entityVal schedule)
                   loop state
 
+              , match $ \(FromPid pid (request :: MRequest CreateSchedule)) -> do
+                  say $ "[master] Create schedule request from " ++ show pid
+                  spawnLocal $ do
+                    let CreateScheduleRequest schedule = request
+                    void . liftIO $ runSqlPool (DB.insert schedule) pool
+                    send pid CreateScheduleReply
+                  loop state
+
               , match $ \(FromPid pid (request :: MRequest GetLogs)) -> do
                   say $ "[master] Logs requested by " ++ show pid
                   spawnLocal $ do

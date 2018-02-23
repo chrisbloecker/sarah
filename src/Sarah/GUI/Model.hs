@@ -60,6 +60,7 @@ instance PageActionBuilder RemoteBuilderEnv where
 
 
 data ScheduleBuilderEnv = ScheduleBuilderEnv { deviceAddress :: DeviceAddress
+                                             , middleware    :: WebAddress
                                              , scheduleTiles :: TVar (Seq H.Html)
                                              , pageActions   :: TVar (Seq (UI ()))
                                              , getSchedule   :: ScheduleBuilder [Schedule]
