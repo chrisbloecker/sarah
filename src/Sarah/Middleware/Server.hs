@@ -16,13 +16,11 @@ import Control.Concurrent.STM
 import Control.Distributed.Process  (Process, expect)
 import Control.Monad
 import Data.Aeson                   (ToJSON, FromJSON, encode, decode')
-import Data.Maybe                   (fromJust)
 import Data.Text                    (Text, unpack)
 import GHC.Generics                 (Generic)
 import Network.WebSockets    hiding (Request, runServer)
 import Sarah.Middleware.Master.Messages
 import Sarah.Middleware.Model
---------------------------------------------------------------------------------
 --------------------------------------------------------------------------------
 
 data ConnectionMode = ModeSubscribe
@@ -32,7 +30,7 @@ data ConnectionMode = ModeSubscribe
 
 instance WebSocketsData ConnectionMode where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "Expected ConnectionMode" . decode'
 
 data ServerState = ServerState { subscribers :: TVar [(Integer, Connection)]
                                , nextId      :: TVar Integer

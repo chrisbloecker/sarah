@@ -19,7 +19,6 @@ import Control.Distributed.Process
 import Data.Aeson                      (ToJSON (..), FromJSON (..), encode, decode')
 import Data.Aeson.Types                (Parser, Value (..), (.=), (.:), object, withObject)
 import Data.Binary                     (Binary)
-import Data.Maybe                      (fromJust)
 import Data.Text                       (Text, unpack)
 import GHC.Generics                    (Generic)
 import Network.WebSockets              (WebSocketsData (..))

@@ -52,7 +52,6 @@ import Data.Aeson                                 (ToJSON, FromJSON, encode, eit
 import Data.Binary                                (Binary)
 import Data.ByteString.Lazy                       (ByteString)
 import Data.Hashable                              (Hashable)
-import Data.Maybe                                 (fromJust)
 import Data.Text                                  (Text)
 import Data.Text.Encoding                         (encodeUtf8, decodeUtf8)
 import Data.Typeable                              (Typeable)
@@ -69,6 +68,12 @@ data Config = Config { master     :: Master
                      , runLocally :: forall a. Process a -> IO a
                      , getPool    :: ConnectionPool
                      }
+
+--------------------------------------------------------------------------------
+
+verboseFromJust :: String -> Maybe a -> a
+verboseFromJust m Nothing  = error m
+verboseFromJust _ (Just x) = x
 
 --------------------------------------------------------------------------------
 
@@ -167,7 +172,7 @@ data Query = Query { queryTarget  :: DeviceAddress
 
 instance WebSocketsData Query where
   toLazyByteString = encode
-  fromLazyByteString = fromJust. decode'
+  fromLazyByteString = verboseFromJust "Expected Query" . decode'
 
 mkQuery :: IsDevice model => DeviceAddress -> DeviceRequest model -> Query
 mkQuery deviceAddress command = Query deviceAddress (mkCommand command)
@@ -177,7 +182,7 @@ newtype QueryResult = QueryResult { unQueryResult :: Text } deriving (Generic, B
 
 instance WebSocketsData QueryResult where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "Expected QueryResult" . decode'
 
 mkQueryResult :: IsDevice model => DeviceReply model -> QueryResult
 mkQueryResult = QueryResult . decodeUtf8 . LBS.toStrict . encode
@@ -193,4 +198,4 @@ data MiddlewareEvent = StateChangeEvent DeviceAddress EncodedDeviceState
 
 instance WebSocketsData MiddlewareEvent where
   toLazyByteString = encode
-  fromLazyByteString = fromJust . decode'
+  fromLazyByteString = verboseFromJust "MiddlewareEvent" . decode'

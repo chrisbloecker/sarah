@@ -19,11 +19,10 @@ import Data.Aeson                           (ToJSON (..), FromJSON (..), encode,
 import Data.Aeson.Types                     (Parser)
 import Data.Binary                          (Binary)
 import Data.ByteString.Lazy                 (ByteString, toStrict, fromStrict)
-import Data.Maybe                           (fromJust)
 import Data.Text                            (Text)
 import Data.Text.Encoding                   (encodeUtf8, decodeUtf8)
 import Network.WebSockets                   (WebSocketsData (..))
-import Sarah.Middleware.Model               (IsDevice (..))
+import Sarah.Middleware.Model               (IsDevice (..), verboseFromJust)
 --------------------------------------------------------------------------------
 -- The devices, we need to enumerate them manually in the FromJSON instance for Device
 import Sarah.Middleware.Device.AC.Toshiba   (ToshibaAC)
@@ -67,4 +66,4 @@ toDeviceRep :: Device -> DeviceRep
 toDeviceRep = DeviceRep . decodeUtf8 . toStrict . encode
 
 fromDeviceRep :: DeviceRep -> Device
-fromDeviceRep = fromJust . decode' . fromStrict . encodeUtf8 . unDeviceRep
+fromDeviceRep = verboseFromJust "fromJust failed in fromDeviceRep" . decode' . fromStrict . encodeUtf8 . unDeviceRep

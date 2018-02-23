@@ -28,10 +28,6 @@ import Sarah.Middleware.Distributed
 import Sarah.Middleware.Model
 --------------------------------------------------------------------------------
 
-verboseFromJust :: String -> Maybe a -> a
-verboseFromJust m Nothing  = error m
-verboseFromJust _ (Just x) = x
-
 class ( Binary (MRequest command), Generic (MRequest command), Typeable (MRequest command), WebSocketsData (MRequest command), ToJSON (MRequest command), FromJSON (MRequest command)
       , Binary (MReply   command), Generic (MReply   command), Typeable (MReply   command), WebSocketsData (MReply   command), ToJSON (MReply   command), FromJSON (MReply   command)
       ) => IsMasterCommand command where
