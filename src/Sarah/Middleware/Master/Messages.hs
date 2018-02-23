@@ -218,6 +218,7 @@ instance ToJSON MasterRequest where
 instance FromJSON MasterRequest where
   parseJSON v = MasterRequest <$> (parseJSON v :: Parser (MRequest GetStatus))
             <|> MasterRequest <$> (parseJSON v :: Parser (MRequest GetSchedule))
+            <|> MasterRequest <$> (parseJSON v :: Parser (MRequest CreateSchedule))
             <|> MasterRequest <$> (parseJSON v :: Parser (MRequest GetLogs))
             <|> fail ("Unexpected MasterRequest: " ++ show v)
 

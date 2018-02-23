@@ -141,7 +141,7 @@ setup appEnv@AppEnv{..} window = void $ do
     -- add the dialogues to the body
     printWithTime "Adding dialogues"
     dialoguesHtml <- fmap (renderHtml . sequence_) <$> liftIO . atomically $ readTVar pageDialogues
-    runFunction $ ffi "document.getElementById('body').innerHTML += %1" dialoguesHtml
+    runFunction $ ffi "document.getElementById('dialogues').innerHTML = %1" dialoguesHtml
 
     printWithTime "Upgrading DOM for Material"
     upgradeDom
