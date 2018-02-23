@@ -30,7 +30,13 @@ upgradeDom :: UI ()
 upgradeDom = runFunction $ ffi "componentHandler.upgradeDom(); console.log('component upgrade ok.');"
 
 toast :: Text -> UI ()
-toast message = runFunction $ ffi "document.getElementById('toast').MaterialSnackbar.showSnackbar({ message: %1});" message
+toast message = runFunction $ ffi script message
+  where
+    script = mconcat [ "console.log('Showing message in toast: %1');"
+                     , "var toast = document.getElementById('toast');"
+                     , "if (toast)"
+                     , "  toast.MaterialSnackbar.showSnackbar({ message: %1 });"
+                     ]
 
 showDialogue :: String -> UI ()
 showDialogue dialogueId =
