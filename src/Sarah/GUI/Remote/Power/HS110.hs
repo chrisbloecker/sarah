@@ -117,8 +117,9 @@ instance HasRemote HS110 where
       onElementIDClick (getDismissButtonId addItemDialogue) $
         hideDialogue (getItemId addItemDialogue)
 
-    -- we have to add the dialogue to the page
-    addPageTile $
+    -- we have to add the dialogue to the page under body (otherwise the dialogue
+    -- may not work properly)
+    addPageDialogue $
       getItem addItemDialogue
 
     -- and the tile for the device

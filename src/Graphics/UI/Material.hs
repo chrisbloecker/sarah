@@ -7,13 +7,14 @@ module Graphics.UI.Material
   )
   where
 --------------------------------------------------------------------------------
-import Control.Monad          (forM_, when)
-import Control.Monad.IO.Class (MonadIO)
-import Data.Monoid            ((<>))
-import Data.Maybe             (isJust, fromJust)
-import Data.Text              (Text)
-import Graphics.UI.Threepenny (UI, runFunction, ffi)
+import Control.Monad                   (forM_, when)
+import Control.Monad.IO.Class          (MonadIO)
+import Data.Monoid                     ((<>))
+import Data.Maybe                      (isJust, fromJust)
+import Data.Text                       (Text)
+import Graphics.UI.Threepenny          (UI, runFunction, ffi)
 import Sarah.GUI.Reactive
+import Text.Blaze.Html.Renderer.String
 --------------------------------------------------------------------------------
 import Graphics.UI.Material.Class    as Graphics.UI.Material
 import Graphics.UI.Material.Icon     as Graphics.UI.Material
@@ -40,11 +41,14 @@ hideDialogue dialogueId =
   runFunction $ ffi "var dialogue = document.getElementById(%1); if (dialogue) dialogue.close()" dialogueId
 
 removeChildren :: String -> UI ()
-removeChildren parentId = runFunction $ ffi ("var parent = document.getElementById(%1);"
-                                          ++ "while (parent.firstChild)"
-                                          ++ "{"
-                                          ++ "  parent.removeChild(parent.firstChild);"
-                                          ++ "}") parentId
+removeChildren parentId = runFunction $ ffi script parentId
+  where
+    script = mconcat [ "var parent = document.getElementById(%1);"
+                     , "while (parent.firstChild)"
+                     , "{"
+                     , "  parent.removeChild(parent.firstChild);"
+                     , "}"
+                     ]
 
 --------------------------------------------------------------------------------
 

@@ -25,7 +25,7 @@ import qualified Text.Blaze.Html5 as H
 --       with a device representation, so we can deserialise it properly?
 type RemoteEvent = (Event EncodedDeviceState, Handler EncodedDeviceState)
 
-data AppEnv = AppEnv { middleware :: WebAddress }
+newtype AppEnv = AppEnv { middleware :: WebAddress }
 
 type App = ReaderT AppEnv UI
 
@@ -35,7 +35,8 @@ type SuccessHandler a = a -> IO ()
 --------------------------------------------------------------------------------
 
 class PageTileBuilder builder where
-  addPageTile :: H.Html -> ReaderT builder UI ()
+  addPageTile     :: H.Html -> ReaderT builder UI ()
+  addPageDialogue :: H.Html -> ReaderT builder UI ()
 
 class PageActionBuilder builder where
   addPageAction :: UI () -> ReaderT builder UI ()
@@ -44,6 +45,7 @@ data RemoteBuilderEnv = RemoteBuilderEnv { appEnv             :: AppEnv
                                          , deviceAddress      :: DeviceAddress
                                          , eventStateChanged  :: Event EncodedDeviceState
                                          , remoteTiles        :: TVar (Seq H.Html)
+                                         , pageDialogues      :: TVar (Seq H.Html)
                                          , pageActions        :: TVar (Seq (UI ()))
                                          , runRemote          :: RemoteRunner () -> UI ()
                                          }
@@ -52,6 +54,10 @@ instance PageTileBuilder RemoteBuilderEnv where
   addPageTile tile = do
     RemoteBuilderEnv{..} <- ask
     liftIO . atomically $ modifyTVar remoteTiles (|> tile)
+
+  addPageDialogue item = do
+    RemoteBuilderEnv{..} <- ask
+    liftIO . atomically $ modifyTVar pageDialogues (|> item)
 
 instance PageActionBuilder RemoteBuilderEnv where
   addPageAction action = do
@@ -62,6 +68,7 @@ instance PageActionBuilder RemoteBuilderEnv where
 data ScheduleBuilderEnv = ScheduleBuilderEnv { deviceAddress :: DeviceAddress
                                              , middleware    :: WebAddress
                                              , scheduleTiles :: TVar (Seq H.Html)
+                                             , pageDialogues :: TVar (Seq H.Html)
                                              , pageActions   :: TVar (Seq (UI ()))
                                              , getSchedule   :: ScheduleBuilder [Schedule]
                                              }
@@ -70,6 +77,11 @@ instance PageTileBuilder ScheduleBuilderEnv where
   addPageTile tile = do
     ScheduleBuilderEnv{..} <- ask
     liftIO . atomically $ modifyTVar scheduleTiles (|> tile)
+
+  addPageDialogue item = do
+    ScheduleBuilderEnv{..} <- ask
+    liftIO . atomically $ modifyTVar pageDialogues (|> item)
+
 
 instance PageActionBuilder ScheduleBuilderEnv where
   addPageAction action = do

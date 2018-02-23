@@ -53,6 +53,9 @@ setup appEnv@AppEnv{..} window = void $ do
     remoteTiles   <- liftIO . atomically $ newTVar empty
     scheduleTiles <- liftIO . atomically $ newTVar empty
 
+    -- dialogues
+    pageDialogues <- liftIO . atomically $ newTVar empty
+
     -- a place to store the events for the remotes. let's use a TVar in case
     -- we want to add more events later on
     remoteEvents <- liftIO . atomically $ newTVar HM.empty
@@ -134,6 +137,11 @@ setup appEnv@AppEnv{..} window = void $ do
     -- and the log in the log tab
     let logHtml = renderHtml log
     runFunction $ ffi "document.getElementById('log-content').innerHTML = %1" logHtml
+
+    -- add the dialogues to the body
+    printWithTime "Adding dialogues"
+    dialoguesHtml <- fmap (renderHtml . sequence_) <$> liftIO . atomically $ readTVar pageDialogues
+    runFunction $ ffi "document.body.innerHTML += %1;" dialoguesHtml
 
     printWithTime "Upgrading DOM for Material"
     upgradeDom
