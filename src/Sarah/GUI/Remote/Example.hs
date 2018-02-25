@@ -7,17 +7,18 @@
 module Sarah.GUI.Remote.Example
   where
 --------------------------------------------------------------------------------
+import Control.Monad                   (void)
 import Control.Monad.IO.Class          (liftIO)
 import Control.Monad.Reader            (lift, ask)
 import Data.Foldable                   (traverse_)
 import Data.Text                       (Text, append, pack, unwords)
 import Graphics.UI.Material
-import Graphics.UI.Threepenny          (ToJS (..), Handler, register)
+import Graphics.UI.Threepenny          (UI, Handler, register, runFunction, ffi)
 import Prelude                  hiding (unwords)
 import Sarah.GUI.Reactive
-import Sarah.GUI.Model                 (HasRemote (..), RemoteBuilderEnv (..), doNothing, addPageTile, addPageAction)
-import Sarah.GUI.Websocket             (withResponse, withoutResponse)
-import Sarah.Middleware                (decodeDeviceState, DeviceAddress (..))
+import Sarah.GUI.Model
+import Sarah.GUI.Websocket
+import Sarah.Middleware
 import Sarah.Middleware.Device.Example
 --------------------------------------------------------------------------------
 import qualified Text.Blaze.Html5 as H
@@ -31,8 +32,23 @@ instance HasSelection (DeviceState ExampleDevice) where
   fromSelectionLabel "Normal" = Right Normal
   fromSelectionLabel "Star"   = Right Star
   fromSelectionLabel "Heart"  = Right Heart
-  fromSelectionLabel t        = Left $ "Unexpected selection label for DeviceState ExampleDevice: " `append` t
+  fromSelectionLabel t        = unexpectedSelectionLabel t
 
+instance HasSelection (DeviceRequest ExampleDevice) where
+  toSelectionLabel RandomNumberRequest         = "Random number request"
+  toSelectionLabel (SetStateRequest Normal)    = "Set state to normal"
+  toSelectionLabel (SetStateRequest Star)      = "Set state to star"
+  toSelectionLabel (SetStateRequest Heart)     = "Set state to heart"
+  toSelectionLabel GetStateRequest             = "Get state"
+  toSelectionLabel AlwaysFailingRequest        = "Always failing request"
+
+  fromSelectionLabel "Random number request"  = Right RandomNumberRequest
+  fromSelectionLabel "Set state to normal"    = Right (SetStateRequest Normal)
+  fromSelectionLabel "Set state to star"      = Right (SetStateRequest Star)
+  fromSelectionLabel "Set state to heart"     = Right (SetStateRequest Heart)
+  fromSelectionLabel "Get state"              = Right GetStateRequest
+  fromSelectionLabel "Always failing request" = Right AlwaysFailingRequest
+  fromSelectionLabel t                        = unexpectedSelectionLabel t
 
 instance HasRemote ExampleDevice where
   buildRemote _ = do
@@ -122,4 +138,54 @@ instance HasRemote ExampleDevice where
           (\(GetStateReply state) -> eventStateChangedHandler state)
 
 
-  buildSchedule _ = return ()
+  buildSchedule _ = do
+    ScheduleBuilderEnv{..} <- ask
+    schedule               <- getSchedule
+
+    optionNormal   <- lift $ reactiveOption (SetStateRequest Normal)
+    optionStar     <- lift $ reactiveOption (SetStateRequest Star)
+    optionHeart    <- lift $ reactiveOption (SetStateRequest Heart)
+    scheduleAction <- lift $ reactiveSelectField [optionNormal, optionStar, optionHeart] (SetStateRequest Normal)
+    scheduleTimer  <- lift timerInput
+
+    addItemButton   <- button Nothing (Just "Add")
+    addItemDialogue <- dialogue "Add schedule" $ list [ getItem scheduleAction
+                                                      , getItem scheduleTimer
+                                                      ]
+
+    traverse_ addPageAction (getPageActions scheduleTimer)
+
+    addPageAction $
+      onElementIDChange (getItemId scheduleTimer) $ \(newSelection :: TimerInputOptions) -> do
+        runFunction $ ffi "console.log('New selection: %1')" (show newSelection)
+        liftIO . putStrLn $ "New option is " ++ show newSelection
+
+    -- display the dialogue to add a schedule item
+    addPageAction $
+      onElementIDClick (getItemId addItemButton) $
+        showDialogue (getItemId addItemDialogue)
+
+    -- submitting the new schedule item through the dialogue
+    addPageAction $
+      onElementIDClick (getSubmitButtonId addItemDialogue) $ do
+        mAction <- getInput scheduleAction :: UI (Maybe (DeviceRequest ExampleDevice))
+        mTimer  <- getInput scheduleTimer  :: UI (Maybe Timer)
+
+        case (,) <$> mAction <*> mTimer of
+          Nothing              -> return ()
+          Just (action, timer) -> do
+            let request = CreateScheduleRequest (Schedule deviceAddress (mkCommand action) timer)
+            void $ toMaster middleware request
+
+    addPageAction $
+      onElementIDClick (getDismissButtonId addItemDialogue) $
+        hideDialogue (getItemId addItemDialogue)
+
+    addPageDialogue $
+      getItem addItemDialogue
+
+    addPageTile $
+      let title         = unwords [deviceNode deviceAddress, deviceName deviceAddress]
+          img           = Nothing
+          scheduleItems = map (\Schedule{..} -> listItem (H.text . pack . show $ scheduleTimer) (H.text "")) schedule
+      in mkTileSmall title img (list $ scheduleItems ++ [getItem addItemButton])

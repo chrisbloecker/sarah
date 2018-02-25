@@ -18,6 +18,7 @@ import Data.Text                        (unpack)
 import Data.Time.Calendar
 import Data.Time.Clock
 import Data.Time.LocalTime
+import Database.Persist                 ((==.))
 import Database.Persist.Sql             (ConnectionPool, runSqlPool)
 import GHC.Generics                     (Generic)
 import Import.DeriveJSON
@@ -78,7 +79,8 @@ loop state@State{..} =
               , match $ \(FromPid pid (request :: MRequest GetSchedule)) -> do
                   say $ "[master] Schedule requested by " ++ show pid
                   spawnLocal $ do
-                    schedule <- liftIO $ runSqlPool (DB.selectList [] []) pool
+                    let GetScheduleRequest deviceAddress = request
+                    schedule <- liftIO $ runSqlPool (DB.selectList [ScheduleDevice ==. deviceAddress] []) pool
                     send pid (GetScheduleReply $ fmap DB.entityVal schedule)
                   loop state
 
