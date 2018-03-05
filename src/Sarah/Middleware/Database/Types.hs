@@ -15,7 +15,7 @@ import Data.Time.LocalTime (TimeOfDay (..))
 import Database.Persist.TH (derivePersistField)
 import GHC.Generics        (Generic)
 --------------------------------------------------------------------------------
-import Sarah.Middleware.Model as Sarah.Middleware.Database.Types (Command, DeviceAddress, Room)
+import Sarah.Middleware.Model as Sarah.Middleware.Database.Types (Command, DeviceAddress, Room, Query)
 --------------------------------------------------------------------------------
 
 data LogLevel = Info
@@ -89,3 +89,4 @@ derivePersistField "Timer"
 
 derivePersistField "Command"
 derivePersistField "DeviceAddress"
+derivePersistField "Query"

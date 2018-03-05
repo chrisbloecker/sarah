@@ -70,7 +70,7 @@ data ScheduleBuilderEnv = ScheduleBuilderEnv { deviceAddress :: DeviceAddress
                                              , scheduleTiles :: TVar (Seq H.Html)
                                              , pageDialogues :: TVar (Seq H.Html)
                                              , pageActions   :: TVar (Seq (UI ()))
-                                             , getSchedule   :: ScheduleBuilder [Schedule]
+                                             , getSchedule   :: ScheduleBuilder [(Integer, Schedule)]
                                              }
 
 instance PageTileBuilder ScheduleBuilderEnv where

@@ -105,11 +105,8 @@ instance HasRemote HS110 where
         case (,) <$> mAction <*> mTimer of
           Nothing              -> return ()
           Just (action, timer) -> do
-            let request = CreateScheduleRequest (Schedule deviceAddress (mkCommand action) timer)
+            let request = CreateScheduleRequest (Schedule deviceAddress (mkQuery deviceAddress action) timer)
             void $ toMaster middleware request
-        --liftIO $ putStrLn "Ok, we should create a new schedule item now..."
-        --liftIO . print $ mAction
-        --liftIO . print $ mTimer
 
     -- hide the dialogue
     -- ToDo: should we reset the input elements?
@@ -126,5 +123,9 @@ instance HasRemote HS110 where
     addPageTile $
       let title         = unwords [deviceNode deviceAddress, deviceName deviceAddress]
           img           = Nothing
-          scheduleItems = map (\Schedule{..} -> listItem (H.text . pack . show $ scheduleTimer) (H.text "")) schedule
+          scheduleItems = map (\(_, Schedule{..}) -> case getCommand . queryCommand $ scheduleAction of
+                                                       Left err                               -> mempty
+                                                       Right (command :: DeviceRequest HS110) -> listItem (H.text . pack . show $ scheduleTimer)
+                                                                                                          (H.text . pack . show $ command)
+                              ) schedule
       in mkTileSmall title img (list $ scheduleItems ++ [getItem addItemButton])

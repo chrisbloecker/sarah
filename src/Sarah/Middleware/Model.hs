@@ -8,7 +8,7 @@
 --------------------------------------------------------------------------------
 module Sarah.Middleware.Model
   ( verboseFromJust
-  
+
   , Config (..)
 
   , Master (unMaster)
@@ -170,7 +170,7 @@ getCommand = eitherDecode' . LBS.fromStrict . encodeUtf8 . unCommand
 data Query = Query { queryTarget  :: DeviceAddress
                    , queryCommand :: Command
                    }
-  deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show)
+  deriving (Generic, Binary, Typeable, ToJSON, FromJSON, Show, Read)
 
 instance WebSocketsData Query where
   toLazyByteString = encode

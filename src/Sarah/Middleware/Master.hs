@@ -9,6 +9,7 @@ module Sarah.Middleware.Master
   , runMaster
   ) where
 --------------------------------------------------------------------------------
+import Control.Arrow                    ((&&&))
 import Control.Concurrent.STM           (TVar, atomically, readTVar)
 import Control.Distributed.Process
 import Control.Monad                    (void, forM_)
@@ -33,6 +34,7 @@ import Sarah.Middleware.Util
 --------------------------------------------------------------------------------
 import qualified Data.Map.Strict  as M
 import qualified Database.Persist as DB
+import qualified Database.Persist.Sql as DB
 --------------------------------------------------------------------------------
 
 data MasterSettings = MasterSettings { masterNode :: WebAddress
@@ -81,7 +83,7 @@ loop state@State{..} =
                   spawnLocal $ do
                     let GetScheduleRequest deviceAddress = request
                     schedule <- liftIO $ runSqlPool (DB.selectList [ScheduleDevice ==. deviceAddress] []) pool
-                    send pid (GetScheduleReply $ fmap DB.entityVal schedule)
+                    send pid (GetScheduleReply $ (fromIntegral . DB.fromSqlKey . DB.entityKey &&& DB.entityVal) <$> schedule)
                   loop state
 
               , match $ \(FromPid pid (request :: MRequest CreateSchedule)) -> do

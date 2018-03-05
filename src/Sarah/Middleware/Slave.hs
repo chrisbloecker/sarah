@@ -21,8 +21,11 @@ import Data.List                                ((\\), elem, notElem)
 import Data.Map.Strict                          (Map)
 import Data.Monoid                              ((<>))
 import Data.Text                                (unpack)
+import Data.Time.Calendar                       (Day (..))
+import Data.Time.LocalTime                      (TimeOfDay (..))
 import Import.DeriveJSON
 import Raspberry.Hardware
+import Sarah.Middleware.Database
 import Sarah.Middleware.Device
 import Sarah.Middleware.Distributed             (NodeInfo (..))
 import Sarah.Middleware.Master.Messages
@@ -81,6 +84,27 @@ startPortManager = do
                                     portManager
                                 ]
 
+
+runSchedule :: Schedule -> ProcessId -> Process ProcessId
+runSchedule Schedule{..} devicePid = spawnLocal $ case scheduleTimer of
+  Once       day timeOfDay -> runOnce       day timeOfDay scheduleAction devicePid
+  Every      timePoint     -> runEvery      timePoint     scheduleAction devicePid
+  Repeatedly timeInterval  -> runRepeatedly timeInterval  scheduleAction devicePid
+
+  where
+    runOnce :: Day -> TimeOfDay -> Query -> ProcessId -> Process ()
+    runOnce = undefined
+
+    runEvery :: TimePoint -> Query -> ProcessId -> Process ()
+    runEvery = undefined
+
+    runRepeatedly :: TimeInterval -> Query -> ProcessId -> Process ()
+    runRepeatedly timeInterval@(TimeInterval t) command devicePid = do
+      liftIO $ threadDelay (t * 10^6)
+      sendWithPid devicePid command
+      runRepeatedly timeInterval command devicePid
+
+
 runSlave :: SlaveSettings -> Process ()
 runSlave SlaveSettings{..} = forever $ do -- "reconnect" when the connection is lost
   mmaster <- findMaster (host masterAddress) (show . port $ masterAddress) (seconds 1)
@@ -91,19 +115,26 @@ runSlave SlaveSettings{..} = forever $ do -- "reconnect" when the connection is 
       liftIO $ threadDelay 100000
     Just master -> do
       say $ "[slave] found master at " ++ show master
+      monitor (unMaster master)
       self              <- getSelfPid
       let slave         = mkSlave self
           queryTimeout  = timeout
       portManager       <- startPortManager
       say "[slave] starting device controllers"
-      deviceControllers <- fmap M.fromList <$> forM devices $ \(DeviceDescription name (Device model)) -> do say $ "[slave] starting " ++ show name
-                                                                                                             pid <- startDeviceController model slave portManager
-                                                                                                             return (name, pid)
+      forDevices <- forM devices $ \(DeviceDescription name (Device model)) -> do
+                      say $ "[slave] starting " ++ show name
+                      pid <- startDeviceController model slave portManager
+                      sendWithPid (unMaster master) (GetScheduleRequest $ DeviceAddress nodeName name)
+                      GetScheduleReply schedule <- expect
+                      triggers <- forM schedule $ \(scheduleId, scheduleItem) ->
+                                    (,) <$> pure scheduleId <*> runSchedule scheduleItem (unDeviceController pid)
+                      return (name, pid, triggers)
+
+      let reverseLookup     = M.foldrWithKey (\deviceName (DeviceController pid) -> M.insert pid deviceName) M.empty deviceControllers
+          deviceControllers = M.fromList [(name, pid) | (name, pid, _) <- forDevices]
 
       nodeUp master self (NodeInfo nodeName [ (name, toDeviceRep device) | (DeviceDescription name device) <- devices ])
-      monitor (unMaster master)
 
-      let reverseLookup = M.foldrWithKey (\deviceName (DeviceController pid) -> M.insert pid deviceName) M.empty deviceControllers
       loop State{..}
 
 loop :: State -> Process ()

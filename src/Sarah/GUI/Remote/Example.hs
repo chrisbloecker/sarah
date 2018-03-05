@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving  #-}
 --------------------------------------------------------------------------------
 module Sarah.GUI.Remote.Example
   where
@@ -23,6 +24,9 @@ import Sarah.Middleware.Device.Example
 --------------------------------------------------------------------------------
 import qualified Text.Blaze.Html5 as H
 --------------------------------------------------------------------------------
+
+deriving instance Show (DeviceState   ExampleDevice)
+deriving instance Show (DeviceRequest ExampleDevice)
 
 instance HasSelection (DeviceState ExampleDevice) where
   toSelectionLabel Normal = "Normal"
@@ -174,7 +178,7 @@ instance HasRemote ExampleDevice where
         case (,) <$> mAction <*> mTimer of
           Nothing              -> return ()
           Just (action, timer) -> do
-            let request = CreateScheduleRequest (Schedule deviceAddress (mkCommand action) timer)
+            let request = CreateScheduleRequest (Schedule deviceAddress (mkQuery deviceAddress action) timer)
             void $ toMaster middleware request
 
     addPageAction $
@@ -187,5 +191,9 @@ instance HasRemote ExampleDevice where
     addPageTile $
       let title         = unwords [deviceNode deviceAddress, deviceName deviceAddress]
           img           = Nothing
-          scheduleItems = map (\Schedule{..} -> listItem (H.text . pack . show $ scheduleTimer) (H.text "")) schedule
+          scheduleItems = map (\(_, Schedule{..}) -> case getCommand . queryCommand $ scheduleAction of
+                                                       Left err                                       -> mempty
+                                                       Right (command :: DeviceRequest ExampleDevice) -> listItem (H.text . pack . show $ scheduleTimer)
+                                                                                                                  (H.text . pack . show $ command)
+                              ) schedule
       in mkTileSmall title img (list $ scheduleItems ++ [getItem addItemButton])

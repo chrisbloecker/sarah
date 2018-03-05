@@ -27,6 +27,8 @@ import Sarah.Middleware.Device
 import Sarah.Middleware.Distributed
 import Sarah.Middleware.Model
 --------------------------------------------------------------------------------
+import qualified Database.Persist as DB
+--------------------------------------------------------------------------------
 
 class ( Binary (MRequest command), Generic (MRequest command), Typeable (MRequest command), WebSocketsData (MRequest command), ToJSON (MRequest command), FromJSON (MRequest command)
       , Binary (MReply   command), Generic (MReply   command), Typeable (MReply   command), WebSocketsData (MReply   command), ToJSON (MReply   command), FromJSON (MReply   command)
@@ -80,8 +82,8 @@ deriving instance Generic Schedule
 deriving instance Binary  Schedule
 
 instance IsMasterCommand GetSchedule where
-  data MRequest GetSchedule = GetScheduleRequest DeviceAddress deriving (Binary, Generic, Typeable)
-  data MReply   GetSchedule = GetScheduleReply   [Schedule]    deriving (Binary, Generic, Typeable)
+  data MRequest GetSchedule = GetScheduleRequest DeviceAddress         deriving (Binary, Generic, Typeable)
+  data MReply   GetSchedule = GetScheduleReply   [(Integer, Schedule)] deriving (Binary, Generic, Typeable)
 
 instance ToJSON (MRequest GetSchedule) where
   toJSON (GetScheduleRequest deviceAddress) = object [ "request"       .= String "GetScheduleRequest"

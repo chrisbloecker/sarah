@@ -37,7 +37,7 @@ SensorReading json
     deriving Show
 Schedule json
     device DeviceAddress -- ToDo: do we need a DeviceRep here? how do we know what kind of device it is?
-    action Command
+    action Query
     timer  Timer
     deriving Show
 Log json
