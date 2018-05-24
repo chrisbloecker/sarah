@@ -21,7 +21,8 @@ import Data.List                                ((\\), elem, notElem)
 import Data.Map.Strict                          (Map)
 import Data.Monoid                              ((<>))
 import Data.Text                                (unpack)
-import Data.Time.Calendar                       (Day (..))
+import Data.Time.Calendar                       (Day (..), fromGregorian, toGregorian, diffDays)
+import Data.Time.Clock                          (getCurrentTime, utctDay)
 import Data.Time.LocalTime                      (TimeOfDay (..))
 import Import.DeriveJSON
 import Raspberry.Hardware
@@ -96,13 +97,29 @@ runSchedule Schedule{..} devicePid = spawnLocal $ case scheduleTimer of
     runOnce = undefined
 
     runEvery :: TimePoint -> Query -> ProcessId -> Process ()
-    runEvery = undefined
+    runEvery timePoint query devicePid = do
+      now <- liftIO getCurrentTime
+      let today@(currentYear, currentMonth, currentDay) = toGregorian (utctDay now)
+
+          µsUntil = case timePoint of
+                      DayOfYear  month dayOfMonth timeOfDay -> let targetDay = fromGregorian currentYear month dayOfMonth
+                                                                   daysUntil = targetDay `diffDays` today
+                                                               in undefined
+                      DayOfMonth       dayOfMonth timeOfDay -> undefined
+                      DayOfWeek        weekday    timeOfDay -> undefined
+                      PointOfDay                  timeOfDay -> undefined
+      if µsUntil > fromIntegral (maxBound :: Int)
+        then liftIO $ threadDelay (maxBound :: Int)
+        else do
+          liftIO $ threadDelay µsUntil
+          sendWithPid devicePid query
+      runEvery timePoint query devicePid
 
     runRepeatedly :: TimeInterval -> Query -> ProcessId -> Process ()
-    runRepeatedly timeInterval@(TimeInterval t) command devicePid = do
+    runRepeatedly timeInterval@(TimeInterval t) query devicePid = do
       liftIO $ threadDelay (t * 10^6)
-      sendWithPid devicePid command
-      runRepeatedly timeInterval command devicePid
+      sendWithPid devicePid query
+      runRepeatedly timeInterval query devicePid
 
 
 runSlave :: SlaveSettings -> Process ()

@@ -616,18 +616,18 @@ instance HasPageActions TimePointInput where
 data TimePointInputOptions = TimePointInputDayOfYear
                            | TimePointInputDayOfMonth
                            | TimePointInputDayOfWeek
-                           | TimePointInputTimeOfDay
+                           | TimePointInputPointOfDay
 
 instance HasSelection TimePointInputOptions where
   toSelectionLabel TimePointInputDayOfYear  = "Day of year"
   toSelectionLabel TimePointInputDayOfMonth = "Day of month"
   toSelectionLabel TimePointInputDayOfWeek  = "Day of week"
-  toSelectionLabel TimePointInputTimeOfDay  = "Time of day"
+  toSelectionLabel TimePointInputPointOfDay  = "Time of day"
 
   fromSelectionLabel "Day of year"  = Right TimePointInputDayOfYear
   fromSelectionLabel "Day of month" = Right TimePointInputDayOfMonth
   fromSelectionLabel "Day of week"  = Right TimePointInputDayOfWeek
-  fromSelectionLabel "Time of day"  = Right TimePointInputTimeOfDay
+  fromSelectionLabel "Time of day"  = Right TimePointInputPointOfDay
   fromSelectionLabel t              = unexpectedSelectionLabel t
 
 timePointInput :: UI TimePointInput
@@ -635,13 +635,13 @@ timePointInput = do
   optionDayOfYear  <- reactiveOption TimePointInputDayOfYear
   optionDayOfMonth <- reactiveOption TimePointInputDayOfMonth
   optionDayOfWeek  <- reactiveOption TimePointInputDayOfWeek
-  optionTimeOfDay  <- reactiveOption TimePointInputTimeOfDay
-  timePointOptions <- reactiveSelectField [optionDayOfYear, optionDayOfMonth, optionDayOfWeek, optionTimeOfDay] TimePointInputDayOfYear
+  optionPointOfDay <- reactiveOption TimePointInputPointOfDay
+  timePointOptions <- reactiveSelectField [optionDayOfYear, optionDayOfMonth, optionDayOfWeek, optionPointOfDay] TimePointInputDayOfYear
 
   monthInput      <- monthPicker
   dayOfMonthInput <- dayOfMonthPicker
   weekdayInput    <- weekdayPicker
-  timeOfDayInput  <- timePicker
+  pointOfDayInput <- timePicker
 
   monthCloaked      <- reactiveCloak Visible (getItem monthInput)
   dayOfMonthCloaked <- reactiveCloak Visible (getItem dayOfMonthInput)
@@ -655,30 +655,30 @@ timePointInput = do
                      , getItem monthCloaked
                      , getItem dayOfMonthCloaked
                      , getItem weekdayCloaked
-                     , getItem timeOfDayInput
+                     , getItem pointOfDayInput
                      ]
 
       onChangeTimePoint = onElementIDChange (getItemId timePointOptions) $ fmap liftIO $ \case
                               TimePointInputDayOfYear  -> sequence_ [getHandler timePointOptions TimePointInputDayOfYear,  getHandler monthCloaked Visible, getHandler dayOfMonthCloaked Visible, getHandler weekdayCloaked Hidden ]
                               TimePointInputDayOfMonth -> sequence_ [getHandler timePointOptions TimePointInputDayOfMonth, getHandler monthCloaked Hidden,  getHandler dayOfMonthCloaked Visible, getHandler weekdayCloaked Hidden ]
                               TimePointInputDayOfWeek  -> sequence_ [getHandler timePointOptions TimePointInputDayOfWeek,  getHandler monthCloaked Hidden,  getHandler dayOfMonthCloaked Hidden,  getHandler weekdayCloaked Visible]
-                              TimePointInputTimeOfDay  -> sequence_ [getHandler timePointOptions TimePointInputTimeOfDay,  getHandler monthCloaked Hidden,  getHandler dayOfMonthCloaked Hidden,  getHandler weekdayCloaked Hidden ]
+                              TimePointInputPointOfDay -> sequence_ [getHandler timePointOptions TimePointInputPointOfDay, getHandler monthCloaked Hidden,  getHandler dayOfMonthCloaked Hidden,  getHandler weekdayCloaked Hidden ]
 
       actions = [onChangeTimePoint]
              ++ getPageActions monthInput
              ++ getPageActions dayOfMonthInput
              ++ getPageActions weekdayInput
-             ++ getPageActions timeOfDayInput
+             ++ getPageActions pointOfDayInput
 
       input = currentValue (getBehaviour timePointOptions) >>= \case
                 TimePointInputDayOfYear  -> liftA3 DayOfYear  <$> getInput monthInput
                                                               <*> getInput dayOfMonthInput
-                                                              <*> getInput timeOfDayInput
+                                                              <*> getInput pointOfDayInput
                 TimePointInputDayOfMonth -> liftA2 DayOfMonth <$> getInput dayOfMonthInput
-                                                              <*> getInput timeOfDayInput
+                                                              <*> getInput pointOfDayInput
                 TimePointInputDayOfWeek  -> liftA2 DayOfWeek  <$> getInput weekdayInput
-                                                              <*> getInput timeOfDayInput
-                TimePointInputTimeOfDay  -> fmap TimeOfDay  <$> getInput timeOfDayInput
+                                                              <*> getInput pointOfDayInput
+                TimePointInputPointOfDay -> fmap PointOfDay   <$> getInput pointOfDayInput
 
   return TimePointInput{..}
 

@@ -11,12 +11,16 @@ import Data.Aeson.TH       (deriveJSON, defaultOptions)
 import Data.Binary         (Binary)
 import Data.Text           (Text)
 import Data.Time.Calendar  (Day (..))
+import Data.Time.Clock     (UTCTime)
 import Data.Time.LocalTime (TimeOfDay (..))
 import Database.Persist.TH (derivePersistField)
 import GHC.Generics        (Generic)
 --------------------------------------------------------------------------------
 import Sarah.Middleware.Model as Sarah.Middleware.Database.Types (Command, DeviceAddress, Room, Query)
 --------------------------------------------------------------------------------
+
+class HasOccurence timePointDescription where
+  nextOccurence :: timePointDescription -> IO UTCTime
 
 data LogLevel = Info
               | Debug
@@ -40,8 +44,23 @@ data Timer = Once       Day TimeOfDay
 data TimePoint = DayOfYear  Month DayOfMonth TimeOfDay
                | DayOfMonth DayOfMonth TimeOfDay
                | DayOfWeek  Weekday TimeOfDay
-               | TimeOfDay  TimeOfDay
+               | PointOfDay TimeOfDay
   deriving (Show, Read, Eq, Generic, Binary)
+
+instance HasOccurence TimePoint where
+  nextOccurence t = do
+    now <- getCurrentTime
+    let today@(currentYear, currentMonth, currentDay) = toGregorian (utctDay     now)
+        offset                                        =              utctDayTime now
+    case t of
+      DayOfYear month dayOfMonth timeOfDay ->
+        let undefined
+        in undefined
+      DayOfMonth dayOfMonth timeOfDay ->
+        let undefined
+        in undefined
+      DayOfWeek
+      PointOfDay
 
 data Month = January
            | February
@@ -68,7 +87,7 @@ data Weekday = Monday
 
 type DayOfMonth = Int
 
-data TimeInterval = TimeInterval Int
+newtype TimeInterval = TimeInterval Int
   deriving (Show, Read, Eq, Generic, Binary)
 
 
