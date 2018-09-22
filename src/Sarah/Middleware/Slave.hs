@@ -22,7 +22,7 @@ import Data.Map.Strict                          (Map)
 import Data.Monoid                              ((<>))
 import Data.Text                                (unpack)
 import Data.Time.Calendar                       (Day (..), fromGregorian, toGregorian, diffDays)
-import Data.Time.Clock                          (getCurrentTime, utctDay)
+import Data.Time.Clock                          (getCurrentTime, utctDay, diffUTCTime)
 import Data.Time.LocalTime                      (TimeOfDay (..))
 import Import.DeriveJSON
 import Raspberry.Hardware
@@ -98,16 +98,9 @@ runSchedule Schedule{..} devicePid = spawnLocal $ case scheduleTimer of
 
     runEvery :: TimePoint -> Query -> ProcessId -> Process ()
     runEvery timePoint query devicePid = do
-      now <- liftIO getCurrentTime
-      let today@(currentYear, currentMonth, currentDay) = toGregorian (utctDay now)
-
-          µsUntil = case timePoint of
-                      DayOfYear  month dayOfMonth timeOfDay -> let targetDay = fromGregorian currentYear month dayOfMonth
-                                                                   daysUntil = targetDay `diffDays` today
-                                                               in undefined
-                      DayOfMonth       dayOfMonth timeOfDay -> undefined
-                      DayOfWeek        weekday    timeOfDay -> undefined
-                      PointOfDay                  timeOfDay -> undefined
+      now      <- liftIO getCurrentTime
+      nextTime <- liftIO $ nextOccurence timePoint
+      let µsUntil = 1000000 * (floor . toRational $ diffUTCTime nextTime now)
       if µsUntil > fromIntegral (maxBound :: Int)
         then liftIO $ threadDelay (maxBound :: Int)
         else do
