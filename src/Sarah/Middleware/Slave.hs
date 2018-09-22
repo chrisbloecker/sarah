@@ -15,15 +15,15 @@ module Sarah.Middleware.Slave
 --------------------------------------------------------------------------------
 import Control.Concurrent                       (threadDelay)
 import Control.Distributed.Process
-import Control.Monad                            (forM, void, forever)
+import Control.Monad                            (forM, void, forever, unless)
 import Data.Aeson.Types                         (Value (..))
 import Data.List                                ((\\), elem, notElem)
 import Data.Map.Strict                          (Map)
 import Data.Monoid                              ((<>))
 import Data.Text                                (unpack)
 import Data.Time.Calendar                       (Day (..), fromGregorian, toGregorian, diffDays)
-import Data.Time.Clock                          (getCurrentTime, utctDay, diffUTCTime)
-import Data.Time.LocalTime                      (TimeOfDay (..))
+import Data.Time.Clock                          (UTCTime (..), getCurrentTime, diffUTCTime)
+import Data.Time.LocalTime                      (TimeOfDay (..), timeOfDayToTime)
 import Import.DeriveJSON
 import Raspberry.Hardware
 import Sarah.Middleware.Database
@@ -85,6 +85,15 @@ startPortManager = do
                                     portManager
                                 ]
 
+waitUntil :: UTCTime -> IO ()
+waitUntil until = do
+  now <- getCurrentTime
+  let µsUntil = 10^6 * (floor . toRational $ diffUTCTime until now)
+  unless (µsUntil <= 0) $
+    if µsUntil > fromIntegral (maxBound :: Int)
+      then threadDelay (maxBound :: Int) >> waitUntil until
+      else threadDelay µsUntil
+
 
 runSchedule :: Schedule -> ProcessId -> Process ProcessId
 runSchedule Schedule{..} devicePid = spawnLocal $ case scheduleTimer of
@@ -94,18 +103,17 @@ runSchedule Schedule{..} devicePid = spawnLocal $ case scheduleTimer of
 
   where
     runOnce :: Day -> TimeOfDay -> Query -> ProcessId -> Process ()
-    runOnce = undefined
+    runOnce day timeOfDay query devicePid = do
+      liftIO $ waitUntil (UTCTime day (timeOfDayToTime timeOfDay))
+      sendWithPid devicePid query
 
     runEvery :: TimePoint -> Query -> ProcessId -> Process ()
     runEvery timePoint query devicePid = do
       now      <- liftIO getCurrentTime
       nextTime <- liftIO $ nextOccurence timePoint
-      let µsUntil = 1000000 * (floor . toRational $ diffUTCTime nextTime now)
-      if µsUntil > fromIntegral (maxBound :: Int)
-        then liftIO $ threadDelay (maxBound :: Int)
-        else do
-          liftIO $ threadDelay µsUntil
-          sendWithPid devicePid query
+
+      liftIO $ waitUntil nextTime
+      sendWithPid devicePid query
       runEvery timePoint query devicePid
 
     runRepeatedly :: TimeInterval -> Query -> ProcessId -> Process ()
@@ -136,8 +144,10 @@ runSlave SlaveSettings{..} = forever $ do -- "reconnect" when the connection is 
                       pid <- startDeviceController model slave portManager
                       sendWithPid (unMaster master) (GetScheduleRequest $ DeviceAddress nodeName name)
                       GetScheduleReply schedule <- expect
+                      say "[slave] setting up schedule..."
                       triggers <- forM schedule $ \(scheduleId, scheduleItem) ->
                                     (,) <$> pure scheduleId <*> runSchedule scheduleItem (unDeviceController pid)
+                      say $ "[slave] device " ++ show name ++ " initialised."
                       return (name, pid, triggers)
 
       let reverseLookup     = M.foldrWithKey (\deviceName (DeviceController pid) -> M.insert pid deviceName) M.empty deviceControllers
