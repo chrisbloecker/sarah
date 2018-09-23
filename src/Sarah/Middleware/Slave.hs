@@ -104,8 +104,12 @@ runSchedule Schedule{..} devicePid = spawnLocal $ case scheduleTimer of
   where
     runOnce :: Day -> TimeOfDay -> Query -> ProcessId -> Process ()
     runOnce day timeOfDay query devicePid = do
-      liftIO $ waitUntil (UTCTime day (timeOfDayToTime timeOfDay))
-      sendWithPid devicePid query
+      now <- liftIO getCurrentTime
+      let until = UTCTime day (timeOfDayToTime timeOfDay)
+      unless (until < now) $ do
+        liftIO $ waitUntil until
+        say $ "[runOnce] running " ++ show query
+        sendWithPid devicePid query
 
     runEvery :: TimePoint -> Query -> ProcessId -> Process ()
     runEvery timePoint query devicePid = do
@@ -113,12 +117,14 @@ runSchedule Schedule{..} devicePid = spawnLocal $ case scheduleTimer of
       nextTime <- liftIO $ nextOccurence timePoint
 
       liftIO $ waitUntil nextTime
+      say $ "[runEvery] running " ++ show query
       sendWithPid devicePid query
       runEvery timePoint query devicePid
 
     runRepeatedly :: TimeInterval -> Query -> ProcessId -> Process ()
     runRepeatedly timeInterval@(TimeInterval t) query devicePid = do
       liftIO $ threadDelay (t * 10^6)
+      say $ "[runRepeatedly] running " ++ show query
       sendWithPid devicePid query
       runRepeatedly timeInterval query devicePid
 
@@ -142,6 +148,7 @@ runSlave SlaveSettings{..} = forever $ do -- "reconnect" when the connection is 
       forDevices <- forM devices $ \(DeviceDescription name (Device model)) -> do
                       say $ "[slave] starting " ++ show name
                       pid <- startDeviceController model slave portManager
+                      say $ "[slave] requesting schedule for " ++ show name
                       sendWithPid (unMaster master) (GetScheduleRequest $ DeviceAddress nodeName name)
                       GetScheduleReply schedule <- expect
                       say "[slave] setting up schedule..."
