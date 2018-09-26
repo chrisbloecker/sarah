@@ -89,6 +89,7 @@ waitUntil :: UTCTime -> IO ()
 waitUntil until = do
   now <- getCurrentTime
   let µsUntil = 10^6 * (floor . toRational $ diffUTCTime until now)
+  putStrLn $ "[waitUntil] waiting for " ++ show µsUntil ++ "µs."
   unless (µsUntil <= 0) $
     if µsUntil > fromIntegral (maxBound :: Int)
       then threadDelay (maxBound :: Int) >> waitUntil until
@@ -106,6 +107,7 @@ runSchedule Schedule{..} devicePid = spawnLocal $ case scheduleTimer of
     runOnce day timeOfDay query devicePid = do
       now <- liftIO getCurrentTime
       let until = UTCTime day (timeOfDayToTime timeOfDay)
+      say $ "[runOnce] setting up timer for " ++ show query ++ ". Now it is " ++ show now ++ ", need to wait until " ++ show until
       unless (until < now) $ do
         liftIO $ waitUntil until
         say $ "[runOnce] running " ++ show query

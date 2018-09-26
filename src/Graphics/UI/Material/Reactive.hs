@@ -16,10 +16,10 @@ import Control.Arrow                      ((&&&))
 import Control.Monad                      ((>=>), forM_, when, void)
 import Control.Monad.IO.Class             (MonadIO, liftIO)
 import Data.Text                          (Text, pack, unpack)
-import Data.Time.Calendar                 (Day, fromGregorian)
-import Data.Time.Clock                    (utctDay, utctDayTime)
+import Data.Time.Calendar                 (Day, addDays)
+import Data.Time.Clock                    (UTCTime (..))
 import Data.Time.Format                   (parseTimeM, defaultTimeLocale)
-import Data.Time.LocalTime                (TimeOfDay, timeToTimeOfDay, midnight)
+import Data.Time.LocalTime                (TimeOfDay, getCurrentTimeZone, timeToTimeOfDay, timeOfDayToTime, localToUTCTimeOfDay)
 import Graphics.UI.Material.Types
 import Graphics.UI.Material.Icon
 import Graphics.UI.Threepenny             (Event, Handler, UI, newEvent, stepper, currentValue, onChanges)
@@ -269,6 +269,7 @@ instance HasPageActions TimePicker where
 instance HasInput TimePicker TimeOfDay where
   getInput = input
 
+-- A time picker that returns a time of day in UTC.
 timePicker :: UI TimePicker
 timePicker = do
   itemId <- newIdent
@@ -281,7 +282,9 @@ timePicker = do
       actions = []
 
       input = do
-        fmap (timeToTimeOfDay . utctDayTime) <$> parseTimeM True defaultTimeLocale "%R" <$> getValue itemId
+        timeZone  <- liftIO getCurrentTimeZone
+        localTime <- parseTimeM True defaultTimeLocale "%R" <$> getValue itemId
+        return . snd . localToUTCTimeOfDay timeZone <$> localTime
 
   return TimePicker{..}
 
@@ -313,9 +316,13 @@ dateTimePicker = do
                          H.! A.id (H.toValue itemId)
 
       input = do
-        liftIO $ putStrLn "[dateTimePicker.getInput]"
         mDateTime <- parseTimeM True defaultTimeLocale "%FT%R" <$> getValue itemId
-        return $ fmap (utctDay &&& timeToTimeOfDay . utctDayTime) mDateTime
+        timeZone  <- liftIO getCurrentTimeZone
+        return $ case mDateTime of
+          Nothing -> Nothing
+          Just dateTime -> do
+            let (dayOffset, utcTimeOfDay) = localToUTCTimeOfDay timeZone . timeToTimeOfDay . utctDayTime $ dateTime
+            Just (addDays dayOffset . utctDay $ dateTime, utcTimeOfDay)
 
       actions = []
 
