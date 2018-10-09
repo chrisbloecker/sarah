@@ -86,10 +86,10 @@ instance HasRemote HS110 where
 
     traverse_ addPageAction (getPageActions scheduleTimer)
 
-    addPageAction $
-      onElementIDChange (getItemId scheduleTimer) $ \(newSelection :: TimerInputOptions) -> do
-        runFunction $ ffi "console.log('New selection: %1')" (show newSelection)
-        liftIO . putStrLn $ "New option is " ++ show newSelection
+    -- addPageAction $
+    --   onElementIDChange (getItemId scheduleTimer) $ \(newSelection :: TimerInputOptions) -> do
+    --     runFunction $ ffi "console.log('New selection: %1')" (show newSelection)
+    --     liftIO . putStrLn $ "New option is " ++ show newSelection
 
     -- display the dialogue to add a schedule item
     addPageAction $
@@ -99,11 +99,13 @@ instance HasRemote HS110 where
     -- submitting the new schedule item through the dialogue
     addPageAction $
       onElementIDClick (getSubmitButtonId addItemDialogue) $ do
+        hideDialogue (getItemId addItemDialogue)
+
         mAction <- getInput scheduleAction :: UI (Maybe (DeviceRequest HS110))
         mTimer  <- getInput scheduleTimer  :: UI (Maybe Timer)
 
         case (,) <$> mAction <*> mTimer of
-          Nothing              -> return ()
+          Nothing              -> toast "Could not create schedule: invalid input."
           Just (action, timer) -> do
             let request = CreateScheduleRequest (Schedule deviceAddress (mkQuery deviceAddress action) timer)
             void $ toMaster middleware request
