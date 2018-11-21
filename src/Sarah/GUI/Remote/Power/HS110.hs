@@ -11,6 +11,7 @@ import Control.Monad                       (forM, void)
 import Control.Monad.Reader                (lift, ask)
 import Control.Monad.IO.Class              (liftIO)
 import Data.Foldable                       (traverse_)
+import Data.Maybe                          (catMaybes)
 import Data.Text                           (unwords, pack)
 import Graphics.UI.Material
 import Graphics.UI.Threepenny              (UI, Handler, register, currentValue, runFunction, ffi)
@@ -121,13 +122,28 @@ instance HasRemote HS110 where
     addPageDialogue $
       getItem addItemDialogue
 
+    scheduleItems <- forM schedule $ \(timerId, Schedule{..}) ->
+                       case getCommand . queryCommand $ scheduleAction of
+                         Left err                               -> return Nothing
+                         Right (command :: DeviceRequest HS110) -> do
+                           removeButton <- lift $ button Nothing (Just "Remove")
+
+                           addPageAction $
+                             onElementIDClick (getItemId removeButton) $
+                               runFunction $ ffi "console.log('Delete timer with ID: %1')" (show timerId)
+
+                           let item = row [ H.text . pack . show $ scheduleTimer
+                                          , H.text . pack . show $ command
+                                          , getItem removeButton
+                                          ]
+
+                           return $ Just (removeButton, item)
+
     -- and the tile for the device
     addPageTile $
       let title         = unwords [deviceNode deviceAddress, deviceName deviceAddress]
           img           = Nothing
-          scheduleItems = map (\(_, Schedule{..}) -> case getCommand . queryCommand $ scheduleAction of
-                                                       Left err                               -> mempty
-                                                       Right (command :: DeviceRequest HS110) -> listItem (H.text . pack . show $ scheduleTimer)
-                                                                                                          (H.text . pack . show $ command)
-                              ) schedule
-      in mkTileSmall title img (list $ scheduleItems ++ [getItem addItemButton])
+      in mkTileSmall title img (list [ table ["Time", "Action", ""] (map snd . catMaybes $ scheduleItems)
+                                     , getItem addItemButton
+                                     ]
+                               )

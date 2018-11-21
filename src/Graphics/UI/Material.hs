@@ -207,3 +207,15 @@ listItem content action = H.li H.! A.class_ "mdl-list__item"
                                   content
                               H.span H.! A.class_ "mdl-list__item-secondary-action" $
                                   action
+
+table :: [Text] -> [H.Html] -> H.Html
+table cols rows = H.table H.! A.class_ "mdl-data-table mdl-js-data-table mdl-data-table--selectable mdl-shadow--2dp" $ do
+                      H.thead $
+                          H.tr $ forM_ cols $ \col ->
+                              H.th H.! A.class_ "mdl-data-table__cell--non-numeric" $
+                                  H.text col
+                      H.tbody $ sequence_ rows
+
+row :: [H.Html] -> H.Html
+row cols = H.tr $ forM_ cols $ \col ->
+               H.td H.! A.class_ "mdl-data-table__cell--non-numeric" $ col
